@@ -1,0 +1,5 @@
+.env
+*.key
+*.pem
+.research_files
+CLAUDE.md

@@ -1,0 +1,137 @@
+services:
+  litellm:
+    build: .
+    image: litellm-local:latest
+    container_name: litellm
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    env_file:
+      - .env
+    environment:
+      # Tune workers to your core count
+      WORKERS: ${WORKERS:-8}
+      # Disable telemetry
+      LITELLM_TELEMETRY: "False"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      claude-code:
+        condition: service_healthy
+      claude-code-zai:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    # Drop all caps, read-only root FS
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - litellm-internal
+      - litellm-public
+
+  claude-code:
+    image: psyb0t/claude-code:v0.38.0-minimal
+    container_name: litellm-claude-code
+    restart: unless-stopped
+    environment:
+      CLAUDE_MODE_API: "1"
+      CLAUDE_MODE_API_PORT: "8080"
+      CLAUDE_MODE_API_TOKEN: ${CLAUDE_CODE_API_TOKEN:-lulz-4-security}
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN}
+    volumes:
+      - claude-data:/home/claude/.claude
+      - claude-workspaces:/workspaces
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - litellm-internal
+      - litellm-public
+
+  claude-code-zai:
+    image: psyb0t/claude-code:v0.38.0-minimal
+    container_name: litellm-claude-code-zai
+    restart: unless-stopped
+    environment:
+      CLAUDE_MODE_API: "1"
+      CLAUDE_MODE_API_PORT: "8080"
+      CLAUDE_MODE_API_TOKEN: ${CLAUDE_CODE_ZAI_API_TOKEN:-lulz-4-security-zai}
+      ANTHROPIC_AUTH_TOKEN: ${ZAI_AUTH_TOKEN}
+      ANTHROPIC_BASE_URL: https://api.z.ai/api/anthropic
+      API_TIMEOUT_MS: "3000000"
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+      ANTHROPIC_DEFAULT_OPUS_MODEL: ${ZAI_OPUS_MODEL:-glm-5.1}
+      ANTHROPIC_DEFAULT_SONNET_MODEL: ${ZAI_SONNET_MODEL:-glm-4.7}
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: ${ZAI_HAIKU_MODEL:-glm-4.5-air}
+    volumes:
+      - claude-zai-workspaces:/workspaces
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - litellm-internal
+      - litellm-public
+
+  redis:
+    image: redis:7.4.8-alpine
+    container_name: litellm-redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - litellm-internal
+
+  postgres:
+    image: postgres:16.13-alpine
+    container_name: litellm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-litellm}
+      POSTGRES_USER: ${POSTGRES_USER:-litellm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-litellm} -d ${POSTGRES_DB:-litellm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - litellm-internal
+
+volumes:
+  redis-data:
+  postgres-data:
+  claude-data:
+  claude-workspaces:
+  claude-zai-workspaces:
+
+networks:
+  litellm-internal:
+    internal: true
+  litellm-public:

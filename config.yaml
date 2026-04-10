@@ -1,0 +1,322 @@
+model_list:
+
+  # ── OpenAI ──────────────────────────────────────────────────────────────────
+
+  - model_name: gpt-4o
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+
+  - model_name: gpt-4o-mini
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+
+  - model_name: o3
+    litellm_params:
+      model: openai/o3
+      api_key: os.environ/OPENAI_API_KEY
+
+  - model_name: o3-mini
+    litellm_params:
+      model: openai/o3-mini
+      api_key: os.environ/OPENAI_API_KEY
+
+  # Image generation
+  - model_name: dall-e-3
+    litellm_params:
+      model: openai/dall-e-3
+      api_key: os.environ/OPENAI_API_KEY
+
+  - model_name: gpt-image-1
+    litellm_params:
+      model: openai/gpt-image-1
+      api_key: os.environ/OPENAI_API_KEY
+
+  # Audio
+  - model_name: whisper-openai
+    litellm_params:
+      model: openai/whisper-1
+      api_key: os.environ/OPENAI_API_KEY
+
+  - model_name: tts-1
+    litellm_params:
+      model: openai/tts-1
+      api_key: os.environ/OPENAI_API_KEY
+
+  - model_name: tts-1-hd
+    litellm_params:
+      model: openai/tts-1-hd
+      api_key: os.environ/OPENAI_API_KEY
+
+  # ── Anthropic ────────────────────────────────────────────────────────────────
+
+  - model_name: claude-opus-4
+    litellm_params:
+      model: anthropic/claude-opus-4-6
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  - model_name: claude-sonnet-4
+    litellm_params:
+      model: anthropic/claude-sonnet-4-6
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  - model_name: claude-haiku-4
+    litellm_params:
+      model: anthropic/claude-haiku-4-5-20251001
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  # ── Claude Code (via docker-claude-code OpenAI-compatible API) ────────────────
+  # Uses your Claude Max subscription OAuth token — no per-token API costs
+
+  - model_name: claude-code-opus
+    litellm_params:
+      model: openai/opus
+      api_base: http://claude-code:8080/openai/v1
+      api_key: os.environ/CLAUDE_CODE_API_TOKEN
+
+  - model_name: claude-code-sonnet
+    litellm_params:
+      model: openai/sonnet
+      api_base: http://claude-code:8080/openai/v1
+      api_key: os.environ/CLAUDE_CODE_API_TOKEN
+
+  - model_name: claude-code-haiku
+    litellm_params:
+      model: openai/haiku
+      api_base: http://claude-code:8080/openai/v1
+      api_key: os.environ/CLAUDE_CODE_API_TOKEN
+
+  # ── GLM via z.ai (through docker-claude-code) ─────────────────────────────────
+
+  - model_name: glm-5.1
+    litellm_params:
+      model: openai/opus
+      api_base: http://claude-code-zai:8080/openai/v1
+      api_key: os.environ/CLAUDE_CODE_ZAI_API_TOKEN
+
+  - model_name: glm-4.7
+    litellm_params:
+      model: openai/sonnet
+      api_base: http://claude-code-zai:8080/openai/v1
+      api_key: os.environ/CLAUDE_CODE_ZAI_API_TOKEN
+
+  - model_name: glm-4.5-air
+    litellm_params:
+      model: openai/haiku
+      api_base: http://claude-code-zai:8080/openai/v1
+      api_key: os.environ/CLAUDE_CODE_ZAI_API_TOKEN
+
+  # ── Groq ─────────────────────────────────────────────────────────────────────
+
+  - model_name: gpt-oss-20b
+    litellm_params:
+      model: groq/openai/gpt-oss-20b
+      api_key: os.environ/GROQ_API_KEY
+
+  - model_name: gpt-oss-120b
+    litellm_params:
+      model: groq/openai/gpt-oss-120b
+      api_key: os.environ/GROQ_API_KEY
+
+  - model_name: llama-3.3-70b
+    litellm_params:
+      model: groq/llama-3.3-70b-versatile
+      api_key: os.environ/GROQ_API_KEY
+
+  - model_name: kimi-k2
+    litellm_params:
+      model: groq/moonshotai/kimi-k2-instruct
+      api_key: os.environ/GROQ_API_KEY
+
+  - model_name: llama-3.1-8b
+    litellm_params:
+      model: groq/llama-3.1-8b-instant
+      api_key: os.environ/GROQ_API_KEY
+
+  - model_name: qwen3-32b
+    litellm_params:
+      model: groq/qwen/qwen3-32b
+      api_key: os.environ/GROQ_API_KEY
+
+  - model_name: llama-4-scout
+    litellm_params:
+      model: groq/meta-llama/llama-4-scout-17b-16e-instruct
+      api_key: os.environ/GROQ_API_KEY
+
+  - model_name: compound
+    litellm_params:
+      model: groq/compound-beta
+      api_key: os.environ/GROQ_API_KEY
+
+  - model_name: compound-mini
+    litellm_params:
+      model: groq/compound-beta-mini
+      api_key: os.environ/GROQ_API_KEY
+
+  # Audio via Groq
+  - model_name: whisper-large-v3
+    litellm_params:
+      model: groq/whisper-large-v3
+      api_key: os.environ/GROQ_API_KEY
+
+  - model_name: whisper-large-v3-turbo
+    litellm_params:
+      model: groq/whisper-large-v3-turbo
+      api_key: os.environ/GROQ_API_KEY
+
+  # ── HuggingFace (via Inference Providers) ───────────────────────────────────
+  # Note: free tier = ~$0.10/month in credits, use small models for daily driving
+
+  # Chat
+  - model_name: hf-llama-3.1-8b
+    litellm_params:
+      model: huggingface/meta-llama/Llama-3.1-8B-Instruct
+      api_key: os.environ/HF_TOKEN
+
+  - model_name: hf-qwen3-8b
+    litellm_params:
+      model: huggingface/Qwen/Qwen3-8B
+      api_key: os.environ/HF_TOKEN
+
+  - model_name: hf-qwq-32b
+    litellm_params:
+      model: huggingface/Qwen/QwQ-32B
+      api_key: os.environ/HF_TOKEN
+
+  - model_name: hf-deepseek-r1
+    litellm_params:
+      model: huggingface/deepseek-ai/DeepSeek-R1
+      api_key: os.environ/HF_TOKEN
+
+  - model_name: hf-llama-3.3-70b
+    litellm_params:
+      model: huggingface/meta-llama/Llama-3.3-70B-Instruct
+      api_key: os.environ/HF_TOKEN
+
+  # Vision / Multimodal
+  - model_name: hf-llama-4-scout
+    litellm_params:
+      model: huggingface/meta-llama/Llama-4-Scout-17B-16E-Instruct
+      api_key: os.environ/HF_TOKEN
+
+  - model_name: hf-qwen-vl-72b
+    litellm_params:
+      model: huggingface/Qwen/Qwen2.5-VL-72B-Instruct
+      api_key: os.environ/HF_TOKEN
+
+  - model_name: hf-qwen3-vl-8b
+    litellm_params:
+      model: huggingface/Qwen/Qwen2.5-VL-7B-Instruct
+      api_key: os.environ/HF_TOKEN
+
+  - model_name: hf-gemma-3-12b
+    litellm_params:
+      model: huggingface/google/gemma-3-12b-it
+      api_key: os.environ/HF_TOKEN
+
+  # Image generation
+  - model_name: flux-schnell
+    litellm_params:
+      model: huggingface/black-forest-labs/FLUX.1-schnell
+      api_key: os.environ/HF_TOKEN
+
+  - model_name: flux-dev
+    litellm_params:
+      model: huggingface/black-forest-labs/FLUX.1-dev
+      api_key: os.environ/HF_TOKEN
+
+  - model_name: sd-3.5-turbo
+    litellm_params:
+      model: huggingface/stabilityai/stable-diffusion-3.5-large-turbo
+      api_key: os.environ/HF_TOKEN
+
+
+# ── Model Groups (for load balancing / fallbacks) ────────────────────────────
+model_group_alias:
+  # Best available fast chat — falls back down the chain
+  fast:
+    - llama-3.1-8b
+    - claude-code-haiku
+    - glm-4.5-air
+    - hf-llama-3.1-8b
+    - gpt-4o-mini
+
+  # Best available smart chat
+  smart:
+    - claude-code-sonnet
+    - glm-4.7
+    - gpt-4o
+    - claude-sonnet-4
+    - claude-code-opus
+    - glm-5.1
+    - llama-3.3-70b
+
+  # Best available vision
+  vision:
+    - gpt-4o
+    - claude-sonnet-4
+    - claude-code-sonnet
+    - glm-4.7
+    - llama-4-scout
+    - hf-llama-4-scout
+    - hf-qwen-vl-72b
+
+  # Image generation
+  image-gen:
+    - dall-e-3
+    - flux-schnell
+    - flux-dev
+
+  # Transcription
+  transcription:
+    - whisper-large-v3-turbo
+    - whisper-large-v3
+    - whisper-openai
+
+
+# ── Global Settings ───────────────────────────────────────────────────────────
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL
+
+  cache: true
+  cache_params:
+    type: redis
+    host: redis
+    port: 6379
+    password: os.environ/REDIS_PASSWORD
+    ttl: 600
+
+  telemetry: false
+  request_timeout: 600
+  drop_params: true
+
+litellm_settings:
+  drop_params: true
+  num_retries: 3
+  request_timeout: 600
+
+router_settings:
+  routing_strategy: latency-based-routing
+  num_retries: 3
+  timeout: 600
+  retry_after: 5
+  # Fallback: if a model/group fails entirely, try these in order
+  fallbacks:
+    # Anthropic direct API → free alternatives first, paid last
+    - claude-opus-4:   [claude-code-opus, glm-5.1]
+    - claude-sonnet-4: [claude-code-sonnet, glm-4.7, gpt-4o]
+    - claude-haiku-4:  [claude-code-haiku, glm-4.5-air, gpt-4o-mini]
+    # claude-code (Max sub) → GLM free tier, then paid API
+    - claude-code-opus:   [glm-5.1, claude-opus-4]
+    - claude-code-sonnet: [glm-4.7, claude-sonnet-4, gpt-4o]
+    - claude-code-haiku:  [glm-4.5-air, claude-haiku-4, gpt-4o-mini]
+    # GLM (z.ai) → claude-code free, then paid API
+    - glm-5.1:     [claude-code-opus, claude-opus-4]
+    - glm-4.7:     [claude-code-sonnet, claude-sonnet-4, gpt-4o]
+    - glm-4.5-air: [claude-code-haiku, claude-haiku-4, gpt-4o-mini]
+    # Group-level: if whole group fails → models outside the group
+    - fast:   [claude-code-haiku, glm-4.5-air, gpt-4o-mini]
+    - smart:  [claude-code-sonnet, glm-4.7, claude-code-opus, gpt-4o]
+    - vision: [claude-code-sonnet, glm-4.7, gpt-4o]
