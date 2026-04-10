@@ -2,66 +2,66 @@ model_list:
 
   # ── OpenAI ──────────────────────────────────────────────────────────────────
 
-  - model_name: gpt-4o
+  - model_name: openai-gpt-4o
     litellm_params:
       model: openai/gpt-4o
       api_key: os.environ/OPENAI_API_KEY
 
-  - model_name: gpt-4o-mini
+  - model_name: openai-gpt-4o-mini
     litellm_params:
       model: openai/gpt-4o-mini
       api_key: os.environ/OPENAI_API_KEY
 
-  - model_name: o3
+  - model_name: openai-o3
     litellm_params:
       model: openai/o3
       api_key: os.environ/OPENAI_API_KEY
 
-  - model_name: o3-mini
+  - model_name: openai-o3-mini
     litellm_params:
       model: openai/o3-mini
       api_key: os.environ/OPENAI_API_KEY
 
   # Image generation
-  - model_name: dall-e-3
+  - model_name: openai-dall-e-3
     litellm_params:
       model: openai/dall-e-3
       api_key: os.environ/OPENAI_API_KEY
 
-  - model_name: gpt-image-1
+  - model_name: openai-gpt-image-1
     litellm_params:
       model: openai/gpt-image-1
       api_key: os.environ/OPENAI_API_KEY
 
   # Audio
-  - model_name: whisper-openai
+  - model_name: openai-whisper
     litellm_params:
       model: openai/whisper-1
       api_key: os.environ/OPENAI_API_KEY
 
-  - model_name: tts-1
+  - model_name: openai-tts-1
     litellm_params:
       model: openai/tts-1
       api_key: os.environ/OPENAI_API_KEY
 
-  - model_name: tts-1-hd
+  - model_name: openai-tts-1-hd
     litellm_params:
       model: openai/tts-1-hd
       api_key: os.environ/OPENAI_API_KEY
 
   # ── Anthropic ────────────────────────────────────────────────────────────────
 
-  - model_name: claude-opus-4
+  - model_name: anthropic-claude-opus-4
     litellm_params:
       model: anthropic/claude-opus-4-6
       api_key: os.environ/ANTHROPIC_API_KEY
 
-  - model_name: claude-sonnet-4
+  - model_name: anthropic-claude-sonnet-4
     litellm_params:
       model: anthropic/claude-sonnet-4-6
       api_key: os.environ/ANTHROPIC_API_KEY
 
-  - model_name: claude-haiku-4
+  - model_name: anthropic-claude-haiku-4
     litellm_params:
       model: anthropic/claude-haiku-4-5-20251001
       api_key: os.environ/ANTHROPIC_API_KEY
@@ -87,80 +87,147 @@ model_list:
       api_base: http://claude-code:8080/openai/v1
       api_key: os.environ/CLAUDE_CODE_API_TOKEN
 
+  # ── Cerebras ─────────────────────────────────────────────────────────────────
+  # Free tier: 1M tokens/day, no credit card required
+
+  - model_name: cerebras-qwen3-235b
+    litellm_params:
+      model: cerebras/qwen-3-235b-a22b-instruct-2507
+      api_key: os.environ/CEREBRAS_API_KEY
+
+  - model_name: cerebras-gpt-oss-120b
+    litellm_params:
+      model: cerebras/gpt-oss-120b
+      api_key: os.environ/CEREBRAS_API_KEY
+
+  - model_name: cerebras-glm-4.7
+    litellm_params:
+      model: cerebras/zai-glm-4.7
+      api_key: os.environ/CEREBRAS_API_KEY
+
+  - model_name: cerebras-llama-3.1-8b
+    litellm_params:
+      model: cerebras/llama3.1-8b
+      api_key: os.environ/CEREBRAS_API_KEY
+
   # ── GLM via z.ai (through docker-claude-code) ─────────────────────────────────
 
-  - model_name: glm-5.1
+  - model_name: claude-code-glm-5.1
     litellm_params:
       model: openai/opus
       api_base: http://claude-code-zai:8080/openai/v1
       api_key: os.environ/CLAUDE_CODE_ZAI_API_TOKEN
 
-  - model_name: glm-4.7
+  - model_name: claude-code-glm-4.7
     litellm_params:
       model: openai/sonnet
       api_base: http://claude-code-zai:8080/openai/v1
       api_key: os.environ/CLAUDE_CODE_ZAI_API_TOKEN
 
-  - model_name: glm-4.5-air
+  - model_name: claude-code-glm-4.5-air
     litellm_params:
       model: openai/haiku
       api_base: http://claude-code-zai:8080/openai/v1
       api_key: os.environ/CLAUDE_CODE_ZAI_API_TOKEN
 
+  # ── OpenRouter (free tier) ────────────────────────────────────────────────────
+  # 50 req/day free (no credits), 1000 req/day with $10+ loaded
+  # :free suffix = always free, no token cost
+
+  - model_name: or-hermes-3-405b
+    litellm_params:
+      model: openrouter/nousresearch/hermes-3-llama-3.1-405b:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: or-qwen3-coder
+    litellm_params:
+      model: openrouter/qwen/qwen3-coder:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: or-qwen3-80b
+    litellm_params:
+      model: openrouter/qwen/qwen3-next-80b-a3b-instruct:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: or-nemotron-120b
+    litellm_params:
+      model: openrouter/nvidia/nemotron-3-super-120b-a12b:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: or-minimax-m2.5
+    litellm_params:
+      model: openrouter/minimax/minimax-m2.5:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: or-llama-3.3-70b
+    litellm_params:
+      model: openrouter/meta-llama/llama-3.3-70b-instruct:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: or-gpt-oss-120b
+    litellm_params:
+      model: openrouter/openai/gpt-oss-120b:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: or-gpt-oss-20b
+    litellm_params:
+      model: openrouter/openai/gpt-oss-20b:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
   # ── Groq ─────────────────────────────────────────────────────────────────────
 
-  - model_name: gpt-oss-20b
+  - model_name: groq-gpt-oss-20b
     litellm_params:
       model: groq/openai/gpt-oss-20b
       api_key: os.environ/GROQ_API_KEY
 
-  - model_name: gpt-oss-120b
+  - model_name: groq-gpt-oss-120b
     litellm_params:
       model: groq/openai/gpt-oss-120b
       api_key: os.environ/GROQ_API_KEY
 
-  - model_name: llama-3.3-70b
+  - model_name: groq-llama-3.3-70b
     litellm_params:
       model: groq/llama-3.3-70b-versatile
       api_key: os.environ/GROQ_API_KEY
 
-  - model_name: kimi-k2
+  - model_name: groq-kimi-k2
     litellm_params:
       model: groq/moonshotai/kimi-k2-instruct
       api_key: os.environ/GROQ_API_KEY
 
-  - model_name: llama-3.1-8b
+  - model_name: groq-llama-3.1-8b
     litellm_params:
       model: groq/llama-3.1-8b-instant
       api_key: os.environ/GROQ_API_KEY
 
-  - model_name: qwen3-32b
+  - model_name: groq-qwen3-32b
     litellm_params:
       model: groq/qwen/qwen3-32b
       api_key: os.environ/GROQ_API_KEY
 
-  - model_name: llama-4-scout
+  - model_name: groq-llama-4-scout
     litellm_params:
       model: groq/meta-llama/llama-4-scout-17b-16e-instruct
       api_key: os.environ/GROQ_API_KEY
 
-  - model_name: compound
+  - model_name: groq-compound
     litellm_params:
       model: groq/compound-beta
       api_key: os.environ/GROQ_API_KEY
 
-  - model_name: compound-mini
+  - model_name: groq-compound-mini
     litellm_params:
       model: groq/compound-beta-mini
       api_key: os.environ/GROQ_API_KEY
 
   # Audio via Groq
-  - model_name: whisper-large-v3
+  - model_name: groq-whisper-large-v3
     litellm_params:
       model: groq/whisper-large-v3
       api_key: os.environ/GROQ_API_KEY
 
-  - model_name: whisper-large-v3-turbo
+  - model_name: groq-whisper-large-v3-turbo
     litellm_params:
       model: groq/whisper-large-v3-turbo
       api_key: os.environ/GROQ_API_KEY
@@ -216,17 +283,17 @@ model_list:
       api_key: os.environ/HF_TOKEN
 
   # Image generation
-  - model_name: flux-schnell
+  - model_name: hf-flux-schnell
     litellm_params:
       model: huggingface/black-forest-labs/FLUX.1-schnell
       api_key: os.environ/HF_TOKEN
 
-  - model_name: flux-dev
+  - model_name: hf-flux-dev
     litellm_params:
       model: huggingface/black-forest-labs/FLUX.1-dev
       api_key: os.environ/HF_TOKEN
 
-  - model_name: sd-3.5-turbo
+  - model_name: hf-sd-3.5-turbo
     litellm_params:
       model: huggingface/stabilityai/stable-diffusion-3.5-large-turbo
       api_key: os.environ/HF_TOKEN
@@ -236,43 +303,52 @@ model_list:
 model_group_alias:
   # Best available fast chat — falls back down the chain
   fast:
-    - llama-3.1-8b
+    - groq-llama-3.1-8b
+    - cerebras-llama-3.1-8b
     - claude-code-haiku
-    - glm-4.5-air
+    - claude-code-glm-4.5-air
+    - or-gpt-oss-20b
     - hf-llama-3.1-8b
-    - gpt-4o-mini
+    - openai-gpt-4o-mini
 
   # Best available smart chat
   smart:
+    - cerebras-qwen3-235b
     - claude-code-sonnet
-    - glm-4.7
-    - gpt-4o
-    - claude-sonnet-4
+    - or-hermes-3-405b
+    - or-qwen3-80b
+    - cerebras-gpt-oss-120b
+    - or-nemotron-120b
+    - or-minimax-m2.5
+    - claude-code-glm-4.7
+    - cerebras-glm-4.7
+    - openai-gpt-4o
+    - anthropic-claude-sonnet-4
     - claude-code-opus
-    - glm-5.1
-    - llama-3.3-70b
+    - claude-code-glm-5.1
+    - groq-llama-3.3-70b
 
   # Best available vision
   vision:
-    - gpt-4o
-    - claude-sonnet-4
+    - openai-gpt-4o
+    - anthropic-claude-sonnet-4
     - claude-code-sonnet
-    - glm-4.7
-    - llama-4-scout
+    - claude-code-glm-4.7
+    - groq-llama-4-scout
     - hf-llama-4-scout
     - hf-qwen-vl-72b
 
   # Image generation
   image-gen:
-    - dall-e-3
-    - flux-schnell
-    - flux-dev
+    - openai-dall-e-3
+    - hf-flux-schnell
+    - hf-flux-dev
 
   # Transcription
   transcription:
-    - whisper-large-v3-turbo
-    - whisper-large-v3
-    - whisper-openai
+    - groq-whisper-large-v3-turbo
+    - groq-whisper-large-v3
+    - openai-whisper
 
 
 # ── Global Settings ───────────────────────────────────────────────────────────
@@ -305,18 +381,32 @@ router_settings:
   # Fallback: if a model/group fails entirely, try these in order
   fallbacks:
     # Anthropic direct API → free alternatives first, paid last
-    - claude-opus-4:   [claude-code-opus, glm-5.1]
-    - claude-sonnet-4: [claude-code-sonnet, glm-4.7, gpt-4o]
-    - claude-haiku-4:  [claude-code-haiku, glm-4.5-air, gpt-4o-mini]
+    - anthropic-claude-opus-4:   [claude-code-opus, claude-code-glm-5.1]
+    - anthropic-claude-sonnet-4: [claude-code-sonnet, claude-code-glm-4.7, openai-gpt-4o]
+    - anthropic-claude-haiku-4:  [claude-code-haiku, claude-code-glm-4.5-air, openai-gpt-4o-mini]
     # claude-code (Max sub) → GLM free tier, then paid API
-    - claude-code-opus:   [glm-5.1, claude-opus-4]
-    - claude-code-sonnet: [glm-4.7, claude-sonnet-4, gpt-4o]
-    - claude-code-haiku:  [glm-4.5-air, claude-haiku-4, gpt-4o-mini]
+    - claude-code-opus:   [claude-code-glm-5.1, anthropic-claude-opus-4]
+    - claude-code-sonnet: [claude-code-glm-4.7, anthropic-claude-sonnet-4, openai-gpt-4o]
+    - claude-code-haiku:  [claude-code-glm-4.5-air, anthropic-claude-haiku-4, openai-gpt-4o-mini]
     # GLM (z.ai) → claude-code free, then paid API
-    - glm-5.1:     [claude-code-opus, claude-opus-4]
-    - glm-4.7:     [claude-code-sonnet, claude-sonnet-4, gpt-4o]
-    - glm-4.5-air: [claude-code-haiku, claude-haiku-4, gpt-4o-mini]
+    - claude-code-glm-5.1:     [claude-code-opus, anthropic-claude-opus-4]
+    - claude-code-glm-4.7:     [claude-code-sonnet, anthropic-claude-sonnet-4, openai-gpt-4o]
+    - claude-code-glm-4.5-air: [claude-code-haiku, anthropic-claude-haiku-4, openai-gpt-4o-mini]
+    # OpenRouter → free alternatives on failure
+    - or-hermes-3-405b: [claude-code-opus, claude-code-glm-5.1, anthropic-claude-opus-4]
+    - or-qwen3-80b:     [claude-code-sonnet, claude-code-glm-4.7, openai-gpt-4o]
+    - or-nemotron-120b: [cerebras-gpt-oss-120b, claude-code-sonnet, openai-gpt-4o]
+    - or-minimax-m2.5:  [claude-code-sonnet, claude-code-glm-4.7, openai-gpt-4o]
+    - or-llama-3.3-70b: [groq-llama-3.3-70b, claude-code-sonnet]
+    - or-gpt-oss-120b:  [cerebras-gpt-oss-120b, groq-gpt-oss-120b, openai-gpt-4o]
+    - or-gpt-oss-20b:   [groq-gpt-oss-20b, cerebras-llama-3.1-8b, openai-gpt-4o-mini]
+    - or-qwen3-coder:   [claude-code-sonnet, cerebras-qwen3-235b]
+    # Cerebras → free alternatives on failure
+    - cerebras-qwen3-235b:   [claude-code-opus, claude-code-glm-5.1, anthropic-claude-opus-4]
+    - cerebras-gpt-oss-120b: [claude-code-sonnet, claude-code-glm-4.7, openai-gpt-4o]
+    - cerebras-glm-4.7:      [claude-code-glm-4.7, claude-code-sonnet, openai-gpt-4o]
+    - cerebras-llama-3.1-8b: [groq-llama-3.1-8b, claude-code-haiku, openai-gpt-4o-mini]
     # Group-level: if whole group fails → models outside the group
-    - fast:   [claude-code-haiku, glm-4.5-air, gpt-4o-mini]
-    - smart:  [claude-code-sonnet, glm-4.7, claude-code-opus, gpt-4o]
-    - vision: [claude-code-sonnet, glm-4.7, gpt-4o]
+    - fast:   [cerebras-llama-3.1-8b, claude-code-haiku, claude-code-glm-4.5-air, openai-gpt-4o-mini]
+    - smart:  [cerebras-qwen3-235b, claude-code-sonnet, claude-code-glm-4.7, claude-code-opus, openai-gpt-4o]
+    - vision: [claude-code-sonnet, claude-code-glm-4.7, openai-gpt-4o]
