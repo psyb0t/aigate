@@ -1,6 +1,6 @@
 model_list:
 
-  # ── OpenAI ──────────────────────────────────────────────────────────────────
+  # ── OpenAI ────────────────────────────────────────────────────────────────────
 
   - model_name: openai-gpt-4o
     litellm_params:
@@ -49,7 +49,7 @@ model_list:
       model: openai/tts-1-hd
       api_key: os.environ/OPENAI_API_KEY
 
-  # ── Anthropic ────────────────────────────────────────────────────────────────
+  # ── Anthropic ─────────────────────────────────────────────────────────────────
 
   - model_name: anthropic-claude-opus-4
     litellm_params:
@@ -66,8 +66,7 @@ model_list:
       model: anthropic/claude-haiku-4-5-20251001
       api_key: os.environ/ANTHROPIC_API_KEY
 
-  # ── Claude Code (via docker-claude-code OpenAI-compatible API) ────────────────
-  # Uses your Claude Max subscription OAuth token — no per-token API costs
+  # ── Claude Code (via docker-claude-code, uses Max subscription OAuth) ─────────
 
   - model_name: claude-code-opus
     litellm_params:
@@ -86,29 +85,6 @@ model_list:
       model: openai/haiku
       api_base: http://claude-code:8080/openai/v1
       api_key: os.environ/CLAUDE_CODE_API_TOKEN
-
-  # ── Cerebras ─────────────────────────────────────────────────────────────────
-  # Free tier: 1M tokens/day, no credit card required
-
-  - model_name: cerebras-qwen3-235b
-    litellm_params:
-      model: cerebras/qwen-3-235b-a22b-instruct-2507
-      api_key: os.environ/CEREBRAS_API_KEY
-
-  - model_name: cerebras-gpt-oss-120b
-    litellm_params:
-      model: cerebras/gpt-oss-120b
-      api_key: os.environ/CEREBRAS_API_KEY
-
-  - model_name: cerebras-glm-4.7
-    litellm_params:
-      model: cerebras/zai-glm-4.7
-      api_key: os.environ/CEREBRAS_API_KEY
-
-  - model_name: cerebras-llama-3.1-8b
-    litellm_params:
-      model: cerebras/llama3.1-8b
-      api_key: os.environ/CEREBRAS_API_KEY
 
   # ── GLM via z.ai (through docker-claude-code) ─────────────────────────────────
 
@@ -130,9 +106,29 @@ model_list:
       api_base: http://claude-code-zai:8080/openai/v1
       api_key: os.environ/CLAUDE_CODE_ZAI_API_TOKEN
 
-  # ── OpenRouter (free tier) ────────────────────────────────────────────────────
-  # 50 req/day free (no credits), 1000 req/day with $10+ loaded
-  # :free suffix = always free, no token cost
+  # ── Cerebras (free tier: 1M tokens/day) ──────────────────────────────────────
+
+  - model_name: cerebras-qwen3-235b
+    litellm_params:
+      model: cerebras/qwen-3-235b-a22b-instruct-2507
+      api_key: os.environ/CEREBRAS_API_KEY
+
+  - model_name: cerebras-gpt-oss-120b
+    litellm_params:
+      model: cerebras/gpt-oss-120b
+      api_key: os.environ/CEREBRAS_API_KEY
+
+  - model_name: cerebras-glm-4.7
+    litellm_params:
+      model: cerebras/zai-glm-4.7
+      api_key: os.environ/CEREBRAS_API_KEY
+
+  - model_name: cerebras-llama-3.1-8b
+    litellm_params:
+      model: cerebras/llama3.1-8b
+      api_key: os.environ/CEREBRAS_API_KEY
+
+  # ── OpenRouter (free tier: 1000 req/day with $10+ credits) ───────────────────
 
   - model_name: or-hermes-3-405b
     litellm_params:
@@ -174,7 +170,32 @@ model_list:
       model: openrouter/openai/gpt-oss-20b:free
       api_key: os.environ/OPENROUTER_API_KEY
 
-  # ── Groq ─────────────────────────────────────────────────────────────────────
+  # ── Groq (free tier) ──────────────────────────────────────────────────────────
+
+  - model_name: groq-llama-3.1-8b
+    litellm_params:
+      model: groq/llama-3.1-8b-instant
+      api_key: os.environ/GROQ_API_KEY
+
+  - model_name: groq-llama-3.3-70b
+    litellm_params:
+      model: groq/llama-3.3-70b-versatile
+      api_key: os.environ/GROQ_API_KEY
+
+  - model_name: groq-llama-4-scout
+    litellm_params:
+      model: groq/meta-llama/llama-4-scout-17b-16e-instruct
+      api_key: os.environ/GROQ_API_KEY
+
+  - model_name: groq-kimi-k2
+    litellm_params:
+      model: groq/moonshotai/kimi-k2-instruct
+      api_key: os.environ/GROQ_API_KEY
+
+  - model_name: groq-qwen3-32b
+    litellm_params:
+      model: groq/qwen/qwen3-32b
+      api_key: os.environ/GROQ_API_KEY
 
   - model_name: groq-gpt-oss-20b
     litellm_params:
@@ -184,31 +205,6 @@ model_list:
   - model_name: groq-gpt-oss-120b
     litellm_params:
       model: groq/openai/gpt-oss-120b
-      api_key: os.environ/GROQ_API_KEY
-
-  - model_name: groq-llama-3.3-70b
-    litellm_params:
-      model: groq/llama-3.3-70b-versatile
-      api_key: os.environ/GROQ_API_KEY
-
-  - model_name: groq-kimi-k2
-    litellm_params:
-      model: groq/moonshotai/kimi-k2-instruct
-      api_key: os.environ/GROQ_API_KEY
-
-  - model_name: groq-llama-3.1-8b
-    litellm_params:
-      model: groq/llama-3.1-8b-instant
-      api_key: os.environ/GROQ_API_KEY
-
-  - model_name: groq-qwen3-32b
-    litellm_params:
-      model: groq/qwen/qwen3-32b
-      api_key: os.environ/GROQ_API_KEY
-
-  - model_name: groq-llama-4-scout
-    litellm_params:
-      model: groq/meta-llama/llama-4-scout-17b-16e-instruct
       api_key: os.environ/GROQ_API_KEY
 
   - model_name: groq-compound
@@ -221,7 +217,7 @@ model_list:
       model: groq/compound-beta-mini
       api_key: os.environ/GROQ_API_KEY
 
-  # Audio via Groq
+  # Audio
   - model_name: groq-whisper-large-v3
     litellm_params:
       model: groq/whisper-large-v3
@@ -232,13 +228,17 @@ model_list:
       model: groq/whisper-large-v3-turbo
       api_key: os.environ/GROQ_API_KEY
 
-  # ── HuggingFace (via Inference Providers) ───────────────────────────────────
-  # Note: free tier = ~$0.10/month in credits, use small models for daily driving
+  # ── HuggingFace Inference Providers (free tier) ───────────────────────────────
 
   # Chat
   - model_name: hf-llama-3.1-8b
     litellm_params:
       model: huggingface/meta-llama/Llama-3.1-8B-Instruct
+      api_key: os.environ/HF_TOKEN
+
+  - model_name: hf-llama-3.3-70b
+    litellm_params:
+      model: huggingface/meta-llama/Llama-3.3-70B-Instruct
       api_key: os.environ/HF_TOKEN
 
   - model_name: hf-qwen3-8b
@@ -254,11 +254,6 @@ model_list:
   - model_name: hf-deepseek-r1
     litellm_params:
       model: huggingface/deepseek-ai/DeepSeek-R1
-      api_key: os.environ/HF_TOKEN
-
-  - model_name: hf-llama-3.3-70b
-    litellm_params:
-      model: huggingface/meta-llama/Llama-3.3-70B-Instruct
       api_key: os.environ/HF_TOKEN
 
   # Vision / Multimodal
@@ -299,9 +294,11 @@ model_list:
       api_key: os.environ/HF_TOKEN
 
 
-# ── Model Groups (for load balancing / fallbacks) ────────────────────────────
+# ── Model Groups ──────────────────────────────────────────────────────────────
+
 model_group_alias:
-  # Best available fast chat — falls back down the chain
+
+  # Best available fast model — free first, paid last
   fast:
     - groq-llama-3.1-8b
     - cerebras-llama-3.1-8b
@@ -311,7 +308,7 @@ model_group_alias:
     - hf-llama-3.1-8b
     - openai-gpt-4o-mini
 
-  # Best available smart chat
+  # Best available smart model — free first, paid last
   smart:
     - cerebras-qwen3-235b
     - claude-code-sonnet
@@ -328,7 +325,7 @@ model_group_alias:
     - claude-code-glm-5.1
     - groq-llama-3.3-70b
 
-  # Best available vision
+  # Best available vision/multimodal model
   vision:
     - openai-gpt-4o
     - anthropic-claude-sonnet-4
@@ -352,6 +349,7 @@ model_group_alias:
 
 
 # ── Global Settings ───────────────────────────────────────────────────────────
+
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
   database_url: os.environ/DATABASE_URL
@@ -378,35 +376,333 @@ router_settings:
   num_retries: 3
   timeout: 600
   retry_after: 5
-  # Fallback: if a model/group fails entirely, try these in order
+
+  # Fallback chain: same-tier free alternatives first → other free providers → paid last
   fallbacks:
-    # Anthropic direct API → free alternatives first, paid last
-    - anthropic-claude-opus-4:   [claude-code-opus, claude-code-glm-5.1]
-    - anthropic-claude-sonnet-4: [claude-code-sonnet, claude-code-glm-4.7, openai-gpt-4o]
-    - anthropic-claude-haiku-4:  [claude-code-haiku, claude-code-glm-4.5-air, openai-gpt-4o-mini]
-    # claude-code (Max sub) → GLM free tier, then paid API
-    - claude-code-opus:   [claude-code-glm-5.1, anthropic-claude-opus-4]
-    - claude-code-sonnet: [claude-code-glm-4.7, anthropic-claude-sonnet-4, openai-gpt-4o]
-    - claude-code-haiku:  [claude-code-glm-4.5-air, anthropic-claude-haiku-4, openai-gpt-4o-mini]
-    # GLM (z.ai) → claude-code free, then paid API
-    - claude-code-glm-5.1:     [claude-code-opus, anthropic-claude-opus-4]
-    - claude-code-glm-4.7:     [claude-code-sonnet, anthropic-claude-sonnet-4, openai-gpt-4o]
-    - claude-code-glm-4.5-air: [claude-code-haiku, anthropic-claude-haiku-4, openai-gpt-4o-mini]
-    # OpenRouter → free alternatives on failure
-    - or-hermes-3-405b: [claude-code-opus, claude-code-glm-5.1, anthropic-claude-opus-4]
-    - or-qwen3-80b:     [claude-code-sonnet, claude-code-glm-4.7, openai-gpt-4o]
-    - or-nemotron-120b: [cerebras-gpt-oss-120b, claude-code-sonnet, openai-gpt-4o]
-    - or-minimax-m2.5:  [claude-code-sonnet, claude-code-glm-4.7, openai-gpt-4o]
-    - or-llama-3.3-70b: [groq-llama-3.3-70b, claude-code-sonnet]
-    - or-gpt-oss-120b:  [cerebras-gpt-oss-120b, groq-gpt-oss-120b, openai-gpt-4o]
-    - or-gpt-oss-20b:   [groq-gpt-oss-20b, cerebras-llama-3.1-8b, openai-gpt-4o-mini]
-    - or-qwen3-coder:   [claude-code-sonnet, cerebras-qwen3-235b]
-    # Cerebras → free alternatives on failure
-    - cerebras-qwen3-235b:   [claude-code-opus, claude-code-glm-5.1, anthropic-claude-opus-4]
-    - cerebras-gpt-oss-120b: [claude-code-sonnet, claude-code-glm-4.7, openai-gpt-4o]
-    - cerebras-glm-4.7:      [claude-code-glm-4.7, claude-code-sonnet, openai-gpt-4o]
-    - cerebras-llama-3.1-8b: [groq-llama-3.1-8b, claude-code-haiku, openai-gpt-4o-mini]
-    # Group-level: if whole group fails → models outside the group
-    - fast:   [cerebras-llama-3.1-8b, claude-code-haiku, claude-code-glm-4.5-air, openai-gpt-4o-mini]
-    - smart:  [cerebras-qwen3-235b, claude-code-sonnet, claude-code-glm-4.7, claude-code-opus, openai-gpt-4o]
-    - vision: [claude-code-sonnet, claude-code-glm-4.7, openai-gpt-4o]
+
+    # ── Anthropic (paid) → free claude-code → other free → other paid ────────────
+    - anthropic-claude-opus-4:
+        - claude-code-opus
+        - claude-code-glm-5.1
+        - or-hermes-3-405b
+        - or-qwen3-80b
+        - cerebras-qwen3-235b
+        - hf-llama-3.3-70b
+        - openai-gpt-4o
+    - anthropic-claude-sonnet-4:
+        - claude-code-sonnet
+        - claude-code-glm-4.7
+        - or-qwen3-80b
+        - or-hermes-3-405b
+        - cerebras-qwen3-235b
+        - groq-llama-3.3-70b
+        - hf-llama-3.3-70b
+        - openai-gpt-4o
+    - anthropic-claude-haiku-4:
+        - claude-code-haiku
+        - claude-code-glm-4.5-air
+        - groq-llama-3.1-8b
+        - cerebras-llama-3.1-8b
+        - or-gpt-oss-20b
+        - hf-llama-3.1-8b
+        - openai-gpt-4o-mini
+
+    # ── claude-code (Max sub, free) → GLM → other free → paid ───────────────────
+    - claude-code-opus:
+        - claude-code-glm-5.1
+        - or-hermes-3-405b
+        - or-qwen3-80b
+        - cerebras-qwen3-235b
+        - or-nemotron-120b
+        - hf-llama-3.3-70b
+        - anthropic-claude-opus-4
+        - openai-gpt-4o
+    - claude-code-sonnet:
+        - claude-code-glm-4.7
+        - or-qwen3-80b
+        - or-hermes-3-405b
+        - cerebras-qwen3-235b
+        - groq-llama-3.3-70b
+        - hf-llama-3.3-70b
+        - anthropic-claude-sonnet-4
+        - openai-gpt-4o
+    - claude-code-haiku:
+        - claude-code-glm-4.5-air
+        - groq-llama-3.1-8b
+        - cerebras-llama-3.1-8b
+        - or-gpt-oss-20b
+        - hf-llama-3.1-8b
+        - anthropic-claude-haiku-4
+        - openai-gpt-4o-mini
+
+    # ── GLM via z.ai (free) → claude-code → other free → paid ───────────────────
+    - claude-code-glm-5.1:
+        - claude-code-opus
+        - or-hermes-3-405b
+        - or-qwen3-80b
+        - cerebras-qwen3-235b
+        - or-nemotron-120b
+        - hf-llama-3.3-70b
+        - anthropic-claude-opus-4
+        - openai-gpt-4o
+    - claude-code-glm-4.7:
+        - claude-code-sonnet
+        - or-qwen3-80b
+        - or-hermes-3-405b
+        - cerebras-qwen3-235b
+        - groq-llama-3.3-70b
+        - hf-llama-3.3-70b
+        - anthropic-claude-sonnet-4
+        - openai-gpt-4o
+    - claude-code-glm-4.5-air:
+        - claude-code-haiku
+        - groq-llama-3.1-8b
+        - cerebras-llama-3.1-8b
+        - or-gpt-oss-20b
+        - hf-llama-3.1-8b
+        - anthropic-claude-haiku-4
+        - openai-gpt-4o-mini
+
+    # ── Cerebras (free) → other free OR → groq/hf → paid ────────────────────────
+    - cerebras-qwen3-235b:
+        - or-hermes-3-405b
+        - or-qwen3-80b
+        - or-nemotron-120b
+        - or-minimax-m2.5
+        - or-gpt-oss-120b
+        - cerebras-gpt-oss-120b
+        - groq-llama-3.3-70b
+        - hf-llama-3.3-70b
+        - claude-code-opus
+        - claude-code-glm-5.1
+        - anthropic-claude-opus-4
+        - openai-gpt-4o
+    - cerebras-gpt-oss-120b:
+        - cerebras-qwen3-235b
+        - or-gpt-oss-120b
+        - groq-gpt-oss-120b
+        - or-hermes-3-405b
+        - hf-llama-3.3-70b
+        - claude-code-sonnet
+        - openai-gpt-4o
+    - cerebras-glm-4.7:
+        - claude-code-glm-4.7
+        - claude-code-sonnet
+        - or-qwen3-80b
+        - groq-llama-3.3-70b
+        - hf-llama-3.3-70b
+        - openai-gpt-4o
+    - cerebras-llama-3.1-8b:
+        - groq-llama-3.1-8b
+        - or-gpt-oss-20b
+        - groq-gpt-oss-20b
+        - hf-llama-3.1-8b
+        - claude-code-haiku
+        - openai-gpt-4o-mini
+
+    # ── Groq (free) → cerebras → hf → claude-code → paid ────────────────────────
+    - groq-llama-3.1-8b:
+        - cerebras-llama-3.1-8b
+        - or-gpt-oss-20b
+        - groq-gpt-oss-20b
+        - hf-llama-3.1-8b
+        - claude-code-haiku
+        - openai-gpt-4o-mini
+    - groq-llama-3.3-70b:
+        - cerebras-qwen3-235b
+        - or-llama-3.3-70b
+        - hf-llama-3.3-70b
+        - claude-code-sonnet
+        - claude-code-glm-4.7
+        - openai-gpt-4o
+    - groq-llama-4-scout:
+        - hf-llama-4-scout
+        - or-hermes-3-405b
+        - claude-code-sonnet
+        - openai-gpt-4o
+    - groq-kimi-k2:
+        - or-hermes-3-405b
+        - cerebras-qwen3-235b
+        - claude-code-sonnet
+        - openai-gpt-4o
+    - groq-qwen3-32b:
+        - cerebras-qwen3-235b
+        - or-qwen3-80b
+        - hf-qwq-32b
+        - claude-code-sonnet
+        - openai-gpt-4o
+    - groq-gpt-oss-20b:
+        - cerebras-llama-3.1-8b
+        - or-gpt-oss-20b
+        - groq-llama-3.1-8b
+        - hf-llama-3.1-8b
+        - openai-gpt-4o-mini
+    - groq-gpt-oss-120b:
+        - cerebras-gpt-oss-120b
+        - or-gpt-oss-120b
+        - groq-llama-3.3-70b
+        - hf-llama-3.3-70b
+        - openai-gpt-4o
+    - groq-compound:
+        - groq-compound-mini
+        - cerebras-qwen3-235b
+        - claude-code-sonnet
+        - openai-gpt-4o
+    - groq-compound-mini:
+        - groq-compound
+        - cerebras-llama-3.1-8b
+        - claude-code-haiku
+        - openai-gpt-4o-mini
+
+    # ── HuggingFace (free) → groq/cerebras → claude-code → paid ─────────────────
+    - hf-llama-3.1-8b:
+        - groq-llama-3.1-8b
+        - cerebras-llama-3.1-8b
+        - or-gpt-oss-20b
+        - claude-code-haiku
+        - openai-gpt-4o-mini
+    - hf-llama-3.3-70b:
+        - groq-llama-3.3-70b
+        - or-llama-3.3-70b
+        - cerebras-qwen3-235b
+        - claude-code-sonnet
+        - openai-gpt-4o
+    - hf-llama-4-scout:
+        - groq-llama-4-scout
+        - hf-qwen-vl-72b
+        - claude-code-sonnet
+        - openai-gpt-4o
+    - hf-qwen3-8b:
+        - groq-llama-3.1-8b
+        - cerebras-llama-3.1-8b
+        - hf-llama-3.1-8b
+        - openai-gpt-4o-mini
+    - hf-qwq-32b:
+        - hf-deepseek-r1
+        - cerebras-qwen3-235b
+        - groq-qwen3-32b
+        - claude-code-sonnet
+        - openai-gpt-4o
+    - hf-deepseek-r1:
+        - hf-qwq-32b
+        - cerebras-qwen3-235b
+        - or-hermes-3-405b
+        - claude-code-sonnet
+        - openai-gpt-4o
+    - hf-qwen-vl-72b:
+        - hf-llama-4-scout
+        - groq-llama-4-scout
+        - claude-code-sonnet
+        - openai-gpt-4o
+    - hf-qwen3-vl-8b:
+        - hf-llama-4-scout
+        - groq-llama-4-scout
+        - hf-qwen-vl-72b
+        - openai-gpt-4o
+    - hf-gemma-3-12b:
+        - hf-llama-3.3-70b
+        - groq-llama-3.3-70b
+        - cerebras-qwen3-235b
+        - openai-gpt-4o
+
+    # ── OpenRouter (free) → other free OR → other free providers → paid ──────────
+    - or-hermes-3-405b:
+        - or-qwen3-80b
+        - or-nemotron-120b
+        - or-minimax-m2.5
+        - or-gpt-oss-120b
+        - cerebras-qwen3-235b
+        - cerebras-gpt-oss-120b
+        - hf-llama-3.3-70b
+        - claude-code-sonnet
+        - claude-code-glm-4.7
+        - openai-gpt-4o
+        - anthropic-claude-sonnet-4
+    - or-qwen3-80b:
+        - or-hermes-3-405b
+        - or-nemotron-120b
+        - or-minimax-m2.5
+        - or-gpt-oss-120b
+        - cerebras-qwen3-235b
+        - hf-llama-3.3-70b
+        - claude-code-sonnet
+        - claude-code-glm-4.7
+        - openai-gpt-4o
+        - anthropic-claude-sonnet-4
+    - or-nemotron-120b:
+        - or-hermes-3-405b
+        - or-qwen3-80b
+        - or-minimax-m2.5
+        - or-gpt-oss-120b
+        - cerebras-gpt-oss-120b
+        - hf-llama-3.3-70b
+        - claude-code-sonnet
+        - openai-gpt-4o
+    - or-minimax-m2.5:
+        - or-hermes-3-405b
+        - or-qwen3-80b
+        - or-nemotron-120b
+        - or-gpt-oss-120b
+        - cerebras-qwen3-235b
+        - hf-llama-3.3-70b
+        - claude-code-sonnet
+        - claude-code-glm-4.7
+        - openai-gpt-4o
+    - or-llama-3.3-70b:
+        - or-qwen3-80b
+        - or-gpt-oss-120b
+        - or-hermes-3-405b
+        - groq-llama-3.3-70b
+        - hf-llama-3.3-70b
+        - cerebras-qwen3-235b
+        - claude-code-sonnet
+        - openai-gpt-4o
+    - or-gpt-oss-120b:
+        - or-hermes-3-405b
+        - or-qwen3-80b
+        - or-nemotron-120b
+        - cerebras-gpt-oss-120b
+        - groq-gpt-oss-120b
+        - hf-llama-3.3-70b
+        - claude-code-sonnet
+        - openai-gpt-4o
+    - or-gpt-oss-20b:
+        - or-llama-3.3-70b
+        - groq-gpt-oss-20b
+        - groq-llama-3.1-8b
+        - cerebras-llama-3.1-8b
+        - hf-llama-3.1-8b
+        - openai-gpt-4o-mini
+    - or-qwen3-coder:
+        - cerebras-qwen3-235b
+        - groq-qwen3-32b
+        - claude-code-sonnet
+        - claude-code-glm-4.7
+        - openai-gpt-4o
+
+    # ── Group-level: if whole group fails → best free outside the group ───────────
+    - fast:
+        - groq-llama-3.1-8b
+        - cerebras-llama-3.1-8b
+        - or-gpt-oss-20b
+        - hf-llama-3.1-8b
+        - claude-code-haiku
+        - claude-code-glm-4.5-air
+        - openai-gpt-4o-mini
+    - smart:
+        - cerebras-qwen3-235b
+        - or-hermes-3-405b
+        - or-qwen3-80b
+        - claude-code-sonnet
+        - claude-code-glm-4.7
+        - claude-code-opus
+        - hf-llama-3.3-70b
+        - openai-gpt-4o
+        - anthropic-claude-sonnet-4
+    - vision:
+        - groq-llama-4-scout
+        - hf-llama-4-scout
+        - hf-qwen-vl-72b
+        - claude-code-sonnet
+        - claude-code-glm-4.7
+        - openai-gpt-4o

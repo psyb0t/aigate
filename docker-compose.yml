@@ -1,11 +1,32 @@
 services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: litellm-nginx
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      litellm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health/liveliness"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - litellm-internal
+      - litellm-public
+
   litellm:
     build: .
     image: litellm-local:latest
     container_name: litellm
     restart: unless-stopped
-    ports:
-      - "4000:4000"
     volumes:
       - ./config.yaml:/app/config.yaml:ro
     env_file:
@@ -30,7 +51,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 20s
-    # Drop all caps, read-only root FS
     security_opt:
       - no-new-privileges:true
     networks:

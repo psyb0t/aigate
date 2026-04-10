@@ -1,15 +1,26 @@
-# docker-litellm
+# aigate
 
-A production-ready [LiteLLM](https://github.com/BerriAI/litellm) proxy stack with a ridiculous number of providers, all behind one OpenAI-compatible endpoint. Built on Docker Compose.
+A self-healing multi-provider AI gateway with free-first routing. One OpenAI-compatible endpoint, every provider, automatic fallbacks that prefer free tiers before spending a cent. Built on Docker Compose.
 
 ## What's in it
 
 One `docker compose up` gives you:
 
-- **LiteLLM proxy** on port 4000 — single OpenAI-compatible API for everything
+- **Nginx** on port 4000 — single entry point, routes to all backends
+- **LiteLLM proxy** — OpenAI-compatible API for all providers, latency-based routing, caching, retries, fallbacks
 - **PostgreSQL** — key management, budgets, usage tracking
-- **Redis** — caching + rate limiting
+- **Redis** — response caching + rate limiting
 - **[docker-claude-code](https://github.com/psyb0t/docker-claude-code)** (×2) — Claude Code running in API mode, one per provider
+
+## Routing
+
+All traffic enters on port 4000 through nginx:
+
+| Path prefix          | Backend                                  |
+| -------------------- | ---------------------------------------- |
+| `/claude-code/*`     | claude-code container (Claude OAuth)     |
+| `/claude-code-zai/*` | claude-code-zai container (GLM via z.ai) |
+| `/*`                 | LiteLLM (all model providers)            |
 
 ## Providers & Models
 
@@ -29,6 +40,32 @@ One `docker compose up` gives you:
 | whisper-large-v3               | `groq-whisper-large-v3`             |
 | whisper-large-v3-turbo         | `groq-whisper-large-v3-turbo`       |
 
+### Cerebras (free tier)
+
+1M tokens/day free, no credit card required. Among the fastest inference available (Llama 3.1 8B ~1,800 t/s, Qwen3 235B ~1,400 t/s).
+
+| Model                          | Alias                                                 |
+| ------------------------------ | ----------------------------------------------------- |
+| qwen-3-235b-a22b-instruct-2507 | `cerebras-qwen3-235b`                                 |
+| gpt-oss-120b                   | `cerebras-gpt-oss-120b` _(rate-limited on free tier)_ |
+| zai-glm-4.7                    | `cerebras-glm-4.7` _(rate-limited on free tier)_      |
+| llama3.1-8b                    | `cerebras-llama-3.1-8b`                               |
+
+### OpenRouter (free tier)
+
+50 req/day free (no credits loaded), 1000 req/day with $10+. Only models confirmed working with API key auth.
+
+| Model                                | Alias              |
+| ------------------------------------ | ------------------ |
+| nousresearch/hermes-3-llama-3.1-405b | `or-hermes-3-405b` |
+| qwen/qwen3-coder                     | `or-qwen3-coder`   |
+| qwen/qwen3-next-80b-a3b-instruct     | `or-qwen3-80b`     |
+| nvidia/nemotron-3-super-120b-a12b    | `or-nemotron-120b` |
+| minimax/minimax-m2.5                 | `or-minimax-m2.5`  |
+| meta-llama/llama-3.3-70b-instruct    | `or-llama-3.3-70b` |
+| openai/gpt-oss-120b                  | `or-gpt-oss-120b`  |
+| openai/gpt-oss-20b                   | `or-gpt-oss-20b`   |
+
 ### HuggingFace Inference Providers (free tier)
 
 | Model                                        | Alias                             |
@@ -46,17 +83,9 @@ One `docker compose up` gives you:
 | black-forest-labs/FLUX.1-dev                 | `hf-flux-dev` _(image gen)_       |
 | stabilityai/stable-diffusion-3.5-large-turbo | `hf-sd-3.5-turbo` _(image gen)_   |
 
-### Anthropic (API key)
-
-| Model             | Alias                                      |
-| ----------------- | ------------------------------------------ |
-| claude-opus-4-6   | `anthropic-claude-opus-4` _(multimodal)_   |
-| claude-sonnet-4-6 | `anthropic-claude-sonnet-4` _(multimodal)_ |
-| claude-haiku-4-5  | `anthropic-claude-haiku-4` _(multimodal)_  |
-
 ### Claude Code — via OAuth
 
-Uses [docker-claude-code](https://github.com/psyb0t/docker-claude-code) in API mode with a Claude OAuth token. Claude Code runs the actual CLI under the hood so it's not just a chat API — it can use tools, read/write files in the workspace, run shell commands, etc.
+Uses [docker-claude-code](https://github.com/psyb0t/docker-claude-code) in API mode with a Claude OAuth token. Not just a chat API — runs the full Claude Code CLI, so it can use tools, read/write files in the workspace, run shell commands, etc.
 
 | Model  | Alias                |
 | ------ | -------------------- |
@@ -64,21 +93,9 @@ Uses [docker-claude-code](https://github.com/psyb0t/docker-claude-code) in API m
 | sonnet | `claude-code-sonnet` |
 | haiku  | `claude-code-haiku`  |
 
-**Workspace control** — pass `x-claude-workspace` in `extra_headers` to isolate sessions:
-
-```json
-{
-  "model": "claude-code-haiku",
-  "messages": [{ "role": "user", "content": "..." }],
-  "extra_headers": { "x-claude-workspace": "myproject" }
-}
-```
-
-Each workspace gets its own conversation history and file context. Different callers using different workspaces run fully concurrently.
-
 ### Claude Code GLM — via z.ai
 
-[z.ai](https://z.ai) provides an Anthropic-compatible API that serves GLM models. This stack routes through a second docker-claude-code instance pointed at z.ai, so the same workspace/tool-use capabilities apply.
+[z.ai](https://z.ai) provides an Anthropic-compatible API serving GLM models. Routed through a second docker-claude-code instance pointed at z.ai — same workspace/tool-use capabilities as above.
 
 | Model       | Alias                     |
 | ----------- | ------------------------- |
@@ -86,33 +103,15 @@ Each workspace gets its own conversation history and file context. Different cal
 | glm-4.7     | `claude-code-glm-4.7`     |
 | glm-4.5-air | `claude-code-glm-4.5-air` |
 
-### OpenRouter (free tier)
+### Anthropic (API key, optional)
 
-50 req/day free (no credits loaded), 1000 req/day with $10+. Only models that work with API key auth (some require ToS acceptance on the website first).
+| Model             | Alias                                      |
+| ----------------- | ------------------------------------------ |
+| claude-opus-4-6   | `anthropic-claude-opus-4` _(multimodal)_   |
+| claude-sonnet-4-6 | `anthropic-claude-sonnet-4` _(multimodal)_ |
+| claude-haiku-4-5  | `anthropic-claude-haiku-4` _(multimodal)_  |
 
-| Model                                | Alias              |
-| ------------------------------------ | ------------------ |
-| nousresearch/hermes-3-llama-3.1-405b | `or-hermes-3-405b` |
-| qwen/qwen3-coder                     | `or-qwen3-coder`   |
-| qwen/qwen3-next-80b-a3b-instruct     | `or-qwen3-80b`     |
-| nvidia/nemotron-3-super-120b-a12b    | `or-nemotron-120b` |
-| minimax/minimax-m2.5                 | `or-minimax-m2.5`  |
-| meta-llama/llama-3.3-70b-instruct    | `or-llama-3.3-70b` |
-| openai/gpt-oss-120b                  | `or-gpt-oss-120b`  |
-| openai/gpt-oss-20b                   | `or-gpt-oss-20b`   |
-
-### Cerebras (free tier)
-
-1M tokens/day free, no credit card required. Fastest inference available (~2,600 t/s).
-
-| Model                          | Alias                                                 |
-| ------------------------------ | ----------------------------------------------------- |
-| qwen-3-235b-a22b-instruct-2507 | `cerebras-qwen3-235b`                                 |
-| gpt-oss-120b                   | `cerebras-gpt-oss-120b` _(rate-limited on free tier)_ |
-| zai-glm-4.7                    | `cerebras-glm-4.7` _(rate-limited on free tier)_      |
-| llama3.1-8b                    | `cerebras-llama-3.1-8b`                               |
-
-### OpenAI (API key)
+### OpenAI (API key, optional)
 
 | Model       | Alias                               |
 | ----------- | ----------------------------------- |
@@ -128,11 +127,11 @@ Each workspace gets its own conversation history and file context. Different cal
 
 ## Model Groups
 
-Hit these as the model name and LiteLLM routes to the best available with automatic fallback:
+Use these as the model name — LiteLLM picks the best available and falls back automatically:
 
 | Group           | Members (priority order)                                                                                                                                                                                                                                                                   |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `fast`          | groq-llama-3.1-8b → cerebras-llama-3.1-8b → claude-code-haiku → claude-code-glm-4.5-air → hf-llama-3.1-8b → openai-gpt-4o-mini                                                                                                                                                             |
+| `fast`          | groq-llama-3.1-8b → cerebras-llama-3.1-8b → claude-code-haiku → claude-code-glm-4.5-air → or-gpt-oss-20b → hf-llama-3.1-8b → openai-gpt-4o-mini                                                                                                                                            |
 | `smart`         | cerebras-qwen3-235b → claude-code-sonnet → or-hermes-3-405b → or-qwen3-80b → cerebras-gpt-oss-120b → or-nemotron-120b → or-minimax-m2.5 → claude-code-glm-4.7 → cerebras-glm-4.7 → openai-gpt-4o → anthropic-claude-sonnet-4 → claude-code-opus → claude-code-glm-5.1 → groq-llama-3.3-70b |
 | `vision`        | openai-gpt-4o → anthropic-claude-sonnet-4 → claude-code-sonnet → claude-code-glm-4.7 → groq-llama-4-scout → hf-llama-4-scout → hf-qwen-vl-72b                                                                                                                                              |
 | `image-gen`     | openai-dall-e-3 → hf-flux-schnell → hf-flux-dev                                                                                                                                                                                                                                            |
@@ -143,8 +142,8 @@ Hit these as the model name and LiteLLM routes to the best available with automa
 ### 1. Clone
 
 ```bash
-git clone https://github.com/psyb0t/docker-litellm
-cd docker-litellm
+git clone https://github.com/psyb0t/aigate
+cd aigate
 ```
 
 ### 2. Configure
@@ -156,30 +155,38 @@ cp .env.example .env
 Edit `.env` and fill in your keys:
 
 ```env
-# Required — change this, it's your LiteLLM master key
+# Required — LiteLLM master key (your API key for this gateway)
 LITELLM_MASTER_KEY=sk-your-secret-here
 
-# Required for Claude Code models (OAuth subscription token)
+# Required — internal auth tokens for claude-code containers
+CLAUDE_CODE_API_TOKEN=generate-with-openssl-rand-hex-32
+CLAUDE_CODE_ZAI_API_TOKEN=generate-with-openssl-rand-hex-32
+
+# Required — Claude Code OAuth token (for claude-code-* models)
 # Get it: claude setup-token
 CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...
 
-# Required for GLM/z.ai models
+# Required — z.ai auth token (for claude-code-glm-* models)
 # Get it: https://z.ai
 ZAI_AUTH_TOKEN=...
 
-# Required for Groq models (free)
-# Get it: https://console.groq.com
+# Required — Groq (free tier): https://console.groq.com
 GROQ_API_KEY=gsk_...
 
-# Required for HuggingFace models (free tier)
-# Get it: https://huggingface.co/settings/tokens
+# Required — HuggingFace (free tier): https://huggingface.co/settings/tokens
 HF_TOKEN=hf_...
 
-# Optional — only needed if you want OpenAI models
-OPENAI_API_KEY=sk-...
+# Required — Cerebras (free tier, 1M tokens/day): https://cloud.cerebras.ai
+CEREBRAS_API_KEY=csk-...
 
-# Optional — only needed if you want direct Anthropic API models
-ANTHROPIC_API_KEY=sk-ant-...
+# Required — OpenRouter (free tier): https://openrouter.ai
+OPENROUTER_API_KEY=sk-or-v1-...
+
+# Optional — direct Anthropic API
+# ANTHROPIC_API_KEY=sk-ant-...
+
+# Optional — OpenAI
+# OPENAI_API_KEY=sk-...
 ```
 
 ### 3. Run
@@ -188,7 +195,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 docker compose up -d
 ```
 
-LiteLLM UI and API at `http://localhost:4000`
+Gateway and LiteLLM UI at `http://localhost:4000`
 
 ### 4. Test
 
@@ -199,14 +206,56 @@ curl http://localhost:4000/chat/completions \
   -d '{"model": "groq-llama-3.1-8b", "messages": [{"role": "user", "content": "hello"}]}'
 ```
 
+## File API
+
+The claude-code containers support file management. Use the nginx routes to upload files, then reference them in prompts — Claude Code will read and process them directly.
+
+**Auth:** use `CLAUDE_CODE_API_TOKEN` for `/claude-code/*`, `CLAUDE_CODE_ZAI_API_TOKEN` for `/claude-code-zai/*`.
+
+```bash
+# Upload a file
+curl -X PUT http://localhost:4000/claude-code/files/myproject/data.csv \
+  -H "Authorization: Bearer $CLAUDE_CODE_API_TOKEN" \
+  --data-binary @data.csv
+
+# List files in a workspace
+curl http://localhost:4000/claude-code/files/myproject \
+  -H "Authorization: Bearer $CLAUDE_CODE_API_TOKEN"
+
+# Download a file
+curl http://localhost:4000/claude-code/files/myproject/data.csv \
+  -H "Authorization: Bearer $CLAUDE_CODE_API_TOKEN"
+
+# Delete a file
+curl -X DELETE http://localhost:4000/claude-code/files/myproject/data.csv \
+  -H "Authorization: Bearer $CLAUDE_CODE_API_TOKEN"
+
+# Check which workspaces are busy
+curl http://localhost:4000/claude-code/status \
+  -H "Authorization: Bearer $CLAUDE_CODE_API_TOKEN"
+
+# Kill a running process
+curl -X POST "http://localhost:4000/claude-code/run/cancel?workspace=myproject" \
+  -H "Authorization: Bearer $CLAUDE_CODE_API_TOKEN"
+
+# Use the uploaded file in a prompt
+curl http://localhost:4000/chat/completions \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "claude-code-sonnet",
+       "messages": [{"role": "user", "content": "analyze the CSV at data.csv"}],
+       "extra_headers": {"x-claude-workspace": "myproject"}}'
+```
+
+**Workspace isolation** — pass `x-claude-workspace` to isolate sessions. Each workspace has its own file context and conversation history. Multiple workspaces run concurrently.
+
 ## Claude Code OAuth token
 
-The `CLAUDE_CODE_OAUTH_TOKEN` is the OAuth token used by the Claude Code CLI. Get it by running `claude setup-token` with an existing [Claude Code](https://github.com/psyb0t/docker-claude-code) install.
+The `CLAUDE_CODE_OAUTH_TOKEN` uses your Claude Max subscription — no per-token API costs. Get it by running `claude setup-token` with an existing [docker-claude-code](https://github.com/psyb0t/docker-claude-code) install.
 
 The token expires daily. To refresh:
 
 ```bash
-# Run claude once to auto-refresh the credentials file, then:
 TOKEN=$(python3 -c "import json; print(json.load(open('$HOME/.claude/.credentials.json'))['claudeAiOauth']['accessToken'])")
 sed -i "s|^CLAUDE_CODE_OAUTH_TOKEN=.*|CLAUDE_CODE_OAUTH_TOKEN=$TOKEN|" .env
 docker compose restart claude-code
@@ -214,12 +263,12 @@ docker compose restart claude-code
 
 ## Notes
 
-- Postgres and Redis data persist in named volumes across restarts
-- LiteLLM waits for all dependencies (including claude-code containers) to be healthy before starting
-- Routing strategy is latency-based with automatic retries and fallbacks
-- Free-tier priority: `smart` and `fast` groups prefer `claude-code-*` and `claude-code-glm-*` (no per-token cost) before falling back to paid APIs
-- HuggingFace free tier is ~$0.10/month in credits — use smaller models for daily driving
-- The `claude-code-*` and `claude-code-glm-*` models support file-based workflows via the workspace header — Claude Code can read/write files, not just chat
+- All traffic enters through nginx on port 4000 — no other ports are exposed
+- LiteLLM starts only after all dependencies are healthy
+- Routing is latency-based with automatic retries (3) and provider fallbacks
+- Free-tier providers (Cerebras, OpenRouter, Groq, HF, claude-code, claude-code-glm) are prioritized — paid APIs are last resort
+- HuggingFace free tier includes a small monthly credit allowance (amount not officially published) — use smaller models for high-volume use
+- Postgres and Redis data persist in named Docker volumes across restarts
 
 ## License
 
