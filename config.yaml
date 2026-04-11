@@ -66,45 +66,45 @@ model_list:
       model: anthropic/claude-haiku-4-5-20251001
       api_key: os.environ/ANTHROPIC_API_KEY
 
-  # ── Claude Code (via docker-claude-code, uses Max subscription OAuth) ─────────
+  # ── Claude Code (via claudebox, uses Max subscription OAuth) ─────────
 
-  - model_name: claude-code-opus
+  - model_name: claudebox-opus
     litellm_params:
       model: openai/opus
-      api_base: http://claude-code:8080/openai/v1
-      api_key: os.environ/CLAUDE_CODE_API_TOKEN
+      api_base: http://claudebox:8080/openai/v1
+      api_key: os.environ/CLAUDEBOX_API_TOKEN
 
-  - model_name: claude-code-sonnet
+  - model_name: claudebox-sonnet
     litellm_params:
       model: openai/sonnet
-      api_base: http://claude-code:8080/openai/v1
-      api_key: os.environ/CLAUDE_CODE_API_TOKEN
+      api_base: http://claudebox:8080/openai/v1
+      api_key: os.environ/CLAUDEBOX_API_TOKEN
 
-  - model_name: claude-code-haiku
+  - model_name: claudebox-haiku
     litellm_params:
       model: openai/haiku
-      api_base: http://claude-code:8080/openai/v1
-      api_key: os.environ/CLAUDE_CODE_API_TOKEN
+      api_base: http://claudebox:8080/openai/v1
+      api_key: os.environ/CLAUDEBOX_API_TOKEN
 
-  # ── GLM via z.ai (through docker-claude-code) ─────────────────────────────────
+  # ── GLM via z.ai (through claudebox) ─────────────────────────────────
 
-  - model_name: claude-code-glm-5.1
+  - model_name: claudebox-glm-5.1
     litellm_params:
       model: openai/opus
-      api_base: http://claude-code-zai:8080/openai/v1
-      api_key: os.environ/CLAUDE_CODE_ZAI_API_TOKEN
+      api_base: http://claudebox-zai:8080/openai/v1
+      api_key: os.environ/CLAUDEBOX_ZAI_API_TOKEN
 
-  - model_name: claude-code-glm-4.7
+  - model_name: claudebox-glm-4.7
     litellm_params:
       model: openai/sonnet
-      api_base: http://claude-code-zai:8080/openai/v1
-      api_key: os.environ/CLAUDE_CODE_ZAI_API_TOKEN
+      api_base: http://claudebox-zai:8080/openai/v1
+      api_key: os.environ/CLAUDEBOX_ZAI_API_TOKEN
 
-  - model_name: claude-code-glm-4.5-air
+  - model_name: claudebox-glm-4.5-air
     litellm_params:
       model: openai/haiku
-      api_base: http://claude-code-zai:8080/openai/v1
-      api_key: os.environ/CLAUDE_CODE_ZAI_API_TOKEN
+      api_base: http://claudebox-zai:8080/openai/v1
+      api_key: os.environ/CLAUDEBOX_ZAI_API_TOKEN
 
   # ── Cerebras (free tier: 1M tokens/day) ──────────────────────────────────────
 
@@ -302,8 +302,8 @@ model_group_alias:
   fast:
     - groq-llama-3.1-8b
     - cerebras-llama-3.1-8b
-    - claude-code-haiku
-    - claude-code-glm-4.5-air
+    - claudebox-haiku
+    - claudebox-glm-4.5-air
     - or-gpt-oss-20b
     - hf-llama-3.1-8b
     - openai-gpt-4o-mini
@@ -311,26 +311,26 @@ model_group_alias:
   # Best available smart model — free first, paid last
   smart:
     - cerebras-qwen3-235b
-    - claude-code-sonnet
+    - claudebox-sonnet
     - or-hermes-3-405b
     - or-qwen3-80b
     - cerebras-gpt-oss-120b
     - or-nemotron-120b
     - or-minimax-m2.5
-    - claude-code-glm-4.7
+    - claudebox-glm-4.7
     - cerebras-glm-4.7
     - openai-gpt-4o
     - anthropic-claude-sonnet-4
-    - claude-code-opus
-    - claude-code-glm-5.1
+    - claudebox-opus
+    - claudebox-glm-5.1
     - groq-llama-3.3-70b
 
   # Best available vision/multimodal model
   vision:
     - openai-gpt-4o
     - anthropic-claude-sonnet-4
-    - claude-code-sonnet
-    - claude-code-glm-4.7
+    - claudebox-sonnet
+    - claudebox-glm-4.7
     - groq-llama-4-scout
     - hf-llama-4-scout
     - hf-qwen-vl-72b
@@ -365,20 +365,20 @@ mcp_servers:
     auth_value: os.environ/HYBRIDS3_UPLOADS_KEY
     description: "HybridS3 object storage — upload, fetch, list, and delete files/images. The uploads bucket is public-read; direct URLs work without signing."
 
-  claude_code:
-    url: "http://claude-code:8080/mcp/"
+  claudebox:
+    url: "http://claudebox:8080/mcp/"
     transport: "http"
     auth_type: "bearer_token"
-    auth_value: os.environ/CLAUDE_CODE_API_TOKEN
+    auth_value: os.environ/CLAUDEBOX_API_TOKEN
     static_headers:
       Host: "localhost:8080"
     description: "Claude Code (OAuth/Max) — run agentic tasks, read/write workspace files. Tools: claude_run, read_file, write_file, list_files, delete_file."
 
-  claude_code_zai:
-    url: "http://claude-code-zai:8080/mcp/"
+  claudebox_zai:
+    url: "http://claudebox-zai:8080/mcp/"
     transport: "http"
     auth_type: "bearer_token"
-    auth_value: os.environ/CLAUDE_CODE_ZAI_API_TOKEN
+    auth_value: os.environ/CLAUDEBOX_ZAI_API_TOKEN
     static_headers:
       Host: "localhost:8080"
     description: "Claude Code (z.ai GLM) — run agentic tasks, read/write workspace files. Tools: claude_run, read_file, write_file, list_files, delete_file."
@@ -416,18 +416,18 @@ router_settings:
   # Fallback chain: same-tier free alternatives first → other free providers → paid last
   fallbacks:
 
-    # ── Anthropic (paid) → free claude-code → other free → other paid ────────────
+    # ── Anthropic (paid) → free claudebox → other free → other paid ────────────
     - anthropic-claude-opus-4:
-        - claude-code-opus
-        - claude-code-glm-5.1
+        - claudebox-opus
+        - claudebox-glm-5.1
         - or-hermes-3-405b
         - or-qwen3-80b
         - cerebras-qwen3-235b
         - hf-llama-3.3-70b
         - openai-gpt-4o
     - anthropic-claude-sonnet-4:
-        - claude-code-sonnet
-        - claude-code-glm-4.7
+        - claudebox-sonnet
+        - claudebox-glm-4.7
         - or-qwen3-80b
         - or-hermes-3-405b
         - cerebras-qwen3-235b
@@ -435,17 +435,17 @@ router_settings:
         - hf-llama-3.3-70b
         - openai-gpt-4o
     - anthropic-claude-haiku-4:
-        - claude-code-haiku
-        - claude-code-glm-4.5-air
+        - claudebox-haiku
+        - claudebox-glm-4.5-air
         - groq-llama-3.1-8b
         - cerebras-llama-3.1-8b
         - or-gpt-oss-20b
         - hf-llama-3.1-8b
         - openai-gpt-4o-mini
 
-    # ── claude-code (Max sub, free) → GLM → other free → paid ───────────────────
-    - claude-code-opus:
-        - claude-code-glm-5.1
+    # ── claudebox (Max sub, free) → GLM → other free → paid ───────────────────
+    - claudebox-opus:
+        - claudebox-glm-5.1
         - or-hermes-3-405b
         - or-qwen3-80b
         - cerebras-qwen3-235b
@@ -453,8 +453,8 @@ router_settings:
         - hf-llama-3.3-70b
         - anthropic-claude-opus-4
         - openai-gpt-4o
-    - claude-code-sonnet:
-        - claude-code-glm-4.7
+    - claudebox-sonnet:
+        - claudebox-glm-4.7
         - or-qwen3-80b
         - or-hermes-3-405b
         - cerebras-qwen3-235b
@@ -462,8 +462,8 @@ router_settings:
         - hf-llama-3.3-70b
         - anthropic-claude-sonnet-4
         - openai-gpt-4o
-    - claude-code-haiku:
-        - claude-code-glm-4.5-air
+    - claudebox-haiku:
+        - claudebox-glm-4.5-air
         - groq-llama-3.1-8b
         - cerebras-llama-3.1-8b
         - or-gpt-oss-20b
@@ -471,9 +471,9 @@ router_settings:
         - anthropic-claude-haiku-4
         - openai-gpt-4o-mini
 
-    # ── GLM via z.ai (free) → claude-code → other free → paid ───────────────────
-    - claude-code-glm-5.1:
-        - claude-code-opus
+    # ── GLM via z.ai (free) → claudebox → other free → paid ───────────────────
+    - claudebox-glm-5.1:
+        - claudebox-opus
         - or-hermes-3-405b
         - or-qwen3-80b
         - cerebras-qwen3-235b
@@ -481,8 +481,8 @@ router_settings:
         - hf-llama-3.3-70b
         - anthropic-claude-opus-4
         - openai-gpt-4o
-    - claude-code-glm-4.7:
-        - claude-code-sonnet
+    - claudebox-glm-4.7:
+        - claudebox-sonnet
         - or-qwen3-80b
         - or-hermes-3-405b
         - cerebras-qwen3-235b
@@ -490,8 +490,8 @@ router_settings:
         - hf-llama-3.3-70b
         - anthropic-claude-sonnet-4
         - openai-gpt-4o
-    - claude-code-glm-4.5-air:
-        - claude-code-haiku
+    - claudebox-glm-4.5-air:
+        - claudebox-haiku
         - groq-llama-3.1-8b
         - cerebras-llama-3.1-8b
         - or-gpt-oss-20b
@@ -509,8 +509,8 @@ router_settings:
         - cerebras-gpt-oss-120b
         - groq-llama-3.3-70b
         - hf-llama-3.3-70b
-        - claude-code-opus
-        - claude-code-glm-5.1
+        - claudebox-opus
+        - claudebox-glm-5.1
         - anthropic-claude-opus-4
         - openai-gpt-4o
     - cerebras-gpt-oss-120b:
@@ -519,11 +519,11 @@ router_settings:
         - groq-gpt-oss-120b
         - or-hermes-3-405b
         - hf-llama-3.3-70b
-        - claude-code-sonnet
+        - claudebox-sonnet
         - openai-gpt-4o
     - cerebras-glm-4.7:
-        - claude-code-glm-4.7
-        - claude-code-sonnet
+        - claudebox-glm-4.7
+        - claudebox-sonnet
         - or-qwen3-80b
         - groq-llama-3.3-70b
         - hf-llama-3.3-70b
@@ -533,39 +533,39 @@ router_settings:
         - or-gpt-oss-20b
         - groq-gpt-oss-20b
         - hf-llama-3.1-8b
-        - claude-code-haiku
+        - claudebox-haiku
         - openai-gpt-4o-mini
 
-    # ── Groq (free) → cerebras → hf → claude-code → paid ────────────────────────
+    # ── Groq (free) → cerebras → hf → claudebox → paid ────────────────────────
     - groq-llama-3.1-8b:
         - cerebras-llama-3.1-8b
         - or-gpt-oss-20b
         - groq-gpt-oss-20b
         - hf-llama-3.1-8b
-        - claude-code-haiku
+        - claudebox-haiku
         - openai-gpt-4o-mini
     - groq-llama-3.3-70b:
         - cerebras-qwen3-235b
         - or-llama-3.3-70b
         - hf-llama-3.3-70b
-        - claude-code-sonnet
-        - claude-code-glm-4.7
+        - claudebox-sonnet
+        - claudebox-glm-4.7
         - openai-gpt-4o
     - groq-llama-4-scout:
         - hf-llama-4-scout
         - or-hermes-3-405b
-        - claude-code-sonnet
+        - claudebox-sonnet
         - openai-gpt-4o
     - groq-kimi-k2:
         - or-hermes-3-405b
         - cerebras-qwen3-235b
-        - claude-code-sonnet
+        - claudebox-sonnet
         - openai-gpt-4o
     - groq-qwen3-32b:
         - cerebras-qwen3-235b
         - or-qwen3-80b
         - hf-qwq-32b
-        - claude-code-sonnet
+        - claudebox-sonnet
         - openai-gpt-4o
     - groq-gpt-oss-20b:
         - cerebras-llama-3.1-8b
@@ -582,31 +582,31 @@ router_settings:
     - groq-compound:
         - groq-compound-mini
         - cerebras-qwen3-235b
-        - claude-code-sonnet
+        - claudebox-sonnet
         - openai-gpt-4o
     - groq-compound-mini:
         - groq-compound
         - cerebras-llama-3.1-8b
-        - claude-code-haiku
+        - claudebox-haiku
         - openai-gpt-4o-mini
 
-    # ── HuggingFace (free) → groq/cerebras → claude-code → paid ─────────────────
+    # ── HuggingFace (free) → groq/cerebras → claudebox → paid ─────────────────
     - hf-llama-3.1-8b:
         - groq-llama-3.1-8b
         - cerebras-llama-3.1-8b
         - or-gpt-oss-20b
-        - claude-code-haiku
+        - claudebox-haiku
         - openai-gpt-4o-mini
     - hf-llama-3.3-70b:
         - groq-llama-3.3-70b
         - or-llama-3.3-70b
         - cerebras-qwen3-235b
-        - claude-code-sonnet
+        - claudebox-sonnet
         - openai-gpt-4o
     - hf-llama-4-scout:
         - groq-llama-4-scout
         - hf-qwen-vl-72b
-        - claude-code-sonnet
+        - claudebox-sonnet
         - openai-gpt-4o
     - hf-qwen3-8b:
         - groq-llama-3.1-8b
@@ -617,18 +617,18 @@ router_settings:
         - hf-deepseek-r1
         - cerebras-qwen3-235b
         - groq-qwen3-32b
-        - claude-code-sonnet
+        - claudebox-sonnet
         - openai-gpt-4o
     - hf-deepseek-r1:
         - hf-qwq-32b
         - cerebras-qwen3-235b
         - or-hermes-3-405b
-        - claude-code-sonnet
+        - claudebox-sonnet
         - openai-gpt-4o
     - hf-qwen-vl-72b:
         - hf-llama-4-scout
         - groq-llama-4-scout
-        - claude-code-sonnet
+        - claudebox-sonnet
         - openai-gpt-4o
     - hf-qwen3-vl-8b:
         - hf-llama-4-scout
@@ -650,8 +650,8 @@ router_settings:
         - cerebras-qwen3-235b
         - cerebras-gpt-oss-120b
         - hf-llama-3.3-70b
-        - claude-code-sonnet
-        - claude-code-glm-4.7
+        - claudebox-sonnet
+        - claudebox-glm-4.7
         - openai-gpt-4o
         - anthropic-claude-sonnet-4
     - or-qwen3-80b:
@@ -661,8 +661,8 @@ router_settings:
         - or-gpt-oss-120b
         - cerebras-qwen3-235b
         - hf-llama-3.3-70b
-        - claude-code-sonnet
-        - claude-code-glm-4.7
+        - claudebox-sonnet
+        - claudebox-glm-4.7
         - openai-gpt-4o
         - anthropic-claude-sonnet-4
     - or-nemotron-120b:
@@ -672,7 +672,7 @@ router_settings:
         - or-gpt-oss-120b
         - cerebras-gpt-oss-120b
         - hf-llama-3.3-70b
-        - claude-code-sonnet
+        - claudebox-sonnet
         - openai-gpt-4o
     - or-minimax-m2.5:
         - or-hermes-3-405b
@@ -681,8 +681,8 @@ router_settings:
         - or-gpt-oss-120b
         - cerebras-qwen3-235b
         - hf-llama-3.3-70b
-        - claude-code-sonnet
-        - claude-code-glm-4.7
+        - claudebox-sonnet
+        - claudebox-glm-4.7
         - openai-gpt-4o
     - or-llama-3.3-70b:
         - or-qwen3-80b
@@ -691,7 +691,7 @@ router_settings:
         - groq-llama-3.3-70b
         - hf-llama-3.3-70b
         - cerebras-qwen3-235b
-        - claude-code-sonnet
+        - claudebox-sonnet
         - openai-gpt-4o
     - or-gpt-oss-120b:
         - or-hermes-3-405b
@@ -700,7 +700,7 @@ router_settings:
         - cerebras-gpt-oss-120b
         - groq-gpt-oss-120b
         - hf-llama-3.3-70b
-        - claude-code-sonnet
+        - claudebox-sonnet
         - openai-gpt-4o
     - or-gpt-oss-20b:
         - or-llama-3.3-70b
@@ -712,8 +712,8 @@ router_settings:
     - or-qwen3-coder:
         - cerebras-qwen3-235b
         - groq-qwen3-32b
-        - claude-code-sonnet
-        - claude-code-glm-4.7
+        - claudebox-sonnet
+        - claudebox-glm-4.7
         - openai-gpt-4o
 
     # ── Group-level: if whole group fails → best free outside the group ───────────
@@ -722,16 +722,16 @@ router_settings:
         - cerebras-llama-3.1-8b
         - or-gpt-oss-20b
         - hf-llama-3.1-8b
-        - claude-code-haiku
-        - claude-code-glm-4.5-air
+        - claudebox-haiku
+        - claudebox-glm-4.5-air
         - openai-gpt-4o-mini
     - smart:
         - cerebras-qwen3-235b
         - or-hermes-3-405b
         - or-qwen3-80b
-        - claude-code-sonnet
-        - claude-code-glm-4.7
-        - claude-code-opus
+        - claudebox-sonnet
+        - claudebox-glm-4.7
+        - claudebox-opus
         - hf-llama-3.3-70b
         - openai-gpt-4o
         - anthropic-claude-sonnet-4
@@ -739,6 +739,6 @@ router_settings:
         - groq-llama-4-scout
         - hf-llama-4-scout
         - hf-qwen-vl-72b
-        - claude-code-sonnet
-        - claude-code-glm-4.7
+        - claudebox-sonnet
+        - claudebox-glm-4.7
         - openai-gpt-4o

@@ -4,8 +4,9 @@ services:
     restart: unless-stopped
     ports:
       - "4000:4000"
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    configs:
+      - source: nginx_conf
+        target: /etc/nginx/conf.d/default.conf
     depends_on:
       litellm:
         condition: service_healthy
@@ -41,9 +42,9 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-      claude-code:
+      claudebox:
         condition: service_healthy
-      claude-code-zai:
+      claudebox-zai:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness')"]
@@ -57,17 +58,17 @@ services:
       - litellm-internal
       - litellm-public
 
-  claude-code:
-    image: psyb0t/claude-code:v0.38.0-minimal
+  claudebox:
+    image: psyb0t/claudebox:v1.2.0-minimal
     restart: unless-stopped
     environment:
       CLAUDE_MODE_API: "1"
       CLAUDE_MODE_API_PORT: "8080"
-      CLAUDE_MODE_API_TOKEN: ${CLAUDE_CODE_API_TOKEN:-lulz-4-security}
+      CLAUDE_MODE_API_TOKEN: ${CLAUDEBOX_API_TOKEN:-lulz-4-security}
       CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN}
     volumes:
-      - ./.data/claude-code/config:/home/claude/.claude
-      - ./.data/claude-code/workspaces:/workspaces
+      - ./.data/claudebox/config:/home/claude/.claude
+      - ./.data/claudebox/workspaces:/workspaces
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
@@ -79,13 +80,13 @@ services:
       - litellm-internal
       - litellm-public
 
-  claude-code-zai:
-    image: psyb0t/claude-code:v0.38.0-minimal
+  claudebox-zai:
+    image: psyb0t/claudebox:v1.2.0-minimal
     restart: unless-stopped
     environment:
       CLAUDE_MODE_API: "1"
       CLAUDE_MODE_API_PORT: "8080"
-      CLAUDE_MODE_API_TOKEN: ${CLAUDE_CODE_ZAI_API_TOKEN:-lulz-4-security-zai}
+      CLAUDE_MODE_API_TOKEN: ${CLAUDEBOX_ZAI_API_TOKEN:-lulz-4-security-zai}
       ANTHROPIC_AUTH_TOKEN: ${ZAI_AUTH_TOKEN}
       ANTHROPIC_BASE_URL: https://api.z.ai/api/anthropic
       API_TIMEOUT_MS: "3000000"
@@ -94,8 +95,8 @@ services:
       ANTHROPIC_DEFAULT_SONNET_MODEL: ${ZAI_SONNET_MODEL:-glm-4.7}
       ANTHROPIC_DEFAULT_HAIKU_MODEL: ${ZAI_HAIKU_MODEL:-glm-4.5-air}
     volumes:
-      - ./.data/claude-code-zai/config:/home/claude/.claude
-      - ./.data/claude-code-zai/workspaces:/workspaces
+      - ./.data/claudebox-zai/config:/home/claude/.claude
+      - ./.data/claudebox-zai/workspaces:/workspaces
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
       interval: 15s
@@ -107,7 +108,7 @@ services:
       - litellm-public
 
   hybrids3:
-    image: psyb0t/hybrids3:latest
+    image: psyb0t/hybrids3:v0.1.0
     restart: unless-stopped
     volumes:
       - ./.data/hybrids3:/data
@@ -175,7 +176,7 @@ services:
       - stealthy-auto-browse
 
   stealthy-auto-browse:
-    image: psyb0t/stealthy-auto-browse:latest
+    image: psyb0t/stealthy-auto-browse:v0.21.0
     scale: ${STEALTHY_AUTO_BROWSE_NUM_REPLICAS:-5}
     restart: unless-stopped
     environment:
@@ -210,6 +211,77 @@ services:
       - litellm-internal
 
 configs:
+  nginx_conf:
+    content: |
+      server {
+          listen 4000;
+
+          client_max_body_size 1G;
+
+          # claudebox (OAuth) — full API access
+          location /claudebox/ {
+              proxy_pass http://claudebox:8080/;
+              proxy_set_header Host localhost:8080;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_read_timeout 600s;
+              proxy_send_timeout 600s;
+              proxy_buffering off;
+              proxy_cache off;
+          }
+
+          # claudebox-zai (GLM models) — full API access
+          location /claudebox-zai/ {
+              proxy_pass http://claudebox-zai:8080/;
+              proxy_set_header Host localhost:8080;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_read_timeout 600s;
+              proxy_send_timeout 600s;
+              proxy_buffering off;
+              proxy_cache off;
+          }
+
+          # stealthy-auto-browse cluster — HAProxy → browser replicas
+          location /stealthy-auto-browse/ {
+              proxy_pass http://stealthy-auto-browse-proxy:8080/;
+              proxy_set_header Host $$http_host;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_read_timeout 600s;
+              proxy_send_timeout 600s;
+              proxy_buffering off;
+              proxy_cache off;
+          }
+
+          # hybrids3 — S3-compatible + plain HTTP + MCP
+          location /storage {
+              proxy_pass http://hybrids3:8080;
+              proxy_set_header Host $$http_host;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_buffering off;
+              proxy_request_buffering off;
+          }
+
+          # everything else — LiteLLM
+          location / {
+              proxy_pass http://litellm:4000;
+              proxy_set_header Host $$http_host;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_read_timeout 600s;
+              proxy_send_timeout 600s;
+              proxy_buffering off;
+              proxy_cache off;
+          }
+      }
+
   haproxy_cfg:
     content: |
       global

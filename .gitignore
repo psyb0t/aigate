@@ -3,6 +3,7 @@
 *.pem
 .research_files
 CLAUDE.md
+git-update.sh
 
 # data dirs — fully ignored, docker creates them on first run
 .data/
