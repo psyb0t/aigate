@@ -365,6 +365,24 @@ mcp_servers:
     auth_value: os.environ/HYBRIDS3_UPLOADS_KEY
     description: "HybridS3 object storage — upload, fetch, list, and delete files/images. The uploads bucket is public-read; direct URLs work without signing."
 
+  claude_code:
+    url: "http://claude-code:8080/mcp/"
+    transport: "http"
+    auth_type: "bearer_token"
+    auth_value: os.environ/CLAUDE_CODE_API_TOKEN
+    static_headers:
+      Host: "localhost:8080"
+    description: "Claude Code (OAuth/Max) — run agentic tasks, read/write workspace files. Tools: claude_run, read_file, write_file, list_files, delete_file."
+
+  claude_code_zai:
+    url: "http://claude-code-zai:8080/mcp/"
+    transport: "http"
+    auth_type: "bearer_token"
+    auth_value: os.environ/CLAUDE_CODE_ZAI_API_TOKEN
+    static_headers:
+      Host: "localhost:8080"
+    description: "Claude Code (z.ai GLM) — run agentic tasks, read/write workspace files. Tools: claude_run, read_file, write_file, list_files, delete_file."
+
 
 # ── Global Settings ───────────────────────────────────────────────────────────
 

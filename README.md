@@ -442,6 +442,8 @@ Each replica: 256 MB RAM, up to 1 GB swap. HAProxy sticky routing:
 | Endpoint | URL |
 |----------|-----|
 | Chat completions | `http://localhost:4000/` (via LiteLLM) |
+| MCP server (OAuth) | `http://localhost:4000/claude-code/mcp/` |
+| MCP server (GLM) | `http://localhost:4000/claude-code-zai/mcp/` |
 | File upload | `http://localhost:4000/claude-code/files/<workspace>/<path>` |
 | File list | `http://localhost:4000/claude-code/files/<workspace>` |
 | Workspace status | `http://localhost:4000/claude-code/status` |
@@ -453,25 +455,17 @@ Workspace isolation: pass `x-claude-workspace: <name>` in request headers. Each 
 
 ### MCP tools
 
-Both hybrids3 and stealthy-auto-browse are configured as MCP servers in LiteLLM. Any model that supports tool use gets access to them automatically.
+All four services are configured as MCP servers in LiteLLM — 34 tools total. Any model that supports tool use gets access to all of them.
 
-**hybrids3 tools:** `upload_file`, `get_file`, `list_files`, `delete_file`
+**hybrids3:** `upload_object`, `download_object`, `delete_object`, `list_objects`, `list_buckets`, `object_info`, `presign_url`
 
-**stealthy_auto_browse tools:** `goto`, `screenshot`, `get_text`, `get_html`, `get_interactive_elements`, `click`, `system_click`, `fill`, `system_type`, `send_key`, `scroll`, `wait_for_element`, `wait_for_text`, `eval_js`, `mouse_move`, `browser_action`, `run_script`
+**stealthy_auto_browse:** `goto`, `screenshot`, `get_text`, `get_html`, `get_interactive_elements`, `click`, `system_click`, `fill`, `system_type`, `send_key`, `scroll`, `wait_for_element`, `wait_for_text`, `eval_js`, `mouse_move`, `browser_action`, `run_script`
+
+**claude_code** (OAuth/Max) and **claude_code_zai** (GLM via z.ai): `claude_run`, `read_file`, `write_file`, `list_files`, `delete_file`
+
+`claude_run` runs any prompt through Claude Code's full agentic loop — shell access, file I/O, tools, everything. Pass a `workspace` name to scope it to a workspace directory.
 
 ---
-
-## Claude Code OAuth token
-
-The `CLAUDE_CODE_OAUTH_TOKEN` uses your Claude Max subscription — no per-token API costs. Get it by running `claude setup-token` from an existing [claude-code](https://github.com/psyb0t/docker-claude-code) install.
-
-The token expires daily. To refresh:
-
-```bash
-TOKEN=$(python3 -c "import json; print(json.load(open('$HOME/.claude/.credentials.json'))['claudeAiOauth']['accessToken'])")
-sed -i "s|^CLAUDE_CODE_OAUTH_TOKEN=.*|CLAUDE_CODE_OAUTH_TOKEN=$TOKEN|" .env
-docker compose restart claude-code
-```
 
 ## License
 
