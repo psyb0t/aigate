@@ -11,15 +11,17 @@ One `docker compose up` gives you:
 - **PostgreSQL** — key management, budgets, usage tracking
 - **Redis** — response caching + rate limiting
 - **[docker-claude-code](https://github.com/psyb0t/docker-claude-code)** (×2) — Claude Code running in API mode, one per provider
+- **[HybridS3](https://github.com/psyb0t/docker-hybrids3)** — S3-compatible object storage at `/storage/` for hosting files/images
 
 ## Routing
 
-All traffic enters on port 4000 through nginx:
+All traffic goes through nginx:
 
 | Path prefix          | Backend                                  |
 | -------------------- | ---------------------------------------- |
 | `/claude-code/*`     | claude-code container (Claude OAuth)     |
 | `/claude-code-zai/*` | claude-code-zai container (GLM via z.ai) |
+| `/storage/*`         | HybridS3 object storage                  |
 | `/*`                 | LiteLLM (all model providers)            |
 
 ## Providers & Models
@@ -205,6 +207,79 @@ curl http://localhost:4000/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model": "groq-llama-3.1-8b", "messages": [{"role": "user", "content": "hello"}]}'
 ```
+
+## Object Storage (HybridS3)
+
+S3-compatible object storage for hosting images and files so you can pass URLs directly into vision model API calls. Backed by [HybridS3](https://github.com/psyb0t/docker-hybrids3) — supports bearer token auth, plain HTTP upload, S3/boto3 compatibility, and automatic TTL expiry.
+
+| Endpoint | URL |
+|----------|-----|
+| S3 / plain HTTP API | `http://localhost:4000/storage` |
+| Health | `http://localhost:4000/storage/health` |
+
+The `uploads` bucket is **public-read** — no auth needed to fetch objects. Auth required to write.
+
+Configure in `.env`:
+
+```env
+HYBRIDS3_MASTER_KEY=generate-with-openssl-rand-hex-32
+HYBRIDS3_UPLOADS_KEY=generate-with-openssl-rand-hex-32
+HYBRIDS3_UPLOADS_TTL=168h        # auto-delete after (default 7 days)
+HYBRIDS3_UPLOADS_MAX_SIZE=100MB  # per-file size limit
+```
+
+### Plain HTTP upload/download
+
+```bash
+# Upload (bearer token auth)
+curl -X PUT http://localhost:4000/storage/uploads/image.jpg \
+  -H "Authorization: Bearer $HYBRIDS3_UPLOADS_KEY" \
+  --data-binary @image.jpg
+
+# Download (public — no auth)
+curl http://localhost:4000/storage/uploads/image.jpg -o image.jpg
+```
+
+### S3 / boto3
+
+```python
+import boto3
+
+s3 = boto3.client(
+    "s3",
+    endpoint_url="http://localhost:4000/storage",
+    aws_access_key_id="uploads",
+    aws_secret_access_key=HYBRIDS3_UPLOADS_KEY,
+)
+
+s3.upload_file("image.jpg", "uploads", "image.jpg")
+
+# Public URL — no signing needed
+url = "http://localhost:4000/storage/uploads/image.jpg"
+
+# Or generate a presigned URL (private buckets)
+url = s3.generate_presigned_url("get_object", Params={"Bucket": "uploads", "Key": "image.jpg"}, ExpiresIn=3600)
+```
+
+### Use in a vision model call
+
+```bash
+curl http://localhost:4000/chat/completions \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "vision",
+    "messages": [{
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "what is in this image?"},
+        {"type": "image_url", "image_url": {"url": "http://YOUR_SERVER:4000/storage/uploads/image.jpg"}}
+      ]
+    }]
+  }'
+```
+
+> **Note:** For external LLM providers (OpenAI, Anthropic) to fetch the image, the URL must be publicly reachable — works on any server with a public IP or domain.
 
 ## File API
 

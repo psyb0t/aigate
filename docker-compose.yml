@@ -10,6 +10,8 @@ services:
     depends_on:
       litellm:
         condition: service_healthy
+      hybrids3:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4000/health/liveliness"]
       interval: 15s
@@ -107,6 +109,26 @@ services:
       - litellm-internal
       - litellm-public
 
+  hybrids3:
+    image: psyb0t/hybrids3:latest
+    container_name: litellm-hybrids3
+    restart: unless-stopped
+    volumes:
+      - hybrids3-data:/data
+    configs:
+      - source: hybrids3_config
+        target: /config/config.yaml
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/storage/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - litellm-internal
+
   redis:
     image: redis:7.4.8-alpine
     container_name: litellm-redis
@@ -150,6 +172,25 @@ volumes:
   claude-data:
   claude-workspaces:
   claude-zai-workspaces:
+  hybrids3-data:
+
+configs:
+  hybrids3_config:
+    content: |
+      master_key: "${HYBRIDS3_MASTER_KEY}"
+      master_public_key: "master"
+      cleanup_interval: 1m
+      lock_acquire_timeout: 30
+      lock_hold_timeout: 300
+      lock_max_waiters: 100
+      path_prefix: /storage
+      buckets:
+        uploads:
+          public: true
+          key: "${HYBRIDS3_UPLOADS_KEY}"
+          public_key: "uploads"
+          ttl: "${HYBRIDS3_UPLOADS_TTL:-168h}"
+          max_file_size: "${HYBRIDS3_UPLOADS_MAX_SIZE:-100MB}"
 
 networks:
   litellm-internal:
