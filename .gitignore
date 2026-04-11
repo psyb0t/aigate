@@ -3,3 +3,8 @@
 *.pem
 .research_files
 CLAUDE.md
+
+# data dirs — keep structure, ignore contents
+.data/**
+!.data/**/
+!.data/**/.gitkeep

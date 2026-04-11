@@ -69,8 +69,8 @@ services:
       CLAUDE_MODE_API_TOKEN: ${CLAUDE_CODE_API_TOKEN:-lulz-4-security}
       CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN}
     volumes:
-      - claude-data:/home/claude/.claude
-      - claude-workspaces:/workspaces
+      - ./.data/claude-code/config:/home/claude/.claude
+      - ./.data/claude-code/workspaces:/workspaces
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
@@ -98,7 +98,8 @@ services:
       ANTHROPIC_DEFAULT_SONNET_MODEL: ${ZAI_SONNET_MODEL:-glm-4.7}
       ANTHROPIC_DEFAULT_HAIKU_MODEL: ${ZAI_HAIKU_MODEL:-glm-4.5-air}
     volumes:
-      - claude-zai-workspaces:/workspaces
+      - ./.data/claude-code-zai/config:/home/claude/.claude
+      - ./.data/claude-code-zai/workspaces:/workspaces
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
       interval: 15s
@@ -114,7 +115,7 @@ services:
     container_name: litellm-hybrids3
     restart: unless-stopped
     volumes:
-      - hybrids3-data:/data
+      - ./.data/hybrids3:/data
     configs:
       - source: hybrids3_config
         target: /config/config.yaml
@@ -135,7 +136,7 @@ services:
     restart: unless-stopped
     command: redis-server --save 60 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
     volumes:
-      - redis-data:/data
+      - ./.data/redis:/data
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
@@ -155,7 +156,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-litellm}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - ./.data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-litellm} -d ${POSTGRES_DB:-litellm}"]
       interval: 10s
@@ -165,14 +166,6 @@ services:
       - no-new-privileges:true
     networks:
       - litellm-internal
-
-volumes:
-  redis-data:
-  postgres-data:
-  claude-data:
-  claude-workspaces:
-  claude-zai-workspaces:
-  hybrids3-data:
 
 configs:
   hybrids3_config:
