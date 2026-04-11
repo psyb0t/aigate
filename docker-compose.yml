@@ -1,7 +1,6 @@
 services:
   nginx:
     image: nginx:1.27-alpine
-    container_name: litellm-nginx
     restart: unless-stopped
     ports:
       - "4000:4000"
@@ -13,7 +12,7 @@ services:
       hybrids3:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health/liveliness"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health/liveliness"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -27,7 +26,6 @@ services:
   litellm:
     build: .
     image: litellm-local:latest
-    container_name: litellm
     restart: unless-stopped
     volumes:
       - ./config.yaml:/app/config.yaml:ro
@@ -61,7 +59,6 @@ services:
 
   claude-code:
     image: psyb0t/claude-code:v0.38.0-minimal
-    container_name: litellm-claude-code
     restart: unless-stopped
     environment:
       CLAUDE_MODE_API: "1"
@@ -84,7 +81,6 @@ services:
 
   claude-code-zai:
     image: psyb0t/claude-code:v0.38.0-minimal
-    container_name: litellm-claude-code-zai
     restart: unless-stopped
     environment:
       CLAUDE_MODE_API: "1"
@@ -112,7 +108,6 @@ services:
 
   hybrids3:
     image: psyb0t/hybrids3:latest
-    container_name: litellm-hybrids3
     restart: unless-stopped
     volumes:
       - ./.data/hybrids3:/data
@@ -132,7 +127,6 @@ services:
 
   redis:
     image: redis:7.4.8-alpine
-    container_name: litellm-redis
     restart: unless-stopped
     command: redis-server --save 60 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
     volumes:
@@ -149,12 +143,12 @@ services:
 
   postgres:
     image: postgres:16.13-alpine
-    container_name: litellm-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-litellm}
       POSTGRES_USER: ${POSTGRES_USER:-litellm}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - ./.data/postgres:/var/lib/postgresql/data
     healthcheck:
@@ -167,7 +161,106 @@ services:
     networks:
       - litellm-internal
 
+  # ── Stealthy Auto Browse cluster ─────────────────────────────────────────────
+
+  stealthy-auto-browse-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - ./.data/stealthy-auto-browse-redis:/data
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - stealthy-auto-browse
+
+  stealthy-auto-browse:
+    image: psyb0t/stealthy-auto-browse:latest
+    scale: ${STEALTHY_AUTO_BROWSE_NUM_REPLICAS:-5}
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://stealthy-auto-browse-redis:6379
+      AUTH_TOKEN: ${STEALTHY_AUTO_BROWSE_AUTH_TOKEN:-}
+    mem_limit: 256m
+    memswap_limit: 1280m
+    dns_search: ["."]
+    depends_on:
+      - stealthy-auto-browse-redis
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - stealthy-auto-browse
+
+  stealthy-auto-browse-proxy:
+    image: haproxy:lts-alpine
+    restart: unless-stopped
+    user: root
+    command: >-
+      sh -c 'mkdir -p /var/run/haproxy &&
+      haproxy -f /etc/haproxy/haproxy.cfg'
+    configs:
+      - source: haproxy_cfg
+        target: /etc/haproxy/haproxy.cfg
+    depends_on:
+      - stealthy-auto-browse
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - stealthy-auto-browse
+      - litellm-internal
+
 configs:
+  haproxy_cfg:
+    content: |
+      global
+          log stdout format raw local0 info
+          stats socket /var/run/haproxy/admin.sock mode 660 level admin expose-fd listeners
+
+      defaults
+          mode http
+          log global
+          option httplog
+          timeout connect 5s
+          timeout client 10m
+          timeout server 10m
+
+      resolvers docker
+          nameserver dns 127.0.0.11:53
+          hold valid 10s
+          hold refused 5s
+          accepted_payload_size 8192
+
+      frontend main
+          bind *:8080
+          capture cookie INSTANCEID len 64
+          http-request return status 200 content-type "application/json" string '{"status":"ok"}' if { path /__queue/health }
+          http-request return status 200 content-type "application/json" string '{"status":"ok","num_replicas":${STEALTHY_AUTO_BROWSE_NUM_REPLICAS:-5}}' if { path /__queue/status }
+          use_backend mcp if { path_beg /mcp }
+          default_backend browsers
+
+      backend mcp
+          balance leastconn
+          timeout queue ${STEALTHY_AUTO_BROWSE_QUEUE_TIMEOUT:-300}s
+          stick-table type string len 64 size 200 expire 1h
+          stick match req.hdr(Mcp-Session-Id)
+          stick store-response res.hdr(Mcp-Session-Id)
+          server-template sab ${STEALTHY_AUTO_BROWSE_NUM_REPLICAS:-5} stealthy-auto-browse:8080 resolvers docker check
+
+      backend browsers
+          balance leastconn
+          timeout queue ${STEALTHY_AUTO_BROWSE_QUEUE_TIMEOUT:-300}s
+          stick-table type string len 64 size 200 expire 1h
+          stick match req.cook(INSTANCEID)
+          stick store-response srv_name
+          http-response add-header Set-Cookie "INSTANCEID=%[srv_name]; path=/"
+          server-template sab ${STEALTHY_AUTO_BROWSE_NUM_REPLICAS:-5} stealthy-auto-browse:8080 resolvers docker check maxconn 1
+
+      listen stats
+          bind *:8081
+          stats enable
+          stats uri /
+          stats refresh 10s
+
   hybrids3_config:
     content: |
       master_key: "${HYBRIDS3_MASTER_KEY}"
@@ -189,3 +282,4 @@ networks:
   litellm-internal:
     internal: true
   litellm-public:
+  stealthy-auto-browse:

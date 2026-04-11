@@ -4,7 +4,5 @@
 .research_files
 CLAUDE.md
 
-# data dirs — keep structure, ignore contents
-.data/**
-!.data/**/
-!.data/**/.gitkeep
+# data dirs — fully ignored, docker creates them on first run
+.data/

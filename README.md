@@ -11,18 +11,20 @@ One `docker compose up` gives you:
 - **PostgreSQL** — key management, budgets, usage tracking
 - **Redis** — response caching + rate limiting
 - **[docker-claude-code](https://github.com/psyb0t/docker-claude-code)** (×2) — Claude Code running in API mode, one per provider
-- **[HybridS3](https://github.com/psyb0t/docker-hybrids3)** — S3-compatible object storage at `/storage/` for hosting files/images
+- **[HybridS3](https://github.com/psyb0t/docker-hybrids3)** — S3-compatible object storage at `/storage/` for hosting files/images (with MCP server)
+- **[docker-stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** — cluster of 5 stealth browser replicas behind HAProxy at `/stealthy-auto-browse/` (with MCP server)
 
 ## Routing
 
-All traffic goes through nginx:
+All traffic goes through nginx on port 4000:
 
-| Path prefix          | Backend                                  |
-| -------------------- | ---------------------------------------- |
-| `/claude-code/*`     | claude-code container (Claude OAuth)     |
-| `/claude-code-zai/*` | claude-code-zai container (GLM via z.ai) |
-| `/storage/*`         | HybridS3 object storage                  |
-| `/*`                 | LiteLLM (all model providers)            |
+| Path prefix               | Backend                                  |
+| ------------------------- | ---------------------------------------- |
+| `/claude-code/*`          | claude-code container (Claude OAuth)     |
+| `/claude-code-zai/*`      | claude-code-zai container (GLM via z.ai) |
+| `/stealthy-auto-browse/*` | HAProxy → 5 browser replicas             |
+| `/storage/*`              | HybridS3 object storage                  |
+| `/*`                      | LiteLLM (all model providers)            |
 
 ## Providers & Models
 
@@ -189,6 +191,14 @@ OPENROUTER_API_KEY=sk-or-v1-...
 
 # Optional — OpenAI
 # OPENAI_API_KEY=sk-...
+
+# Optional — HybridS3 object storage keys
+HYBRIDS3_MASTER_KEY=generate-with-openssl-rand-hex-32
+HYBRIDS3_UPLOADS_KEY=generate-with-openssl-rand-hex-32
+
+# Optional — Stealthy Auto Browse cluster
+STEALTHY_AUTO_BROWSE_AUTH_TOKEN=    # leave empty to disable auth
+STEALTHY_AUTO_BROWSE_NUM_REPLICAS=5
 ```
 
 ### 3. Run
@@ -212,10 +222,11 @@ curl http://localhost:4000/chat/completions \
 
 S3-compatible object storage for hosting images and files so you can pass URLs directly into vision model API calls. Backed by [HybridS3](https://github.com/psyb0t/docker-hybrids3) — supports bearer token auth, plain HTTP upload, S3/boto3 compatibility, and automatic TTL expiry.
 
-| Endpoint | URL |
-|----------|-----|
-| S3 / plain HTTP API | `http://localhost:4000/storage` |
-| Health | `http://localhost:4000/storage/health` |
+| Endpoint            | URL                                    |
+| ------------------- | -------------------------------------- |
+| S3 / plain HTTP API | `http://localhost:4000/storage`        |
+| Health              | `http://localhost:4000/storage/health` |
+| MCP server          | `http://localhost:4000/storage/mcp/`   |
 
 The `uploads` bucket is **public-read** — no auth needed to fetch objects. Auth required to write.
 
@@ -281,6 +292,123 @@ curl http://localhost:4000/chat/completions \
 
 > **Note:** For external LLM providers (OpenAI, Anthropic) to fetch the image, the URL must be publicly reachable — works on any server with a public IP or domain.
 
+## Stealthy Auto Browse
+
+A cluster of [docker-stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse) browser replicas behind HAProxy. Each replica runs Camoufox (custom Firefox) with real OS-level mouse/keyboard input via PyAutoGUI. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan, and all major bot detectors.
+
+| Endpoint       | URL                                                         |
+| -------------- | ----------------------------------------------------------- |
+| Browser API    | `http://localhost:4000/stealthy-auto-browse/`               |
+| MCP server     | `http://localhost:4000/stealthy-auto-browse/mcp/`           |
+| HAProxy stats  | exposed internally on port 8081                             |
+| Queue health   | `http://localhost:4000/stealthy-auto-browse/__queue/health` |
+| Cluster status | `http://localhost:4000/stealthy-auto-browse/__queue/status` |
+
+Configure in `.env`:
+
+```env
+STEALTHY_AUTO_BROWSE_AUTH_TOKEN=    # leave empty to disable auth
+STEALTHY_AUTO_BROWSE_NUM_REPLICAS=5 # number of browser replicas
+STEALTHY_AUTO_BROWSE_QUEUE_TIMEOUT=300  # seconds to wait in queue
+```
+
+Each replica: 256 MB RAM limit, 1 GB swap (total 1.25 GB per browser).
+
+HAProxy routes:
+
+- `/mcp/*` — sticky by `Mcp-Session-Id` header (MCP sessions stay on same replica)
+- everything else — sticky by `INSTANCEID` cookie (browser sessions stay on same replica), max 1 concurrent request per replica
+
+### Browser API usage
+
+```bash
+# Navigate to a URL
+curl -X POST http://localhost:4000/stealthy-auto-browse/goto \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com"}'
+
+# Take a screenshot (returns base64 PNG)
+curl -X POST http://localhost:4000/stealthy-auto-browse/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Get page text
+curl -X POST http://localhost:4000/stealthy-auto-browse/get_text \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Click at coordinates
+curl -X POST http://localhost:4000/stealthy-auto-browse/system_click \
+  -H "Content-Type: application/json" \
+  -d '{"x": 640, "y": 400}'
+
+# Type text
+curl -X POST http://localhost:4000/stealthy-auto-browse/system_type \
+  -H "Content-Type: application/json" \
+  -d '{"text": "hello world"}'
+```
+
+## MCP Servers
+
+Both HybridS3 and the browser cluster expose MCP (Model Context Protocol) servers. LiteLLM proxies these to all models that support tool use — any model on the gateway can navigate the web, take screenshots, and upload files.
+
+The MCP servers are configured in `config.yaml` and available to all LiteLLM models automatically.
+
+### Available MCP tools
+
+**HybridS3** (`hybrids3`):
+
+- `upload_file` — upload a file to a bucket
+- `get_file` — fetch a file's content or URL
+- `list_files` — list files in a bucket
+- `delete_file` — delete a file
+
+**Stealthy Auto Browse** (`stealthy_auto_browse`):
+
+- `goto` — navigate to a URL
+- `screenshot` — take a screenshot (returns base64 PNG)
+- `get_text` — extract all text from current page
+- `get_html` — get raw HTML
+- `get_interactive_elements` — list clickable elements with coordinates
+- `click` — click an element by selector
+- `system_click` — click at screen coordinates (stealth)
+- `fill` — fill an input field
+- `system_type` — type text via OS keyboard (stealth)
+- `send_key` — send a key press
+- `scroll` — scroll the page
+- `wait_for_element` — wait for a CSS selector
+- `wait_for_text` — wait for text to appear
+- `eval_js` — run JavaScript on the page
+- `mouse_move` — move mouse to coordinates
+- `browser_action` — perform a named browser action
+- `run_script` — run a multi-step automation script atomically
+
+### Example: AI agent that browses the web and uploads screenshots
+
+```bash
+curl http://localhost:4000/chat/completions \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "groq-llama-3.3-70b",
+    "messages": [{
+      "role": "user",
+      "content": "Go to duckduckgo.com, search for '\''what is groq?'\'', get the results text, take a screenshot, upload it to the uploads bucket as search-result.png, and tell me the public URL and what you found."
+    }]
+  }'
+```
+
+The model will autonomously:
+
+1. Call `goto` → navigate to DuckDuckGo
+2. Call `get_interactive_elements` → find the search box
+3. Call `system_click` + `system_type` → type the query
+4. Call `send_key` → press Enter
+5. Call `get_text` → read the results
+6. Call `screenshot` → capture the page
+7. Call `upload_file` → store in HybridS3
+8. Return the public URL and a summary of findings
+
 ## File API
 
 The claude-code containers support file management. Use the nginx routes to upload files, then reference them in prompts — Claude Code will read and process them directly.
@@ -343,7 +471,8 @@ docker compose restart claude-code
 - Routing is latency-based with automatic retries (3) and provider fallbacks
 - Free-tier providers (Cerebras, OpenRouter, Groq, HF, claude-code, claude-code-glm) are prioritized — paid APIs are last resort
 - HuggingFace free tier includes a small monthly credit allowance (amount not officially published) — use smaller models for high-volume use
-- Postgres and Redis data persist in named Docker volumes across restarts
+- All persistent data lives under `.data/` (bind mounts) — back it up or move it as needed
+- The `.data/` directory is git-ignored; Docker creates subdirectories on first run
 
 ## License
 

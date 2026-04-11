@@ -348,6 +348,24 @@ model_group_alias:
     - openai-whisper
 
 
+# ── MCP Servers ───────────────────────────────────────────────────────────────
+
+mcp_servers:
+  stealthy_auto_browse:
+    url: "http://stealthy-auto-browse-proxy:8080/mcp/"
+    transport: "http"
+    auth_type: "bearer_token"
+    auth_value: os.environ/STEALTHY_AUTO_BROWSE_AUTH_TOKEN
+    description: "Stealth browser automation — navigate, click, type, screenshot, scrape. Passes all bot detectors."
+
+  hybrids3:
+    url: "http://hybrids3:8080/storage/mcp/"
+    transport: "http"
+    auth_type: "bearer_token"
+    auth_value: os.environ/HYBRIDS3_UPLOADS_KEY
+    description: "HybridS3 object storage — upload, fetch, list, and delete files/images. The uploads bucket is public-read; direct URLs work without signing."
+
+
 # ── Global Settings ───────────────────────────────────────────────────────────
 
 general_settings:
