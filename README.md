@@ -1,157 +1,252 @@
 # aigate
 
-A self-hosted AI gateway that gives you one OpenAI-compatible endpoint for every major provider, with automatic fallbacks that burn through free tiers before touching anything paid. One `docker compose up` and you have a full AI stack: multi-provider LLM routing, object storage, stealth browser automation, Claude Code in API mode — all behind a single nginx reverse proxy.
+A self-hosted AI gateway that unifies every major LLM provider behind a single OpenAI-compatible API. Automatic fallback chains burn through free tiers before touching anything paid. Beyond routing, the gateway integrates a full tool ecosystem through the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) — stealth browser automation, object storage, and agentic Claude Code instances — all exposed as tools that any model on the gateway can call autonomously.
 
-Built on [LiteLLM](https://github.com/BerriAI/litellm). Everything is wired together and production-ready out of the box.
+One `docker compose up` and you have a production-ready AI stack with 53 models across 9 providers, 34 MCP tools, and automatic failover.
 
-## What's inside
+Built on [LiteLLM](https://github.com/BerriAI/litellm).
 
-| Service                                                                           | Description                                                                                                                                                                                                                                                                               |
-| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Nginx**                                                                         | Single entry point on port 4000 — routes all traffic to the right backend                                                                                                                                                                                                                 |
-| **LiteLLM**                                                                       | OpenAI-compatible proxy — latency-based routing, caching, retries, automatic provider fallbacks                                                                                                                                                                                           |
-| **PostgreSQL**                                                                    | Key management, budgets, and usage tracking                                                                                                                                                                                                                                               |
-| **Redis**                                                                         | Response caching and rate limiting                                                                                                                                                                                                                                                        |
-| **[claudebox](https://github.com/psyb0t/docker-claudebox)** ×2                    | Claude Code CLI running in API mode. Full tool use — reads/writes files, runs shell commands, browses the web. One instance via Claude OAuth, one via z.ai GLM.                                                                                                                           |
-| **[hybrids3](https://github.com/psyb0t/docker-hybrids3)**                         | S3-compatible object storage with plain HTTP upload, bearer token auth, TTL expiry, and an MCP server. Use it to host images and files for vision model calls.                                                                                                                            |
-| **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** | Cluster of 5 stealth browser replicas behind HAProxy. Runs Camoufox (hardened Firefox) with real OS-level mouse/keyboard input. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan, and every major bot detector. Exposed as an MCP server — any model on the gateway can browse the web. |
+## Table of Contents
+
+- [Architecture](#architecture)
+- [Services](#services)
+- [MCP Tool Ecosystem](#mcp-tool-ecosystem)
+- [Providers and Models](#providers-and-models)
+- [Model Groups and Fallbacks](#model-groups-and-fallbacks)
+- [Setup](#setup)
+- [Usage](#usage)
+  - [Chat Completions](#chat-completions)
+  - [MCP Tools in Chat](#mcp-tools-in-chat)
+  - [Browser Automation](#browser-automation)
+  - [Object Storage](#object-storage)
+  - [Claudebox — Agentic Tasks](#claudebox--agentic-tasks)
+  - [Image Generation](#image-generation)
+  - [Vision](#vision)
+  - [Transcription](#transcription)
+- [Services Reference](#services-reference)
+  - [LiteLLM](#litellm)
+  - [Claudebox](#claudebox)
+  - [Object Storage (hybrids3)](#object-storage-hybrids3)
+  - [Browser Cluster (stealthy-auto-browse)](#browser-cluster-stealthy-auto-browse)
+- [Testing](#testing)
+- [License](#license)
 
 ## Architecture
 
 ```
 client
   └─► nginx :4000
-        ├─► /claudebox/          → claudebox (Claude OAuth)
-        ├─► /claudebox-zai/      → claudebox-zai (GLM via z.ai)
+        ├─► /claudebox/            → claudebox (Claude Code, OAuth)
+        ├─► /claudebox-zai/        → claudebox-zai (Claude Code, GLM via z.ai)
         ├─► /stealthy-auto-browse/ → HAProxy → [browser ×5]
         ├─► /storage/              → hybrids3
         └─► /                      → LiteLLM
-                                        ├─ Groq
-                                        ├─ Cerebras
-                                        ├─ OpenRouter
-                                        ├─ HuggingFace
-                                        ├─ claudebox (OAuth)
-                                        ├─ claudebox-zai (GLM)
-                                        ├─ Anthropic (optional)
-                                        └─ OpenAI (optional)
+                                        ├─ Groq          (free)
+                                        ├─ Cerebras      (free)
+                                        ├─ OpenRouter     (free)
+                                        ├─ HuggingFace    (free)
+                                        ├─ claudebox      (free, Max sub)
+                                        ├─ claudebox-zai  (free, z.ai)
+                                        ├─ Anthropic      (optional, paid)
+                                        └─ OpenAI         (optional, paid)
+
+MCP servers (34 tools, available to all models):
+  ├─ stealthy_auto_browse  (17 tools) — browser navigation, clicks, typing, screenshots
+  ├─ hybrids3              (7 tools)  — file upload, download, list, delete, presign
+  ├─ claudebox             (5 tools)  — agentic Claude Code via OAuth
+  └─ claudebox_zai         (5 tools)  — agentic Claude Code via z.ai/GLM
 ```
 
-All persistent data lives under `.data/` (bind mounts). Back it up or move it as needed.
+All persistent data lives under `.data/` (bind mounts, gitignored). Everything is defined in a single `docker-compose.yml` — no external config files.
 
-## Providers & Models
+## Services
+
+| Service | Description |
+|---------|-------------|
+| **Nginx** | Single entry point on port 4000. Routes traffic to the correct backend based on URL path. All service configs (nginx, HAProxy, hybrids3) are embedded inline in docker-compose.yml. |
+| **LiteLLM** | OpenAI-compatible API proxy with latency-based routing, Redis response caching, automatic retries, and provider fallback chains. Manages API keys, budgets, and usage tracking via PostgreSQL. |
+| **PostgreSQL** | Stores LiteLLM key management, budget tracking, and usage analytics. |
+| **Redis** | Powers LiteLLM's response cache (10-minute TTL) and rate limiting. |
+| **[claudebox](https://github.com/psyb0t/docker-claudebox)** ×2 | Claude Code CLI running in API mode inside Docker containers. Each instance provides a full OpenAI-compatible chat endpoint, an HTTP API for file and workspace management, and an MCP server exposing 5 tools. One instance uses your Claude Max OAuth token, the other connects to z.ai for GLM models. Both support persistent workspaces, tool use, shell access, and file I/O. |
+| **[hybrids3](https://github.com/psyb0t/docker-hybrids3)** | S3-compatible object storage with plain HTTP upload/download, bearer token authentication, automatic TTL-based expiry, and an MCP server. The `uploads` bucket is public-read — uploaded files are immediately accessible via direct URL without signing. Useful for hosting images for vision model calls or storing artifacts from agentic workflows. |
+| **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** | A cluster of 5 stealth browser replicas behind HAProxy. Each replica runs Camoufox (a hardened Firefox fork) with real OS-level mouse and keyboard input via PyAutoGUI — no Chrome DevTools Protocol exposure. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan, and every major bot detector. Exposed as both a REST API and an MCP server, so any model on the gateway can autonomously browse the web, fill forms, take screenshots, and extract page content. |
+
+## MCP Tool Ecosystem
+
+The [Model Context Protocol](https://modelcontextprotocol.io/) is what makes this gateway more than just an LLM router. Four MCP servers are registered in LiteLLM, exposing a total of 34 tools. Any model that supports tool use (function calling) can invoke these tools during a conversation — the model decides when and how to use them based on the user's request.
+
+This means you can ask a Groq model to browse a website, take a screenshot, upload it to object storage, and return the public URL — and it will orchestrate all of that autonomously through MCP tool calls.
+
+### stealthy_auto_browse — 17 tools
+
+Stealth browser automation. Navigate pages, interact with elements using real mouse/keyboard input, extract content, and take screenshots. All interactions are undetectable by bot detection systems.
+
+| Tool | Description |
+|------|-------------|
+| `goto` | Navigate to a URL |
+| `get_text` | Extract all visible text from the current page (up to 10,000 chars) |
+| `get_html` | Get the full HTML source of the current page |
+| `get_interactive_elements` | Find all clickable/interactive elements with their viewport coordinates |
+| `screenshot` | Capture the browser viewport or full desktop as PNG |
+| `system_click` | Click at specific viewport coordinates using OS-level mouse input |
+| `system_type` | Type text using OS-level keyboard input |
+| `send_key` | Send a keyboard key (enter, tab, escape, etc.) |
+| `click` | Click a CSS selector |
+| `fill` | Fill a form field by CSS selector |
+| `scroll` | Scroll the page |
+| `mouse_move` | Move the mouse to specific coordinates |
+| `wait_for_element` | Wait for a CSS selector to appear on the page |
+| `wait_for_text` | Wait for specific text to appear on the page |
+| `eval_js` | Execute JavaScript in the browser context |
+| `browser_action` | Perform browser-level actions (back, forward, refresh) |
+| `run_script` | Execute a multi-step automation script atomically |
+
+### hybrids3 — 7 tools
+
+Object storage operations. Upload, download, list, and manage files in storage buckets. The `uploads` bucket is public-read, so uploaded files are immediately accessible via direct URL.
+
+| Tool | Description |
+|------|-------------|
+| `upload_object` | Upload a file to a bucket |
+| `download_object` | Download a file from a bucket |
+| `delete_object` | Delete a file from a bucket |
+| `list_objects` | List all files in a bucket |
+| `list_buckets` | List all available buckets |
+| `object_info` | Get metadata (size, content type, expiry) for a file |
+| `presign_url` | Generate a pre-signed URL for time-limited access |
+
+### claudebox — 5 tools (OAuth/Max)
+
+Agentic Claude Code backed by your Claude Max subscription. Each tool call runs through Claude Code's full agentic loop with shell access, file I/O, and tool use within an isolated workspace.
+
+| Tool | Description |
+|------|-------------|
+| `claude_run` | Run a prompt through Claude Code's full agentic loop |
+| `read_file` | Read a file from the workspace |
+| `write_file` | Write a file to the workspace |
+| `list_files` | List files in the workspace |
+| `delete_file` | Delete a file from the workspace |
+
+### claudebox_zai — 5 tools (GLM via z.ai)
+
+Same 5 tools as above, but backed by GLM models through [z.ai](https://z.ai)'s Anthropic-compatible API. Same workspace capabilities, different underlying model.
+
+## Providers and Models
 
 ### Groq (free tier)
 
-| Model                          | Alias                               |
-| ------------------------------ | ----------------------------------- |
-| llama-3.1-8b-instant           | `groq-llama-3.1-8b`                 |
-| llama-3.3-70b-versatile        | `groq-llama-3.3-70b`                |
+| Model | Alias |
+|-------|-------|
+| llama-3.1-8b-instant | `groq-llama-3.1-8b` |
+| llama-3.3-70b-versatile | `groq-llama-3.3-70b` |
 | llama-4-scout-17b-16e-instruct | `groq-llama-4-scout` _(multimodal)_ |
-| moonshotai/kimi-k2-instruct    | `groq-kimi-k2`                      |
-| openai/gpt-oss-20b             | `groq-gpt-oss-20b`                  |
-| openai/gpt-oss-120b            | `groq-gpt-oss-120b`                 |
-| qwen/qwen3-32b                 | `groq-qwen3-32b`                    |
-| compound-beta                  | `groq-compound`                     |
-| compound-beta-mini             | `groq-compound-mini`                |
-| whisper-large-v3               | `groq-whisper-large-v3`             |
-| whisper-large-v3-turbo         | `groq-whisper-large-v3-turbo`       |
+| moonshotai/kimi-k2-instruct | `groq-kimi-k2` |
+| openai/gpt-oss-20b | `groq-gpt-oss-20b` |
+| openai/gpt-oss-120b | `groq-gpt-oss-120b` |
+| qwen/qwen3-32b | `groq-qwen3-32b` |
+| compound-beta | `groq-compound` |
+| compound-beta-mini | `groq-compound-mini` |
+| whisper-large-v3 | `groq-whisper-large-v3` |
+| whisper-large-v3-turbo | `groq-whisper-large-v3-turbo` |
 
 ### Cerebras (free tier)
 
 1M tokens/day free, no credit card required. Among the fastest inference available (Llama 3.1 8B ~1,800 t/s, Qwen3 235B ~1,400 t/s).
 
-| Model                          | Alias                                                 |
-| ------------------------------ | ----------------------------------------------------- |
-| qwen-3-235b-a22b-instruct-2507 | `cerebras-qwen3-235b`                                 |
-| gpt-oss-120b                   | `cerebras-gpt-oss-120b` _(rate-limited on free tier)_ |
-| zai-glm-4.7                    | `cerebras-glm-4.7` _(rate-limited on free tier)_      |
-| llama3.1-8b                    | `cerebras-llama-3.1-8b`                               |
+| Model | Alias |
+|-------|-------|
+| qwen-3-235b-a22b-instruct-2507 | `cerebras-qwen3-235b` |
+| gpt-oss-120b | `cerebras-gpt-oss-120b` _(rate-limited on free tier)_ |
+| zai-glm-4.7 | `cerebras-glm-4.7` _(rate-limited on free tier)_ |
+| llama3.1-8b | `cerebras-llama-3.1-8b` |
 
 ### OpenRouter (free tier)
 
 50 req/day free (no credits), 1000 req/day with $10+ loaded.
 
-| Model                                | Alias              |
-| ------------------------------------ | ------------------ |
+| Model | Alias |
+|-------|-------|
 | nousresearch/hermes-3-llama-3.1-405b | `or-hermes-3-405b` |
-| qwen/qwen3-coder                     | `or-qwen3-coder`   |
-| qwen/qwen3-next-80b-a3b-instruct     | `or-qwen3-80b`     |
-| nvidia/nemotron-3-super-120b-a12b    | `or-nemotron-120b` |
-| minimax/minimax-m2.5                 | `or-minimax-m2.5`  |
-| meta-llama/llama-3.3-70b-instruct    | `or-llama-3.3-70b` |
-| openai/gpt-oss-120b                  | `or-gpt-oss-120b`  |
-| openai/gpt-oss-20b                   | `or-gpt-oss-20b`   |
+| qwen/qwen3-coder | `or-qwen3-coder` |
+| qwen/qwen3-next-80b-a3b-instruct | `or-qwen3-80b` |
+| nvidia/nemotron-3-super-120b-a12b | `or-nemotron-120b` |
+| minimax/minimax-m2.5 | `or-minimax-m2.5` |
+| meta-llama/llama-3.3-70b-instruct | `or-llama-3.3-70b` |
+| openai/gpt-oss-120b | `or-gpt-oss-120b` |
+| openai/gpt-oss-20b | `or-gpt-oss-20b` |
 
 ### HuggingFace Inference Providers (free tier)
 
-| Model                                        | Alias                             |
-| -------------------------------------------- | --------------------------------- |
-| meta-llama/Llama-3.1-8B-Instruct             | `hf-llama-3.1-8b`                 |
-| meta-llama/Llama-3.3-70B-Instruct            | `hf-llama-3.3-70b`                |
-| meta-llama/Llama-4-Scout-17B-16E-Instruct    | `hf-llama-4-scout` _(multimodal)_ |
-| Qwen/Qwen3-8B                                | `hf-qwen3-8b`                     |
-| Qwen/QwQ-32B                                 | `hf-qwq-32b`                      |
-| deepseek-ai/DeepSeek-R1                      | `hf-deepseek-r1`                  |
-| Qwen/Qwen2.5-VL-72B-Instruct                 | `hf-qwen-vl-72b` _(multimodal)_   |
-| Qwen/Qwen2.5-VL-7B-Instruct                  | `hf-qwen3-vl-8b` _(multimodal)_   |
-| google/gemma-3-12b-it                        | `hf-gemma-3-12b` _(multimodal)_   |
-| black-forest-labs/FLUX.1-schnell             | `hf-flux-schnell` _(image gen)_   |
-| black-forest-labs/FLUX.1-dev                 | `hf-flux-dev` _(image gen)_       |
-| stabilityai/stable-diffusion-3.5-large-turbo | `hf-sd-3.5-turbo` _(image gen)_   |
+| Model | Alias |
+|-------|-------|
+| meta-llama/Llama-3.1-8B-Instruct | `hf-llama-3.1-8b` |
+| meta-llama/Llama-3.3-70B-Instruct | `hf-llama-3.3-70b` |
+| meta-llama/Llama-4-Scout-17B-16E-Instruct | `hf-llama-4-scout` _(multimodal)_ |
+| Qwen/Qwen3-8B | `hf-qwen3-8b` |
+| Qwen/QwQ-32B | `hf-qwq-32b` |
+| deepseek-ai/DeepSeek-R1 | `hf-deepseek-r1` |
+| Qwen/Qwen2.5-VL-72B-Instruct | `hf-qwen-vl-72b` _(multimodal)_ |
+| Qwen/Qwen2.5-VL-7B-Instruct | `hf-qwen3-vl-8b` _(multimodal)_ |
+| google/gemma-3-12b-it | `hf-gemma-3-12b` _(multimodal)_ |
+| black-forest-labs/FLUX.1-schnell | `hf-flux-schnell` _(image gen)_ |
+| black-forest-labs/FLUX.1-dev | `hf-flux-dev` _(image gen)_ |
+| stabilityai/stable-diffusion-3.5-large-turbo | `hf-sd-3.5-turbo` _(image gen)_ |
 
-### Claude Code — via OAuth
+### Claudebox — via OAuth (free with Max subscription)
 
-Full Claude Code CLI in API mode, backed by your Claude Max subscription. Not just chat — it can use tools, read/write files, run shell commands, and browse the web from within a persistent workspace.
+Full Claude Code CLI in API mode, backed by your Claude Max subscription. These are not standard API calls — each request runs through Claude Code's full agentic loop with tool use, file I/O, shell access, and web browsing within a persistent workspace.
 
-| Model  | Alias              |
-| ------ | ------------------ |
-| opus   | `claudebox-opus`   |
+| Model | Alias |
+|-------|-------|
+| opus | `claudebox-opus` |
 | sonnet | `claudebox-sonnet` |
-| haiku  | `claudebox-haiku`  |
+| haiku | `claudebox-haiku` |
 
-### Claude Code GLM — via z.ai
+### Claudebox GLM — via z.ai (free)
 
-[z.ai](https://z.ai) provides an Anthropic-compatible API backed by GLM models. Routed through a second claudebox instance pointed at z.ai — same tool-use and workspace capabilities.
+[z.ai](https://z.ai) provides an Anthropic-compatible API backed by GLM models. Routed through a second claudebox instance pointed at z.ai — same agentic capabilities and workspace features as the OAuth instance above.
 
-| Model       | Alias                   |
-| ----------- | ----------------------- |
-| glm-5.1     | `claudebox-glm-5.1`     |
-| glm-4.7     | `claudebox-glm-4.7`     |
+| Model | Alias |
+|-------|-------|
+| glm-5.1 | `claudebox-glm-5.1` |
+| glm-4.7 | `claudebox-glm-4.7` |
 | glm-4.5-air | `claudebox-glm-4.5-air` |
 
-### Anthropic (optional, API key)
+### Anthropic (optional, API key required)
 
-| Model             | Alias                                      |
-| ----------------- | ------------------------------------------ |
-| claude-opus-4-6   | `anthropic-claude-opus-4` _(multimodal)_   |
+| Model | Alias |
+|-------|-------|
+| claude-opus-4-6 | `anthropic-claude-opus-4` _(multimodal)_ |
 | claude-sonnet-4-6 | `anthropic-claude-sonnet-4` _(multimodal)_ |
-| claude-haiku-4-5  | `anthropic-claude-haiku-4` _(multimodal)_  |
+| claude-haiku-4-5 | `anthropic-claude-haiku-4` _(multimodal)_ |
 
-### OpenAI (optional, API key)
+### OpenAI (optional, API key required)
 
-| Model       | Alias                               |
-| ----------- | ----------------------------------- |
-| gpt-4o      | `openai-gpt-4o` _(multimodal)_      |
+| Model | Alias |
+|-------|-------|
+| gpt-4o | `openai-gpt-4o` _(multimodal)_ |
 | gpt-4o-mini | `openai-gpt-4o-mini` _(multimodal)_ |
-| o3          | `openai-o3`                         |
-| o3-mini     | `openai-o3-mini`                    |
-| dall-e-3    | `openai-dall-e-3` _(image gen)_     |
-| gpt-image-1 | `openai-gpt-image-1` _(image gen)_  |
-| whisper-1   | `openai-whisper`                    |
-| tts-1       | `openai-tts-1`                      |
-| tts-1-hd    | `openai-tts-1-hd`                   |
+| o3 | `openai-o3` |
+| o3-mini | `openai-o3-mini` |
+| dall-e-3 | `openai-dall-e-3` _(image gen)_ |
+| gpt-image-1 | `openai-gpt-image-1` _(image gen)_ |
+| whisper-1 | `openai-whisper` |
+| tts-1 | `openai-tts-1` |
+| tts-1-hd | `openai-tts-1-hd` |
 
-## Model Groups
+## Model Groups and Fallbacks
 
-Use these as the model name. LiteLLM tries them in priority order and falls back automatically when one fails or is rate-limited.
+Model groups let you use a single alias and let the gateway figure out which provider to hit. LiteLLM tries each model in priority order and automatically falls back to the next one when a provider fails, is rate-limited, or returns an error. Free providers are always tried first.
 
-| Group           | Members (priority order)                                                                                                                                                                                                                                                           |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fast`          | groq-llama-3.1-8b → cerebras-llama-3.1-8b → claudebox-haiku → claudebox-glm-4.5-air → or-gpt-oss-20b → hf-llama-3.1-8b → openai-gpt-4o-mini                                                                                                                                        |
-| `smart`         | cerebras-qwen3-235b → claudebox-sonnet → or-hermes-3-405b → or-qwen3-80b → cerebras-gpt-oss-120b → or-nemotron-120b → or-minimax-m2.5 → claudebox-glm-4.7 → cerebras-glm-4.7 → openai-gpt-4o → anthropic-claude-sonnet-4 → claudebox-opus → claudebox-glm-5.1 → groq-llama-3.3-70b |
-| `vision`        | openai-gpt-4o → anthropic-claude-sonnet-4 → claudebox-sonnet → claudebox-glm-4.7 → groq-llama-4-scout → hf-llama-4-scout → hf-qwen-vl-72b                                                                                                                                          |
-| `image-gen`     | openai-dall-e-3 → hf-flux-schnell → hf-flux-dev                                                                                                                                                                                                                                    |
-| `transcription` | groq-whisper-large-v3-turbo → groq-whisper-large-v3 → openai-whisper                                                                                                                                                                                                               |
+| Group | Fallback chain (priority order) |
+|-------|--------------------------------|
+| `fast` | groq-llama-3.1-8b → cerebras-llama-3.1-8b → claudebox-haiku → claudebox-glm-4.5-air → or-gpt-oss-20b → hf-llama-3.1-8b → openai-gpt-4o-mini |
+| `smart` | cerebras-qwen3-235b → claudebox-sonnet → or-hermes-3-405b → or-qwen3-80b → cerebras-gpt-oss-120b → or-nemotron-120b → or-minimax-m2.5 → claudebox-glm-4.7 → cerebras-glm-4.7 → openai-gpt-4o → anthropic-claude-sonnet-4 → claudebox-opus → claudebox-glm-5.1 → groq-llama-3.3-70b |
+| `vision` | openai-gpt-4o → anthropic-claude-sonnet-4 → claudebox-sonnet → claudebox-glm-4.7 → groq-llama-4-scout → hf-llama-4-scout → hf-qwen-vl-72b |
+| `image-gen` | openai-dall-e-3 → hf-flux-schnell → hf-flux-dev |
+| `transcription` | groq-whisper-large-v3-turbo → groq-whisper-large-v3 → openai-whisper |
+
+Every individual model also has its own fallback chain configured. For example, if `groq-llama-3.3-70b` fails, it automatically tries `cerebras-qwen3-235b`, then `or-llama-3.3-70b`, then `hf-llama-3.3-70b`, then `claudebox-sonnet`, and so on. See `config.yaml` for the full fallback configuration.
 
 ## Setup
 
@@ -168,41 +263,46 @@ cd aigate
 cp .env.example .env
 ```
 
-Edit `.env`:
+Edit `.env` with your API keys and tokens:
 
 ```env
-# Required — your API key for the gateway itself
+# Required — your master API key for the gateway itself
 LITELLM_MASTER_KEY=sk-your-secret-here
 
-# Required — internal tokens for claudebox containers
-CLAUDEBOX_API_TOKEN=       # openssl rand -hex 32
-CLAUDEBOX_ZAI_API_TOKEN=   # openssl rand -hex 32
+# Required — internal auth tokens for claudebox containers
+CLAUDEBOX_API_TOKEN=       # generate with: openssl rand -hex 32
+CLAUDEBOX_ZAI_API_TOKEN=   # generate with: openssl rand -hex 32
 
-# Required — Claude OAuth token (claudebox-* models, uses Max subscription)
-# Run: claude setup-token
+# Required — Claude OAuth token (powers claudebox-* models, uses your Max subscription)
+# Generate with: claude setup-token
 CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...
 
-# Required — z.ai (claudebox-glm-* models)
-# Get it: https://z.ai
+# Required — z.ai auth token (powers claudebox-glm-* models)
+# Get one at: https://z.ai
 ZAI_AUTH_TOKEN=...
 
-# Required — free tier providers
+# Required — free tier provider API keys
 GROQ_API_KEY=gsk_...          # https://console.groq.com
 HF_TOKEN=hf_...               # https://huggingface.co/settings/tokens
 CEREBRAS_API_KEY=csk-...      # https://cloud.cerebras.ai
 OPENROUTER_API_KEY=sk-or-v1-... # https://openrouter.ai
 
-# Optional — object storage keys
-HYBRIDS3_MASTER_KEY=    # openssl rand -hex 32
-HYBRIDS3_UPLOADS_KEY=   # openssl rand -hex 32
+# Optional — object storage auth keys
+HYBRIDS3_MASTER_KEY=    # generate with: openssl rand -hex 32
+HYBRIDS3_UPLOADS_KEY=   # generate with: openssl rand -hex 32
 
-# Optional — stealthy browser cluster
+# Optional — stealthy browser cluster auth
 STEALTHY_AUTO_BROWSE_AUTH_TOKEN=    # leave empty to disable auth
 STEALTHY_AUTO_BROWSE_NUM_REPLICAS=5
 
-# Optional — paid providers
+# Optional — paid providers (only needed if you want direct API access)
 # ANTHROPIC_API_KEY=sk-ant-...
 # OPENAI_API_KEY=sk-...
+
+# Infrastructure — defaults work out of the box, change for production
+POSTGRES_PASSWORD=...         # database password
+REDIS_PASSWORD=...            # cache password
+WORKERS=8                     # LiteLLM worker count (tune to CPU cores)
 ```
 
 ### 3. Start
@@ -211,15 +311,16 @@ STEALTHY_AUTO_BROWSE_NUM_REPLICAS=5
 docker compose up -d
 ```
 
-LiteLLM UI and gateway at `http://localhost:4000`.
+The gateway is now available at `http://localhost:4000`. LiteLLM's admin UI is also accessible at the same address.
 
----
+## Usage
 
-## Usage examples
+### Chat Completions
 
-### Basic chat
+Standard OpenAI-compatible chat completions. Works with any OpenAI SDK, library, or tool that supports custom base URLs.
 
 ```bash
+# Use a model group — gateway picks the best available provider
 curl http://localhost:4000/chat/completions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
@@ -227,108 +328,47 @@ curl http://localhost:4000/chat/completions \
     "model": "fast",
     "messages": [{"role": "user", "content": "hello"}]
   }'
-```
 
-### Use a specific provider
-
-```bash
-# Groq
-curl http://localhost:4000/chat/completions \
-  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"model": "groq-llama-3.3-70b", "messages": [{"role": "user", "content": "explain LPUs"}]}'
-
-# Cerebras (ultra-fast)
-curl http://localhost:4000/chat/completions \
-  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"model": "cerebras-qwen3-235b", "messages": [{"role": "user", "content": "write a haiku"}]}'
-```
-
-### Image generation
-
-```bash
-curl http://localhost:4000/images/generations \
-  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"model": "image-gen", "prompt": "a cat riding a skateboard, photorealistic"}'
-```
-
-### Transcription
-
-```bash
-curl http://localhost:4000/audio/transcriptions \
-  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -F "model=transcription" \
-  -F "file=@audio.mp3"
-```
-
-### Vision — image in the prompt
-
-```bash
-# Upload an image first
-curl -X PUT http://localhost:4000/storage/uploads/photo.jpg \
-  -H "Authorization: Bearer $HYBRIDS3_UPLOADS_KEY" \
-  --data-binary @photo.jpg
-
-# Pass the URL to a vision model
-curl http://localhost:4000/chat/completions \
-  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "vision",
-    "messages": [{
-      "role": "user",
-      "content": [
-        {"type": "text", "text": "what is in this image?"},
-        {"type": "image_url", "image_url": {"url": "http://YOUR_HOST:4000/storage/uploads/photo.jpg"}}
-      ]
-    }]
-  }'
-```
-
-### Claude Code — agentic tasks with tool use
-
-```bash
-# Analyze a file in a workspace
-curl -X PUT http://localhost:4000/claudebox/files/myproject/data.csv \
-  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN" \
-  --data-binary @data.csv
-
-curl http://localhost:4000/chat/completions \
-  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "claudebox-sonnet",
-    "messages": [{"role": "user", "content": "analyze data.csv and give me summary stats"}],
-    "extra_headers": {"x-claude-workspace": "myproject"}
-  }'
-
-# Check workspace status
-curl http://localhost:4000/claudebox/status \
-  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN"
-```
-
-### Browser automation — agent browses the web
-
-Any model on the gateway can use the browser MCP tools to navigate, scrape, click, type, and take screenshots.
-
-```bash
+# Target a specific provider
 curl http://localhost:4000/chat/completions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "groq-llama-3.3-70b",
-    "messages": [{
-      "role": "user",
-      "content": "Go to duckduckgo.com, search for '\''what is groq?'\'', take a screenshot, upload it to the uploads bucket as search-result.png, and tell me the public URL and what you found."
-    }]
+    "messages": [{"role": "user", "content": "explain what an LPU is"}]
+  }'
+
+# Streaming
+curl http://localhost:4000/chat/completions \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "cerebras-qwen3-235b",
+    "messages": [{"role": "user", "content": "write a haiku about distributed systems"}],
+    "stream": true
   }'
 ```
 
-The model will autonomously navigate, type, wait for results, screenshot, upload to storage, and return the URL and a summary.
+### MCP Tools in Chat
 
-Direct browser API (without an LLM):
+The gateway exposes an MCP endpoint at `/mcp/` that aggregates all 34 tools from all four MCP servers. You can list available tools and pass them to models that support function calling.
+
+```bash
+# List all available MCP tools
+curl -X POST http://localhost:4000/mcp/ \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
+When a model has access to MCP tools, it can autonomously decide to browse websites, upload files to storage, run code through Claude Code, or chain multiple tools together — all within a single conversation turn.
+
+### Browser Automation
+
+The browser cluster can be used in two ways: directly via the REST API, or indirectly by letting an LLM invoke browser tools through MCP.
+
+#### Direct REST API
 
 ```bash
 # Navigate to a page
@@ -336,25 +376,30 @@ curl -X POST http://localhost:4000/stealthy-auto-browse/ \
   -H "Content-Type: application/json" \
   -d '{"action": "goto", "url": "https://example.com"}'
 
-# Take a screenshot (returns PNG)
-curl http://localhost:4000/stealthy-auto-browse/screenshot/browser -o screenshot.png
-
-# Get all visible text
+# Get all visible text from the page
 curl -X POST http://localhost:4000/stealthy-auto-browse/ \
   -H "Content-Type: application/json" \
   -d '{"action": "get_text"}'
 
-# Click at coordinates
+# Find all interactive elements with their coordinates
+curl -X POST http://localhost:4000/stealthy-auto-browse/ \
+  -H "Content-Type: application/json" \
+  -d '{"action": "get_interactive_elements", "visible_only": true}'
+
+# Click at specific coordinates (OS-level, undetectable)
 curl -X POST http://localhost:4000/stealthy-auto-browse/ \
   -H "Content-Type: application/json" \
   -d '{"action": "system_click", "x": 640, "y": 400}'
 
-# Type text
+# Type text (OS-level keyboard input)
 curl -X POST http://localhost:4000/stealthy-auto-browse/ \
   -H "Content-Type: application/json" \
   -d '{"action": "system_type", "text": "hello world"}'
 
-# Run a multi-step script atomically
+# Take a screenshot (returns raw PNG)
+curl http://localhost:4000/stealthy-auto-browse/screenshot/browser -o screenshot.png
+
+# Run a multi-step automation script atomically
 curl -X POST http://localhost:4000/stealthy-auto-browse/ \
   -H "Content-Type: application/json" \
   -d '{
@@ -370,25 +415,73 @@ curl -X POST http://localhost:4000/stealthy-auto-browse/ \
   }'
 ```
 
-Browser sessions are sticky per `INSTANCEID` cookie. Use a persistent HTTP client (e.g. `requests.Session()`) to keep your session on the same replica.
+Browser sessions are sticky via the `INSTANCEID` cookie. Use a persistent HTTP client (e.g. `requests.Session()` in Python) to keep your session on the same browser replica across multiple requests.
 
-### Object storage
+#### Python Example — Search, Screenshot, and Summarize
+
+```python
+import requests, base64
+
+session = requests.Session()  # sticky sessions via cookie
+BASE = "http://localhost:4000"
+
+def browser(action, **kwargs):
+    r = session.post(f"{BASE}/stealthy-auto-browse/", json={"action": action, **kwargs})
+    r.raise_for_status()
+    return r.json()["data"]
+
+# Navigate and search
+browser("goto", url="https://duckduckgo.com")
+browser("system_click", x=950, y=513)
+browser("system_type", text="what is groq?")
+browser("send_key", key="enter")
+browser("wait_for_element", selector="[data-testid='result']", timeout=10000)
+
+# Get page text
+text = browser("get_text")["text"]
+
+# Screenshot and upload to storage
+screenshot = session.get(f"{BASE}/stealthy-auto-browse/screenshot/browser").content
+requests.put(
+    f"{BASE}/storage/uploads/search.png",
+    headers={"Authorization": f"Bearer {UPLOADS_KEY}", "Content-Type": "image/png"},
+    data=screenshot,
+)
+
+# Ask an LLM to summarize
+r = requests.post(f"{BASE}/chat/completions",
+    headers={"Authorization": f"Bearer {MASTER_KEY}", "Content-Type": "application/json"},
+    json={"model": "groq-llama-3.3-70b", "messages": [
+        {"role": "user", "content": f"Summarize these search results:\n\n{text[:8000]}"}
+    ]})
+print(r.json()["choices"][0]["message"]["content"])
+print(f"Screenshot: {BASE}/storage/uploads/search.png")
+```
+
+### Object Storage
+
+[hybrids3](https://github.com/psyb0t/docker-hybrids3) provides S3-compatible object storage with a simple HTTP interface. The `uploads` bucket is configured as public-read — anyone can download files by direct URL, but uploading and deleting requires authentication.
 
 ```bash
-# Upload
+# Upload a file
 curl -X PUT http://localhost:4000/storage/uploads/image.png \
   -H "Authorization: Bearer $HYBRIDS3_UPLOADS_KEY" \
+  -H "Content-Type: image/png" \
   --data-binary @image.png
 
-# Download (public, no auth)
+# Download (public, no auth required)
 curl http://localhost:4000/storage/uploads/image.png -o image.png
 
-# List files in a bucket
+# List files in the uploads bucket
 curl http://localhost:4000/storage/uploads \
+  -H "Authorization: Bearer $HYBRIDS3_UPLOADS_KEY"
+
+# Delete a file
+curl -X DELETE http://localhost:4000/storage/uploads/image.png \
   -H "Authorization: Bearer $HYBRIDS3_UPLOADS_KEY"
 ```
 
-S3/boto3:
+S3-compatible access via boto3:
 
 ```python
 import boto3
@@ -400,77 +493,163 @@ s3 = boto3.client(
     aws_secret_access_key=HYBRIDS3_UPLOADS_KEY,
 )
 s3.upload_file("image.png", "uploads", "image.png")
-url = "http://localhost:4000/storage/uploads/image.png"  # public, no signing needed
+# Public URL (no signing needed): http://localhost:4000/storage/uploads/image.png
 ```
 
----
-
-## Services reference
-
-### Object storage (hybrids3)
-
-| Endpoint        | URL                                    |
-| --------------- | -------------------------------------- |
-| S3 / plain HTTP | `http://localhost:4000/storage`        |
-| Health          | `http://localhost:4000/storage/health` |
-| MCP server      | `http://localhost:4000/storage/mcp/`   |
-
-The `uploads` bucket is public-read. Configure TTL and size limits in `.env`:
+Configure TTL and size limits in `.env`:
 
 ```env
 HYBRIDS3_UPLOADS_TTL=168h        # auto-delete after (default 7 days)
 HYBRIDS3_UPLOADS_MAX_SIZE=100MB  # per-file size limit
 ```
 
-### Browser cluster (stealthy-auto-browse)
+### Claudebox — Agentic Tasks
 
-| Endpoint             | URL                                                             |
-| -------------------- | --------------------------------------------------------------- |
-| Browser API          | `http://localhost:4000/stealthy-auto-browse/`                   |
-| Screenshot (browser) | `http://localhost:4000/stealthy-auto-browse/screenshot/browser` |
-| Screenshot (desktop) | `http://localhost:4000/stealthy-auto-browse/screenshot/desktop` |
-| MCP server           | `http://localhost:4000/stealthy-auto-browse/mcp/`               |
-| Queue health         | `http://localhost:4000/stealthy-auto-browse/__queue/health`     |
-| Cluster status       | `http://localhost:4000/stealthy-auto-browse/__queue/status`     |
+[Claudebox](https://github.com/psyb0t/docker-claudebox) wraps Claude Code in a Docker container and exposes it as an API. Each request runs through Claude Code's full agentic loop — it can read/write files, run shell commands, install packages, browse the web, and use tools, all within an isolated workspace.
 
-Each replica: 256 MB RAM, up to 1 GB swap. HAProxy sticky routing:
+Two instances are running: one backed by your Claude Max OAuth token, and one connected to z.ai for GLM models. Both provide identical APIs and workspace capabilities.
 
-- `/mcp/*` — pinned by `Mcp-Session-Id` header
-- everything else — pinned by `INSTANCEID` cookie, max 1 concurrent request per replica
+```bash
+# Upload a file to a workspace
+curl -X PUT http://localhost:4000/claudebox/files/myproject/data.csv \
+  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN" \
+  --data-binary @data.csv
 
-### Claude Code
+# Ask Claude to analyze it (via LiteLLM)
+curl http://localhost:4000/chat/completions \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claudebox-sonnet",
+    "messages": [{"role": "user", "content": "analyze data.csv and give me summary statistics"}],
+    "extra_headers": {"x-claude-workspace": "myproject"}
+  }'
 
-| Endpoint           | URL                                                                |
-| ------------------ | ------------------------------------------------------------------ |
-| Chat completions   | `http://localhost:4000/` (via LiteLLM)                             |
-| MCP server (OAuth) | `http://localhost:4000/claudebox/mcp/`                             |
-| MCP server (GLM)   | `http://localhost:4000/claudebox-zai/mcp/`                         |
-| File upload        | `http://localhost:4000/claudebox/files/<workspace>/<path>`         |
-| File list          | `http://localhost:4000/claudebox/files/<workspace>`                |
-| Workspace status   | `http://localhost:4000/claudebox/status`                           |
-| Cancel run         | `POST http://localhost:4000/claudebox/run/cancel?workspace=<name>` |
+# Check workspace status (which workspaces are busy)
+curl http://localhost:4000/claudebox/status \
+  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN"
 
-Auth: `CLAUDEBOX_API_TOKEN` for `/claudebox/`, `CLAUDEBOX_ZAI_API_TOKEN` for `/claudebox-zai/`.
+# List files in a workspace
+curl http://localhost:4000/claudebox/files/myproject \
+  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN"
 
-Workspace isolation: pass `x-claude-workspace: <name>` in request headers. Each workspace has its own file context and conversation history.
+# Download a file from a workspace
+curl http://localhost:4000/claudebox/files/myproject/results.json \
+  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN"
 
-### MCP tools
+# Cancel a running task
+curl -X POST http://localhost:4000/claudebox/run/cancel?workspace=myproject \
+  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN"
+```
 
-All four services are configured as MCP servers in LiteLLM — 34 tools total. Any model that supports tool use gets access to all of them.
+### Image Generation
 
-**hybrids3:** `upload_object`, `download_object`, `delete_object`, `list_objects`, `list_buckets`, `object_info`, `presign_url`
+```bash
+curl http://localhost:4000/images/generations \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "image-gen", "prompt": "a cat riding a skateboard, photorealistic"}'
+```
 
-**stealthy_auto_browse:** `goto`, `screenshot`, `get_text`, `get_html`, `get_interactive_elements`, `click`, `system_click`, `fill`, `system_type`, `send_key`, `scroll`, `wait_for_element`, `wait_for_text`, `eval_js`, `mouse_move`, `browser_action`, `run_script`
+### Vision
 
-**claudebox** (OAuth/Max) and **claudebox_zai** (GLM via z.ai): `claude_run`, `read_file`, `write_file`, `list_files`, `delete_file`
+Upload an image to storage, then pass its URL to a vision-capable model:
 
-`claude_run` runs any prompt through Claude Code's full agentic loop — shell access, file I/O, tools, everything. Pass a `workspace` name to scope it to a workspace directory.
+```bash
+# Upload the image
+curl -X PUT http://localhost:4000/storage/uploads/photo.jpg \
+  -H "Authorization: Bearer $HYBRIDS3_UPLOADS_KEY" \
+  --data-binary @photo.jpg
 
----
+# Ask a vision model about it
+curl http://localhost:4000/chat/completions \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "vision",
+    "messages": [{
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "what is in this image?"},
+        {"type": "image_url", "image_url": {"url": "http://YOUR_HOST:4000/storage/uploads/photo.jpg"}}
+      ]
+    }]
+  }'
+```
+
+### Transcription
+
+```bash
+curl http://localhost:4000/audio/transcriptions \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -F "model=transcription" \
+  -F "file=@audio.mp3"
+```
+
+## Services Reference
+
+### LiteLLM
+
+| Endpoint | URL |
+|----------|-----|
+| Chat completions | `POST http://localhost:4000/chat/completions` |
+| Models list | `GET http://localhost:4000/models` |
+| Health check | `GET http://localhost:4000/health/liveliness` |
+| MCP server (all tools) | `POST http://localhost:4000/mcp/` |
+| Admin UI | `http://localhost:4000/` |
+
+Authentication: all endpoints require `Authorization: Bearer $LITELLM_MASTER_KEY`.
+
+### Claudebox
+
+| Endpoint | URL |
+|----------|-----|
+| Chat completions (via LiteLLM) | `POST http://localhost:4000/chat/completions` with model `claudebox-*` |
+| Direct API | `http://localhost:4000/claudebox/` |
+| MCP server (OAuth) | `http://localhost:4000/claudebox/mcp/` |
+| MCP server (GLM) | `http://localhost:4000/claudebox-zai/mcp/` |
+| File upload | `PUT http://localhost:4000/claudebox/files/<workspace>/<path>` |
+| File download | `GET http://localhost:4000/claudebox/files/<workspace>/<path>` |
+| File list | `GET http://localhost:4000/claudebox/files/<workspace>` |
+| Workspace status | `GET http://localhost:4000/claudebox/status` |
+| Cancel run | `POST http://localhost:4000/claudebox/run/cancel?workspace=<name>` |
+| Health | `GET http://localhost:4000/claudebox/health` |
+
+Authentication: `/claudebox/` endpoints use `Authorization: Bearer $CLAUDEBOX_API_TOKEN`. `/claudebox-zai/` endpoints use `Authorization: Bearer $CLAUDEBOX_ZAI_API_TOKEN`. Health endpoints require no auth.
+
+Workspace isolation: pass `x-claude-workspace: <name>` in request headers. Each workspace gets its own directory, file context, and conversation history.
+
+### Object Storage (hybrids3)
+
+| Endpoint | URL |
+|----------|-----|
+| Upload / download | `http://localhost:4000/storage/uploads/<key>` |
+| List bucket | `GET http://localhost:4000/storage/uploads` |
+| Health | `GET http://localhost:4000/storage/health` |
+| MCP server | `http://localhost:4000/storage/mcp/` |
+| S3-compatible | `http://localhost:4000/storage` (use with boto3/aws-cli) |
+
+Authentication: writes and deletes require `Authorization: Bearer $HYBRIDS3_UPLOADS_KEY`. Downloads from the `uploads` bucket are public (no auth).
+
+### Browser Cluster (stealthy-auto-browse)
+
+| Endpoint | URL |
+|----------|-----|
+| Browser API | `POST http://localhost:4000/stealthy-auto-browse/` |
+| Screenshot (browser) | `GET http://localhost:4000/stealthy-auto-browse/screenshot/browser` |
+| Screenshot (desktop) | `GET http://localhost:4000/stealthy-auto-browse/screenshot/desktop` |
+| MCP server | `http://localhost:4000/stealthy-auto-browse/mcp/` |
+| Queue health | `GET http://localhost:4000/stealthy-auto-browse/__queue/health` |
+| Cluster status | `GET http://localhost:4000/stealthy-auto-browse/__queue/status` |
+
+Configuration: 5 browser replicas by default (configurable via `STEALTHY_AUTO_BROWSE_NUM_REPLICAS`). Each replica has 256 MB RAM and up to 1 GB swap. HAProxy handles sticky routing:
+
+- MCP requests are pinned by `Mcp-Session-Id` header
+- All other requests are pinned by `INSTANCEID` cookie, with max 1 concurrent request per replica
 
 ## Testing
 
-The test suite validates every service end-to-end against a running stack. Stack must be up before running tests.
+The test suite validates every service end-to-end against the running stack. The stack must be up before running tests.
 
 ```bash
 # Run all 28 tests
@@ -480,19 +659,21 @@ bash test.sh
 
 # Run specific tests
 bash test.sh test_health_endpoints test_mcp_tools_loaded
+
+# List all available tests
+bash test.sh --help
 ```
 
 Tests cover:
-- **Health** — all service health endpoints, docker compose service status
-- **LiteLLM** — endpoints, model registration, auth, chat completions, streaming
-- **Nginx** — routing to all backends
-- **MCP** — 34 tools loaded across 4 servers, auth rejection
-- **HybridS3** — CRUD, public read, auth on writes
-- **Browser** — navigation, interactive elements, screenshots, full flow
-- **Claudebox** — chat via LiteLLM, direct API, file ops, z.ai reachability
-- **Integration** — browser → screenshot → upload → LLM summary
 
----
+- **Health** — all service health endpoints, docker compose service status, browser replica count
+- **LiteLLM** — API endpoints, model registration, authentication (valid/invalid/missing keys), chat completions, SSE streaming
+- **Nginx** — routing to all 5 backends (LiteLLM, claudebox, claudebox-zai, stealthy-auto-browse, hybrids3)
+- **MCP** — all 34 tools loaded across 4 servers, per-server tool counts, specific tool presence, authentication
+- **HybridS3** — full CRUD lifecycle (upload, download, list, delete, verify deletion), public read without auth, write rejection without auth
+- **Browser** — page navigation, interactive element detection, screenshot capture, full automation flow (navigate, find elements, click, type, screenshot)
+- **Claudebox** — chat completion via LiteLLM, direct API access via nginx, file operations (upload, download, list, delete), z.ai instance reachability
+- **Integration** — end-to-end workflow: browser navigation → screenshot → upload to storage → verify public URL → LLM summarization
 
 ## License
 
