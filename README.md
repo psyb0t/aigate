@@ -654,7 +654,7 @@ Configuration: 5 browser replicas by default (configurable via `STEALTHY_AUTO_BR
 The test suite validates every service end-to-end against the running stack. The stack must be up before running tests.
 
 ```bash
-# Run all 28 tests
+# Run all tests
 make test
 # or
 bash test.sh
@@ -676,6 +676,7 @@ Tests cover:
 - **Browser** — page navigation, interactive element detection, screenshot capture, full automation flow (navigate, find elements, click, type, screenshot)
 - **Claudebox** — chat completion via LiteLLM, direct API access via nginx, file operations (upload, download, list, delete), z.ai instance reachability
 - **Integration** — end-to-end workflow: browser navigation → screenshot → upload to storage → verify public URL → LLM summarization
+- **Security** — auth on every endpoint, cross-token isolation, MCP fake token and session hijack, nginx path normalization bypass, HTTP request smuggling (CL.TE/TE.CL), h2c smuggling, hop-by-hop header abuse, SSRF via browser and MCP to internal services, prompt injection key extraction, path traversal on claudebox and hybrids3, S3 presign abuse, stored XSS headers, model name injection, header injection, large payload rejection, docker socket removal verification, Docker Engine API isolation, internal port exposure, health endpoint info leakage
 
 ## License
 
