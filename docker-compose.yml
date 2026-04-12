@@ -1,6 +1,6 @@
 services:
   nginx:
-    image: nginx:1.27-alpine
+    image: nginx:1.27.5-alpine
     restart: unless-stopped
     ports:
       - "4000:4000"
@@ -70,7 +70,6 @@ services:
     volumes:
       - ./.data/claudebox/config:/home/claude/.claude
       - ./.data/claudebox/workspaces:/workspaces
-      - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
       interval: 15s
@@ -166,9 +165,9 @@ services:
   # ── Stealthy Auto Browse cluster ─────────────────────────────────────────────
 
   stealthy-auto-browse-redis:
-    image: redis:7-alpine
+    image: redis:7.4.8-alpine
     restart: unless-stopped
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${STEALTHY_AUTO_BROWSE_REDIS_PASSWORD}
     volumes:
       - ./.data/stealthy-auto-browse-redis:/data
     security_opt:
@@ -181,7 +180,7 @@ services:
     scale: ${STEALTHY_AUTO_BROWSE_NUM_REPLICAS:-5}
     restart: unless-stopped
     environment:
-      REDIS_URL: redis://stealthy-auto-browse-redis:6379
+      REDIS_URL: redis://:${STEALTHY_AUTO_BROWSE_REDIS_PASSWORD}@stealthy-auto-browse-redis:6379
       AUTH_TOKEN: ${STEALTHY_AUTO_BROWSE_AUTH_TOKEN:-}
     mem_limit: 256m
     memswap_limit: 1280m
@@ -194,7 +193,7 @@ services:
       - stealthy-auto-browse
 
   stealthy-auto-browse-proxy:
-    image: haproxy:lts-alpine
+    image: haproxy:3.2.15-alpine
     restart: unless-stopped
     user: root
     command: >-
@@ -217,7 +216,7 @@ configs:
       server {
           listen 4000;
 
-          client_max_body_size 1G;
+          client_max_body_size 50m;
 
           # claudebox (OAuth) — full API access
           location /claudebox/ {

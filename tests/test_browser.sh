@@ -1,6 +1,7 @@
 #!/bin/bash
 
 _BROWSER_URL="$BASE_URL/stealthy-auto-browse"
+_BROWSER_AUTH="${STEALTHY_AUTO_BROWSE_AUTH_TOKEN:-}"
 
 _browser_call() {
     local action="$1"
@@ -11,10 +12,27 @@ _browser_call() {
     fi
     body="$body}"
 
+    local auth_args=()
+    if [ -n "$_BROWSER_AUTH" ]; then
+        auth_args=(-H "Authorization: Bearer $_BROWSER_AUTH")
+    fi
+
     curl -sf -X POST "$_BROWSER_URL/" \
         -H "Content-Type: application/json" \
+        "${auth_args[@]}" \
         -b /tmp/sab_cookies.txt -c /tmp/sab_cookies.txt \
         -d "$body"
+}
+
+_browser_screenshot() {
+    local auth_args=()
+    if [ -n "$_BROWSER_AUTH" ]; then
+        auth_args=(-H "Authorization: Bearer $_BROWSER_AUTH")
+    fi
+    curl -sf "$_BROWSER_URL/screenshot/browser" \
+        "${auth_args[@]}" \
+        -b /tmp/sab_cookies.txt -c /tmp/sab_cookies.txt \
+        "$@"
 }
 
 test_browser_setup() {
@@ -64,9 +82,7 @@ test_browser_screenshot() {
     sleep 1
 
     local size
-    size=$(curl -sf "$_BROWSER_URL/screenshot/browser" \
-        -b /tmp/sab_cookies.txt -c /tmp/sab_cookies.txt \
-        -o /tmp/test_screenshot.png -w "%{size_download}")
+    size=$(_browser_screenshot -o /tmp/test_screenshot.png -w "%{size_download}")
 
     if [ "$size" -lt 1000 ]; then
         echo "  FAIL: screenshot too small: $size bytes"
@@ -120,9 +136,7 @@ for el in data.get('data', {}).get('elements', []):
 
     # take screenshot
     local size
-    size=$(curl -sf "$_BROWSER_URL/screenshot/browser" \
-        -b /tmp/sab_cookies.txt -c /tmp/sab_cookies.txt \
-        -o /dev/null -w "%{size_download}")
+    size=$(_browser_screenshot -o /dev/null -w "%{size_download}")
 
     if [ "$size" -lt 1000 ]; then
         echo "  FAIL: screenshot after typing too small: $size bytes"

@@ -6,11 +6,17 @@ test_integration_browser_upload_llm() {
     # clear cookies for fresh session
     rm -f /tmp/int_cookies.txt
     local sab="$BASE_URL/stealthy-auto-browse"
+    local sab_auth="${STEALTHY_AUTO_BROWSE_AUTH_TOKEN:-}"
+    local sab_auth_args=()
+    if [ -n "$sab_auth" ]; then
+        sab_auth_args=(-H "Authorization: Bearer $sab_auth")
+    fi
 
     # 1. navigate
     local out
     out=$(curl -sf -X POST "$sab/" \
         -H "Content-Type: application/json" \
+        "${sab_auth_args[@]}" \
         -b /tmp/int_cookies.txt -c /tmp/int_cookies.txt \
         -d '{"action":"goto","url":"https://example.com"}')
     assert_contains "$out" "success" "navigate to example.com" || return 1
@@ -19,6 +25,7 @@ test_integration_browser_upload_llm() {
     # 2. get page text
     out=$(curl -sf -X POST "$sab/" \
         -H "Content-Type: application/json" \
+        "${sab_auth_args[@]}" \
         -b /tmp/int_cookies.txt -c /tmp/int_cookies.txt \
         -d '{"action":"get_text"}')
     assert_contains "$out" "Example Domain" "got page text" || return 1
@@ -27,6 +34,7 @@ test_integration_browser_upload_llm() {
     local screenshot_file="/tmp/int_test_screenshot.png"
     local size
     size=$(curl -sf "$sab/screenshot/browser" \
+        "${sab_auth_args[@]}" \
         -b /tmp/int_cookies.txt -c /tmp/int_cookies.txt \
         -o "$screenshot_file" -w "%{size_download}")
     if [ "$size" -lt 1000 ]; then
@@ -58,6 +66,7 @@ test_integration_browser_upload_llm() {
     local page_text
     page_text=$(curl -sf -X POST "$sab/" \
         -H "Content-Type: application/json" \
+        "${sab_auth_args[@]}" \
         -b /tmp/int_cookies.txt -c /tmp/int_cookies.txt \
         -d '{"action":"get_text"}' | python3 -c "import sys,json; print(json.load(sys.stdin).get('data',{}).get('text','')[:2000])" 2>/dev/null)
 
