@@ -36,7 +36,7 @@ Built on [LiteLLM](https://github.com/BerriAI/litellm).
 ```
 client
   └─► nginx :4000
-        ├─► /claudebox/            → claudebox (Claude Code, OAuth)
+        ├─► /claudebox/            → claudebox (Claude Code, OAuth/API key)
         ├─► /claudebox-zai/        → claudebox-zai (Claude Code, GLM via z.ai)
         ├─► /stealthy-auto-browse/ → HAProxy → [browser ×5]
         ├─► /storage/              → hybrids3
@@ -45,8 +45,8 @@ client
                                         ├─ Cerebras      (free)
                                         ├─ OpenRouter     (free)
                                         ├─ HuggingFace    (free)
-                                        ├─ claudebox      (free, Max sub)
-                                        ├─ claudebox-zai  (free, z.ai)
+                                        ├─ claudebox      (paid, sub or API key)
+                                        ├─ claudebox-zai  (paid, z.ai)
                                         ├─ Anthropic      (optional, paid)
                                         └─ OpenAI         (optional, paid)
 
@@ -67,7 +67,7 @@ All persistent data lives under `.data/` (bind mounts, gitignored). Everything i
 | **LiteLLM** | OpenAI-compatible API proxy with latency-based routing, Redis response caching, automatic retries, and provider fallback chains. Manages API keys, budgets, and usage tracking via PostgreSQL. |
 | **PostgreSQL** | Stores LiteLLM key management, budget tracking, and usage analytics. |
 | **Redis** | Powers LiteLLM's response cache (10-minute TTL) and rate limiting. |
-| **[claudebox](https://github.com/psyb0t/docker-claudebox)** ×2 | Claude Code CLI running in API mode inside Docker containers. Each instance provides a full OpenAI-compatible chat endpoint, an HTTP API for file and workspace management, and an MCP server exposing 5 tools. One instance uses your Claude Max OAuth token, the other connects to z.ai for GLM models. Both support persistent workspaces, tool use, shell access, and file I/O. |
+| **[claudebox](https://github.com/psyb0t/docker-claudebox)** ×2 | Claude Code CLI running in API mode inside Docker containers. Each instance provides a full OpenAI-compatible chat endpoint, an HTTP API for file and workspace management, and an MCP server exposing 5 tools. One instance authenticates via OAuth token or Anthropic API key, the other connects to z.ai for GLM models. Both support persistent workspaces, tool use, shell access, and file I/O. |
 | **[hybrids3](https://github.com/psyb0t/docker-hybrids3)** | S3-compatible object storage with plain HTTP upload/download, bearer token authentication, automatic TTL-based expiry, and an MCP server. The `uploads` bucket is public-read — uploaded files are immediately accessible via direct URL without signing. Useful for hosting images for vision model calls or storing artifacts from agentic workflows. |
 | **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** | A cluster of 5 stealth browser replicas behind HAProxy. Each replica runs Camoufox (a hardened Firefox fork) with real OS-level mouse and keyboard input via PyAutoGUI — no Chrome DevTools Protocol exposure. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan, and every major bot detector. Exposed as both a REST API and an MCP server, so any model on the gateway can autonomously browse the web, fill forms, take screenshots, and extract page content. |
 
@@ -115,9 +115,9 @@ Object storage operations. Upload, download, list, and manage files in storage b
 | `object_info` | Get metadata (size, content type, expiry) for a file |
 | `presign_url` | Generate a pre-signed URL for time-limited access |
 
-### claudebox — 5 tools (OAuth/Max)
+### claudebox — 5 tools (OAuth)
 
-Agentic Claude Code backed by your Claude Max subscription. Each tool call runs through Claude Code's full agentic loop with shell access, file I/O, and tool use within an isolated workspace.
+Agentic Claude Code backed by your Claude subscription. Each tool call runs through Claude Code's full agentic loop with shell access, file I/O, and tool use within an isolated workspace.
 
 | Tool | Description |
 |------|-------------|
@@ -192,9 +192,9 @@ Same 5 tools as above, but backed by GLM models through [z.ai](https://z.ai)'s A
 | black-forest-labs/FLUX.1-dev | `hf-flux-dev` _(image gen)_ |
 | stabilityai/stable-diffusion-3.5-large-turbo | `hf-sd-3.5-turbo` _(image gen)_ |
 
-### Claudebox — via OAuth (free with Max subscription)
+### Claudebox (requires Claude subscription or API key)
 
-Full Claude Code CLI in API mode, backed by your Claude Max subscription. These are not standard API calls — each request runs through Claude Code's full agentic loop with tool use, file I/O, shell access, and web browsing within a persistent workspace.
+Full Claude Code CLI in API mode. Authenticate with either an OAuth token (Claude Pro/Max/Team subscription) or an Anthropic API key (pay-per-use). These are not standard API calls — each request runs through Claude Code's full agentic loop with tool use, file I/O, shell access, and web browsing within a persistent workspace.
 
 | Model | Alias |
 |-------|-------|
@@ -202,7 +202,7 @@ Full Claude Code CLI in API mode, backed by your Claude Max subscription. These 
 | sonnet | `claudebox-sonnet` |
 | haiku | `claudebox-haiku` |
 
-### Claudebox GLM — via z.ai (free)
+### Claudebox GLM — via z.ai (requires z.ai account)
 
 [z.ai](https://z.ai) provides an Anthropic-compatible API backed by GLM models. Routed through a second claudebox instance pointed at z.ai — same agentic capabilities and workspace features as the OAuth instance above.
 
@@ -273,9 +273,11 @@ LITELLM_MASTER_KEY=sk-your-secret-here
 CLAUDEBOX_API_TOKEN=       # generate with: openssl rand -hex 32
 CLAUDEBOX_ZAI_API_TOKEN=   # generate with: openssl rand -hex 32
 
-# Required — Claude OAuth token (powers claudebox-* models, uses your Max subscription)
-# Generate with: claude setup-token
+# Required — claudebox auth (use EITHER OAuth OR API key, one is enough)
+# OAuth (requires Claude Pro/Max/Team subscription): claude setup-token
 CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...
+# API key (pay-per-use): https://console.anthropic.com/settings/keys
+# CLAUDEBOX_ANTHROPIC_API_KEY=sk-ant-...
 
 # Required — z.ai auth token (powers claudebox-glm-* models)
 # Get one at: https://z.ai
@@ -507,7 +509,7 @@ HYBRIDS3_UPLOADS_MAX_SIZE=100MB  # per-file size limit
 
 [Claudebox](https://github.com/psyb0t/docker-claudebox) wraps Claude Code in a Docker container and exposes it as an API. Each request runs through Claude Code's full agentic loop — it can read/write files, run shell commands, install packages, browse the web, and use tools, all within an isolated workspace.
 
-Two instances are running: one backed by your Claude Max OAuth token, and one connected to z.ai for GLM models. Both provide identical APIs and workspace capabilities.
+Two instances are running: one authenticated via your OAuth token or Anthropic API key, and one connected to z.ai for GLM models. Both provide identical APIs and workspace capabilities.
 
 ```bash
 # Upload a file to a workspace

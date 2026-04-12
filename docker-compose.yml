@@ -65,7 +65,8 @@ services:
       CLAUDE_MODE_API: "1"
       CLAUDE_MODE_API_PORT: "8080"
       CLAUDE_MODE_API_TOKEN: ${CLAUDEBOX_API_TOKEN:-lulz-4-security}
-      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN}
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+      ANTHROPIC_API_KEY: ${CLAUDEBOX_ANTHROPIC_API_KEY:-}
     volumes:
       - ./.data/claudebox/config:/home/claude/.claude
       - ./.data/claudebox/workspaces:/workspaces
