@@ -18,11 +18,15 @@ git-update.sh
 !.data/claudebox/
 !.data/claudebox/config/
 !.data/claudebox/config/.gitkeep
+!.data/claudebox/config/.always-skills/
+!.data/claudebox/config/.always-skills/.gitkeep
 !.data/claudebox/workspaces/
 !.data/claudebox/workspaces/.gitkeep
 !.data/claudebox-zai/
 !.data/claudebox-zai/config/
 !.data/claudebox-zai/config/.gitkeep
+!.data/claudebox-zai/config/.always-skills/
+!.data/claudebox-zai/config/.always-skills/.gitkeep
 !.data/claudebox-zai/workspaces/
 !.data/claudebox-zai/workspaces/.gitkeep
 !.data/nginx/
