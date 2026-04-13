@@ -1,10 +1,14 @@
 # aigate
 
-One endpoint. 69 models across 10 providers. A stealth browser cluster that passes Cloudflare. Two agentic Claude Code instances. S3-compatible object storage. All exposed as MCP tools so any model on the gateway can use them autonomously.
+Your own AI infrastructure. One compose file. One endpoint. Everything.
 
-Point your OpenAI client at `http://localhost:4000`. The gateway routes to the best available free provider and falls back through the chain if it rate-limits or fails — six free providers before it touches anything paid. Add a prompt that needs web research and the model opens a browser, reads pages, and returns results. Add file I/O and it reads and writes through object storage. Add code execution and it spins up a full Claude Code instance with shell access and a persistent workspace. The model calls the tools. You just ask.
+69 models across 10 providers behind a single OpenAI-compatible API — point any existing client at `http://localhost:4000` and it just works. Six of those providers are completely free. The gateway burns through them in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
 
-`docker compose up -d`. That's it.
+That's the routing. The real part is what the models can *do*. Four MCP servers are wired directly into the gateway — 34 tools any model with function calling can invoke autonomously. A stealth browser cluster (5 Camoufox replicas, real OS-level mouse and keyboard, zero CDP exposure) that passes Cloudflare, CreepJS, and every other bot detector we've thrown at it. S3-compatible object storage with public-read URLs, presigned links, and auto-expiry. Two agentic Claude Code instances — one on your Claude subscription or API key, one running GLM models through z.ai — each with a full shell, persistent workspaces, and file I/O. Ask a Groq model to research something and it opens a browser, reads pages, saves files, and comes back with an answer. The model orchestrates. You just prompt.
+
+Security is not an afterthought. Internal services are network-isolated — PostgreSQL, Redis, hybrids3, and the browser cluster have no host ports, period. Every endpoint requires auth. When you want to expose the gateway publicly, Cloudflare Tunnel handles it: one env var, no open ports, Cloudflare's DDoS protection and TLS in front of everything.
+
+`docker compose up -d`. That's the whole install.
 
 ## Architecture
 
@@ -62,6 +66,18 @@ Notable writable locations:
 | **[hybrids3](https://github.com/psyb0t/docker-hybrids3)**                         | S3-compatible object storage. Plain HTTP upload/download, boto3-compatible, bearer token auth, auto-expiry, MCP server. The `uploads` bucket is public-read — files are accessible by direct URL without signing.                                                   |
 | **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** | 5 Camoufox (hardened Firefox) replicas behind HAProxy. Real OS-level mouse and keyboard input via PyAutoGUI — no CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan. Redis cookie sync across replicas. REST API and MCP server.                       |
 | **cloudflared** _(optional)_                                                      | Cloudflare Tunnel. Disabled by default — enable with `COMPOSE_PROFILES=cloudflared`. Quick tunnel (random `*.trycloudflare.com` URL, no account) or named tunnel (fixed domain).                                                                                     |
+
+## Security and Exposure
+
+**Network isolation** — internal services (PostgreSQL, Redis, hybrids3, HAProxy) are on a private Docker network with no host port bindings. They're unreachable from outside the stack. Only nginx is exposed.
+
+**Auth on everything** — every service requires a bearer token. LiteLLM needs `LITELLM_MASTER_KEY`. Claudebox instances each have their own token. Hybrids3 uses per-bucket keys. The stealthy browser cluster has an optional `AUTH_TOKEN`. The admin UI supports HTTP basic auth with rate limiting (5 req/min).
+
+**No new privileges** — all containers run with `no-new-privileges:true`.
+
+**Public exposure** — if you want to reach the gateway from outside, use Cloudflare Tunnel instead of opening ports. Set `COMPOSE_PROFILES=cloudflared` for a quick `*.trycloudflare.com` URL (no account needed), or configure a named tunnel for a fixed custom domain. Traffic goes through Cloudflare's network before it reaches nginx — DDoS protection and TLS termination included.
+
+→ [Cloudflare Tunnel setup](docs/services-reference.md#cloudflared-optional)
 
 ## MCP Tools
 
