@@ -212,6 +212,19 @@ services:
       - stealthy-auto-browse
       - litellm-internal
 
+  cloudflared:
+    profiles: ["cloudflared"]
+    build: ./cloudflared
+    image: cloudflared-local:latest
+    restart: unless-stopped
+    volumes:
+      - ${CLOUDFLARED_CONFIG:-/dev/null}:/etc/cloudflared/config.yml:ro
+      - ${CLOUDFLARED_CREDS:-/dev/null}:/etc/cloudflared/credentials.json:ro
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - litellm-public
+
 configs:
   nginx_conf:
     content: |
