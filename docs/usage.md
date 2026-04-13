@@ -5,94 +5,126 @@
 Standard OpenAI-compatible chat completions. Works with any OpenAI SDK, library, or tool that supports custom base URLs.
 
 ```bash
-# Use a model group — gateway picks the best available provider
+# use a model group — gateway picks the best available free provider
 curl http://localhost:4000/chat/completions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
-  -d '{
-    "model": "fast",
-    "messages": [{"role": "user", "content": "hello"}]
-  }'
+  -d '{"model": "smart", "messages": [{"role": "user", "content": "hello"}]}'
 
-# Target a specific provider
+# target a specific provider
 curl http://localhost:4000/chat/completions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
-  -d '{
-    "model": "mistral-large",
-    "messages": [{"role": "user", "content": "explain mixture of experts"}]
-  }'
+  -d '{"model": "mistral-large", "messages": [{"role": "user", "content": "explain mixture of experts"}]}'
 
-# Streaming
+# streaming (SSE)
 curl http://localhost:4000/chat/completions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
-  -d '{
-    "model": "cerebras-qwen3-235b",
-    "messages": [{"role": "user", "content": "write a haiku about distributed systems"}],
-    "stream": true
-  }'
+  -d '{"model": "cerebras-qwen3-235b", "messages": [{"role": "user", "content": "write a haiku"}], "stream": true}'
 ```
+
+### Python (openai SDK)
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:4000",
+    api_key=LITELLM_MASTER_KEY,
+)
+
+# chat
+resp = client.chat.completions.create(
+    model="smart",
+    messages=[{"role": "user", "content": "hello"}],
+)
+print(resp.choices[0].message.content)
+
+# streaming
+stream = client.chat.completions.create(
+    model="cerebras-qwen3-235b",
+    messages=[{"role": "user", "content": "count to 10"}],
+    stream=True,
+)
+for chunk in stream:
+    print(chunk.choices[0].delta.content or "", end="", flush=True)
+```
+
+### Model groups
+
+| Group           | Use case                                          |
+| --------------- | ------------------------------------------------- |
+| `fast`          | Quick answers, high-volume, latency-sensitive     |
+| `smart`         | Complex reasoning, long context, best quality     |
+| `vision`        | Image understanding (pass image URLs in content)  |
+| `image-gen`     | Image generation from text prompts                |
+| `transcription` | Audio transcription (multipart/form-data)         |
+
+See [providers.md](providers.md) for the full fallback chain for each group.
+
+---
 
 ## Browser Automation
 
-The browser cluster can be used in two ways: directly via the REST API, or indirectly by letting an LLM invoke browser tools through MCP (see [mcp-tools.md](mcp-tools.md)).
+The browser cluster can be used directly via the REST API, or indirectly by letting an LLM invoke browser tools through MCP.
 
 ### Direct REST API
 
 ```bash
-# Navigate to a page
+# navigate to a page
 curl -X POST http://localhost:4000/stealthy-auto-browse/ \
   -H "Content-Type: application/json" \
   -d '{"action": "goto", "url": "https://example.com"}'
 
-# Get all visible text from the page
+# get all visible text
 curl -X POST http://localhost:4000/stealthy-auto-browse/ \
   -H "Content-Type: application/json" \
   -d '{"action": "get_text"}'
 
-# Find all interactive elements with their coordinates
+# find all interactive elements with their coordinates
 curl -X POST http://localhost:4000/stealthy-auto-browse/ \
   -H "Content-Type: application/json" \
   -d '{"action": "get_interactive_elements", "visible_only": true}'
 
-# Click at specific coordinates (OS-level, undetectable)
+# click at coordinates (OS-level, undetectable)
 curl -X POST http://localhost:4000/stealthy-auto-browse/ \
   -H "Content-Type: application/json" \
   -d '{"action": "system_click", "x": 640, "y": 400}'
 
-# Type text (OS-level keyboard input)
+# type text (OS-level keyboard input)
 curl -X POST http://localhost:4000/stealthy-auto-browse/ \
   -H "Content-Type: application/json" \
   -d '{"action": "system_type", "text": "hello world"}'
 
-# Take a screenshot (returns raw PNG)
-curl http://localhost:4000/stealthy-auto-browse/screenshot/browser -o screenshot.png
+# screenshot — returns raw PNG (1920x1080 by default, always resize)
+curl "http://localhost:4000/stealthy-auto-browse/screenshot/browser?whLargest=512" -o screenshot.png
+curl "http://localhost:4000/stealthy-auto-browse/screenshot/browser?width=800" -o screenshot.png
 
-# Run a multi-step automation script atomically
+# run a multi-step script atomically (all steps on the same replica, single request)
 curl -X POST http://localhost:4000/stealthy-auto-browse/ \
   -H "Content-Type: application/json" \
   -d '{
     "action": "run_script",
-    "script": [
+    "steps": [
       {"action": "goto", "url": "https://duckduckgo.com"},
       {"action": "system_click", "x": 950, "y": 513},
       {"action": "system_type", "text": "what is groq?"},
       {"action": "send_key", "key": "enter"},
-      {"action": "wait_for_element", "selector": "[data-testid='\''result'\'']", "timeout": 10000},
+      {"action": "wait_for_element", "selector": "[data-testid='\''result'\'']", "timeout": 10},
       {"action": "get_text"}
     ]
   }'
 ```
 
-Browser sessions are sticky via the `INSTANCEID` cookie. Use a persistent HTTP client (e.g. `requests.Session()` in Python) to keep your session on the same browser replica across multiple requests.
+Browser sessions are sticky via the `INSTANCEID` cookie. Use a persistent HTTP client to keep your session on the same replica across requests.
 
-### Python Example — Search, Screenshot, and Summarize
+### Python — search, screenshot, upload, summarize
 
 ```python
-import requests, base64
+import requests
 
-session = requests.Session()  # sticky sessions via cookie
+session = requests.Session()  # sticky via INSTANCEID cookie
 BASE = "http://localhost:4000"
 
 def browser(action, **kwargs):
@@ -100,155 +132,280 @@ def browser(action, **kwargs):
     r.raise_for_status()
     return r.json()["data"]
 
-# Navigate and search
+# navigate and search
 browser("goto", url="https://duckduckgo.com")
 browser("system_click", x=950, y=513)
 browser("system_type", text="what is groq?")
 browser("send_key", key="enter")
 browser("wait_for_element", selector="[data-testid='result']", timeout=10000)
-
-# Get page text
 text = browser("get_text")["text"]
 
-# Screenshot and upload to storage
+# screenshot and upload
 screenshot = session.get(f"{BASE}/stealthy-auto-browse/screenshot/browser").content
 requests.put(
     f"{BASE}/storage/uploads/search.png",
-    headers={"Authorization": f"Bearer {UPLOADS_KEY}", "Content-Type": "image/png"},
+    headers={"Authorization": f"Bearer {HYBRIDS3_UPLOADS_KEY}", "Content-Type": "image/png"},
     data=screenshot,
 )
 
-# Ask an LLM to summarize
+# ask an LLM to summarize
 r = requests.post(f"{BASE}/chat/completions",
-    headers={"Authorization": f"Bearer {MASTER_KEY}", "Content-Type": "application/json"},
+    headers={"Authorization": f"Bearer {LITELLM_MASTER_KEY}", "Content-Type": "application/json"},
     json={"model": "smart", "messages": [
         {"role": "user", "content": f"Summarize these search results:\n\n{text[:8000]}"}
     ]})
 print(r.json()["choices"][0]["message"]["content"])
-print(f"Screenshot: {BASE}/storage/uploads/search.png")
 ```
+
+---
 
 ## Object Storage
 
-[hybrids3](https://github.com/psyb0t/docker-hybrids3) provides S3-compatible object storage with a simple HTTP interface. The `uploads` bucket is configured as public-read — anyone can download files by direct URL, but uploading and deleting requires authentication.
+[hybrids3](https://github.com/psyb0t/docker-hybrids3) — S3-compatible, public-read uploads bucket, bearer token auth, TTL-based expiry.
+
+### Basic CRUD
 
 ```bash
-# Upload a file
+# upload (MIME type auto-detected from content)
 curl -X PUT http://localhost:4000/storage/uploads/image.png \
   -H "Authorization: Bearer $HYBRIDS3_UPLOADS_KEY" \
   -H "Content-Type: image/png" \
   --data-binary @image.png
 
-# Download (public, no auth required)
+# download — public, no auth required
 curl http://localhost:4000/storage/uploads/image.png -o image.png
 
-# List files in the uploads bucket
-curl http://localhost:4000/storage/uploads \
+# list files (supports ?prefix= and ?max-keys=)
+curl "http://localhost:4000/storage/uploads?prefix=images/" \
   -H "Authorization: Bearer $HYBRIDS3_UPLOADS_KEY"
 
-# Delete a file
+# delete
 curl -X DELETE http://localhost:4000/storage/uploads/image.png \
   -H "Authorization: Bearer $HYBRIDS3_UPLOADS_KEY"
 ```
 
-S3-compatible access via boto3:
+### Presigned URLs
+
+Generate a time-limited URL that anyone can download without auth credentials:
+
+```bash
+# generate (default 1 hour, max 7 days)
+curl -X POST "http://localhost:4000/storage/presign/uploads/report.pdf?expires=86400" \
+  -H "Authorization: Bearer $HYBRIDS3_UPLOADS_KEY"
+
+# response for public bucket — plain URL (no expiry needed since bucket is public-read anyway)
+{"url": "http://localhost:4000/storage/uploads/report.pdf", "expires": null}
+
+# download via presigned URL — no auth header
+curl "http://localhost:4000/storage/uploads/report.pdf"
+```
+
+### Nested paths
+
+Object keys support `/` for directory-like organization:
+
+```bash
+curl -X PUT "http://localhost:4000/storage/uploads/projects/myapp/build.tar.gz" \
+  -H "Authorization: Bearer $HYBRIDS3_UPLOADS_KEY" \
+  --data-binary @build.tar.gz
+
+# list only that project's files
+curl "http://localhost:4000/storage/uploads?prefix=projects/myapp/" \
+  -H "Authorization: Bearer $HYBRIDS3_UPLOADS_KEY"
+```
+
+### boto3
 
 ```python
 import boto3
+from botocore.config import Config
 
 s3 = boto3.client(
     "s3",
     endpoint_url="http://localhost:4000/storage",
-    aws_access_key_id="uploads",
+    aws_access_key_id="uploads",              # bucket name (acts as public_key)
     aws_secret_access_key=HYBRIDS3_UPLOADS_KEY,
+    region_name="us-east-1",
+    config=Config(signature_version="s3v4"),
 )
-s3.upload_file("image.png", "uploads", "image.png")
-# Public URL (no signing needed): http://localhost:4000/storage/uploads/image.png
+
+s3.upload_file("image.png", "uploads", "images/photo.png")
+obj = s3.get_object(Bucket="uploads", Key="images/photo.png")
+data = obj["Body"].read()
+
+s3.list_objects_v2(Bucket="uploads", Prefix="images/")
+s3.delete_object(Bucket="uploads", Key="images/photo.png")
+
+# generate presigned URL
+url = s3.generate_presigned_url(
+    "get_object",
+    Params={"Bucket": "uploads", "Key": "images/photo.png"},
+    ExpiresIn=3600,
+)
 ```
 
 Configure TTL and size limits in `.env`:
 
 ```env
-HYBRIDS3_UPLOADS_TTL=168h        # auto-delete after (default 7 days)
+HYBRIDS3_UPLOADS_TTL=168h        # auto-delete after N time (default 7 days)
 HYBRIDS3_UPLOADS_MAX_SIZE=100MB  # per-file size limit
 ```
 
+---
+
 ## Claudebox — Agentic Tasks
 
-[Claudebox](https://github.com/psyb0t/docker-claudebox) wraps Claude Code in a Docker container and exposes it as an API. Each request runs through Claude Code's full agentic loop — it can read/write files, run shell commands, install packages, browse the web, and use tools, all within an isolated workspace.
+[Claudebox](https://github.com/psyb0t/docker-claudebox) wraps Claude Code in a Docker container and exposes it as an API. Each request runs Claude Code's full agentic loop — it can read/write files, run shell commands, install packages, browse the web, and use tools, all within an isolated workspace.
 
-Two instances are running: one authenticated via your OAuth token or Anthropic API key, and one connected to z.ai for GLM models. Both provide identical APIs and workspace capabilities.
+Two instances: one using your OAuth token or Anthropic API key (`claudebox-*` models), one connected to z.ai for GLM models (`claudebox-glm-*` models). Both have identical APIs and workspace capabilities.
 
-**Always-active skills** — drop a `SKILL.md` file into a named subdirectory under `.data/claudebox/config/.always-skills/` (or `.data/claudebox-zai/config/.always-skills/` for the z.ai instance) and it will be injected into the system prompt of every Claude invocation automatically — no restarts needed, applies to API, MCP, chat, everything.
+### Via LiteLLM chat completions
+
+The simplest way — just use claudebox models in the standard chat API:
+
+```bash
+curl http://localhost:4000/chat/completions \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claudebox-sonnet",
+    "messages": [{"role": "user", "content": "list all Python files in this workspace"}],
+    "extra_headers": {"X-Claude-Workspace": "myproject"}
+  }'
+```
+
+### Via direct API
+
+More control: structured output formats, session resumption, fire-and-forget, tool call history.
+
+```bash
+# basic run
+curl -X POST http://localhost:4000/claudebox/run \
+  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "write a Go HTTP server", "workspace": "go-project"}'
+
+# with structured JSON output
+curl -X POST http://localhost:4000/claudebox/run \
+  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "extract the name and version from package.json",
+    "workspace": "myproject",
+    "jsonSchema": "{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"version\":{\"type\":\"string\"}},\"required\":[\"name\",\"version\"]}"
+  }'
+
+# with full tool call history
+curl -X POST http://localhost:4000/claudebox/run \
+  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "build the project and run tests", "workspace": "myapp", "outputFormat": "json-verbose"}'
+
+# check which workspaces are busy
+curl http://localhost:4000/claudebox/status \
+  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN"
+
+# cancel a running task
+curl -X POST "http://localhost:4000/claudebox/run/cancel?workspace=myapp" \
+  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN"
+```
+
+### File operations
+
+```bash
+# upload a file to a workspace
+curl -X PUT http://localhost:4000/claudebox/files/myproject/data.csv \
+  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN" \
+  --data-binary @data.csv
+
+# list files in a workspace
+curl http://localhost:4000/claudebox/files/myproject \
+  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN"
+
+# download a file from a workspace
+curl http://localhost:4000/claudebox/files/myproject/results.json \
+  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN" \
+  -o results.json
+
+# delete a file
+curl -X DELETE http://localhost:4000/claudebox/files/myproject/old.log \
+  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN"
+```
+
+### File + task workflow
+
+```bash
+# 1. upload input data
+curl -X PUT http://localhost:4000/claudebox/files/analysis/sales.csv \
+  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN" \
+  --data-binary @sales.csv
+
+# 2. run analysis (Claude reads the file, writes a report)
+curl -X POST http://localhost:4000/claudebox/run \
+  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "analyze sales.csv, compute monthly totals and trends, write a report to report.md", "workspace": "analysis"}'
+
+# 3. download the report
+curl http://localhost:4000/claudebox/files/analysis/report.md \
+  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN"
+```
+
+### Always-active skills
+
+Drop a `SKILL.md` file into a named subdirectory under `.data/claudebox/config/.always-skills/` — it will be injected into the system prompt of every Claude invocation automatically. No restarts needed. Applies to API, MCP, chat, everything.
 
 ```
 .data/claudebox/config/.always-skills/
-└── my-rules/
+└── coding-rules/
     └── SKILL.md   ← injected into every session
 ```
 
 Example `SKILL.md`:
 
 ```markdown
-You are working inside a data pipeline project. Always use snake_case for variable names,
-write pandas code compatible with Python 3.11, and never use deprecated APIs.
+When writing Go code, always use slog for structured logging, never fmt.Println.
+When writing Python, always use pathlib for file paths, never os.path.
+Always write tests alongside implementations.
 ```
 
-Skills stack — every `SKILL.md` found is appended in alphabetical order by directory name. Per-request `appendSystemPrompt` (via API header or request body) is appended after always-skills, so it always takes precedence.
+Skills stack — every `SKILL.md` found is appended in alphabetical order by directory name. Per-request `appendSystemPrompt` or `X-Claude-Append-System-Prompt` is appended after always-skills, so per-request instructions take precedence.
 
-```bash
-# Upload a file to a workspace
-curl -X PUT http://localhost:4000/claudebox/files/myproject/data.csv \
-  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN" \
-  --data-binary @data.csv
-
-# Ask Claude to analyze it (via LiteLLM)
-curl http://localhost:4000/chat/completions \
-  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "claudebox-sonnet",
-    "messages": [{"role": "user", "content": "analyze data.csv and give me summary statistics"}],
-    "extra_headers": {"x-claude-workspace": "myproject"}
-  }'
-
-# Check workspace status (which workspaces are busy)
-curl http://localhost:4000/claudebox/status \
-  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN"
-
-# List files in a workspace
-curl http://localhost:4000/claudebox/files/myproject \
-  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN"
-
-# Download a file from a workspace
-curl http://localhost:4000/claudebox/files/myproject/results.json \
-  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN"
-
-# Cancel a running task
-curl -X POST http://localhost:4000/claudebox/run/cancel?workspace=myproject \
-  -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN"
-```
+---
 
 ## Image Generation
 
 ```bash
+# use the image-gen group (tries dall-e-3, then FLUX models)
 curl http://localhost:4000/images/generations \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model": "image-gen", "prompt": "a cat riding a skateboard, photorealistic"}'
+
+# target a specific model
+curl http://localhost:4000/images/generations \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "hf-flux-schnell", "prompt": "cyberpunk city at night"}'
 ```
+
+---
 
 ## Vision
 
-Upload an image to storage, then pass its URL to a vision-capable model:
+Upload an image to storage (public URL), then pass it to a vision model:
 
 ```bash
-# Upload the image
+# upload the image
 curl -X PUT http://localhost:4000/storage/uploads/photo.jpg \
   -H "Authorization: Bearer $HYBRIDS3_UPLOADS_KEY" \
+  -H "Content-Type: image/jpeg" \
   --data-binary @photo.jpg
 
-# Ask a vision model about it
+# public URL — no auth needed to read from uploads bucket
+# http://localhost:4000/storage/uploads/photo.jpg
+
+# ask a vision model
 curl http://localhost:4000/chat/completions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
@@ -264,6 +421,10 @@ curl http://localhost:4000/chat/completions \
   }'
 ```
 
+Vision-capable models: `openai-gpt-4o`, `anthropic-claude-sonnet-4`, `claudebox-sonnet`, `mistral-small`, `groq-llama-4-scout`, `hf-llama-4-scout`, `hf-qwen-vl-72b`. The `vision` group tries them in that order.
+
+---
+
 ## Transcription
 
 ```bash
@@ -271,4 +432,12 @@ curl http://localhost:4000/audio/transcriptions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -F "model=transcription" \
   -F "file=@audio.mp3"
+
+# target a specific transcription model
+curl http://localhost:4000/audio/transcriptions \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -F "model=groq-whisper-large-v3" \
+  -F "file=@audio.mp3"
 ```
+
+Transcription models: `groq-whisper-large-v3-turbo`, `groq-whisper-large-v3`, `voxtral-small`, `openai-whisper`. The `transcription` group tries them in that order.

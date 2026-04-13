@@ -1,35 +1,39 @@
 # Providers and Models
 
+All providers are configured in `config.yaml`. Free-tier providers are tried first in fallback chains. Add API keys in `.env` to activate providers.
+
 ## Groq (free tier)
 
-| Model                          | Alias                               |
-| ------------------------------ | ----------------------------------- |
-| llama-3.1-8b-instant           | `groq-llama-3.1-8b`                 |
-| llama-3.3-70b-versatile        | `groq-llama-3.3-70b`                |
-| llama-4-scout-17b-16e-instruct | `groq-llama-4-scout` _(multimodal)_ |
-| moonshotai/kimi-k2-instruct    | `groq-kimi-k2`                      |
-| openai/gpt-oss-20b             | `groq-gpt-oss-20b`                  |
-| openai/gpt-oss-120b            | `groq-gpt-oss-120b`                 |
-| qwen/qwen3-32b                 | `groq-qwen3-32b`                    |
-| compound-beta                  | `groq-compound`                     |
-| compound-beta-mini             | `groq-compound-mini`                |
-| whisper-large-v3               | `groq-whisper-large-v3`             |
-| whisper-large-v3-turbo         | `groq-whisper-large-v3-turbo`       |
+Sign up: [console.groq.com](https://console.groq.com) — no credit card required.
+
+| Model                          | Alias                               | Notes           |
+| ------------------------------ | ----------------------------------- | --------------- |
+| llama-3.1-8b-instant           | `groq-llama-3.1-8b`                 | fast            |
+| llama-3.3-70b-versatile        | `groq-llama-3.3-70b`                |                 |
+| llama-4-scout-17b-16e-instruct | `groq-llama-4-scout`                | multimodal      |
+| moonshotai/kimi-k2-instruct    | `groq-kimi-k2`                      |                 |
+| openai/gpt-oss-20b             | `groq-gpt-oss-20b`                  |                 |
+| openai/gpt-oss-120b            | `groq-gpt-oss-120b`                 |                 |
+| qwen/qwen3-32b                 | `groq-qwen3-32b`                    |                 |
+| compound-beta                  | `groq-compound`                     | tool use        |
+| compound-beta-mini             | `groq-compound-mini`                | tool use, fast  |
+| whisper-large-v3               | `groq-whisper-large-v3`             | transcription   |
+| whisper-large-v3-turbo         | `groq-whisper-large-v3-turbo`       | transcription, fast |
 
 ## Cerebras (free tier)
 
-1M tokens/day free, no credit card required. Among the fastest inference available (Llama 3.1 8B ~1,800 t/s, Qwen3 235B ~1,400 t/s).
+Sign up: [cloud.cerebras.ai](https://cloud.cerebras.ai) — 1M tokens/day free, no credit card required. Among the fastest inference available (Llama 3.1 8B ~1,800 t/s, Qwen3 235B ~1,400 t/s).
 
-| Model                          | Alias                                                 |
-| ------------------------------ | ----------------------------------------------------- |
-| qwen-3-235b-a22b-instruct-2507 | `cerebras-qwen3-235b`                                 |
-| gpt-oss-120b                   | `cerebras-gpt-oss-120b` _(rate-limited on free tier)_ |
-| zai-glm-4.7                    | `cerebras-glm-4.7` _(rate-limited on free tier)_      |
-| llama3.1-8b                    | `cerebras-llama-3.1-8b`                               |
+| Model                          | Alias                    | Notes                         |
+| ------------------------------ | ------------------------ | ----------------------------- |
+| qwen-3-235b-a22b-instruct-2507 | `cerebras-qwen3-235b`    | flagship, very fast           |
+| gpt-oss-120b                   | `cerebras-gpt-oss-120b`  | rate-limited on free tier     |
+| zai-glm-4.7                    | `cerebras-glm-4.7`       | rate-limited on free tier     |
+| llama3.1-8b                    | `cerebras-llama-3.1-8b`  | fastest option on this tier   |
 
 ## OpenRouter (free tier)
 
-50 req/day free (no credits), 1000 req/day with $10+ loaded.
+Sign up: [openrouter.ai](https://openrouter.ai) — 50 req/day free (no credits), 1000 req/day with $10+ loaded.
 
 | Model                                | Alias              |
 | ------------------------------------ | ------------------ |
@@ -44,40 +48,42 @@
 
 ## HuggingFace Inference Providers (free tier)
 
-| Model                                        | Alias                             |
-| -------------------------------------------- | --------------------------------- |
-| meta-llama/Llama-3.1-8B-Instruct             | `hf-llama-3.1-8b`                 |
-| meta-llama/Llama-3.3-70B-Instruct            | `hf-llama-3.3-70b`                |
-| meta-llama/Llama-4-Scout-17B-16E-Instruct    | `hf-llama-4-scout` _(multimodal)_ |
-| Qwen/Qwen3-8B                                | `hf-qwen3-8b`                     |
-| Qwen/QwQ-32B                                 | `hf-qwq-32b`                      |
-| deepseek-ai/DeepSeek-R1                      | `hf-deepseek-r1`                  |
-| Qwen/Qwen2.5-VL-72B-Instruct                 | `hf-qwen-vl-72b` _(multimodal)_   |
-| Qwen/Qwen2.5-VL-7B-Instruct                  | `hf-qwen3-vl-8b` _(multimodal)_   |
-| google/gemma-3-12b-it                        | `hf-gemma-3-12b` _(multimodal)_   |
-| black-forest-labs/FLUX.1-schnell             | `hf-flux-schnell` _(image gen)_   |
-| black-forest-labs/FLUX.1-dev                 | `hf-flux-dev` _(image gen)_       |
-| stabilityai/stable-diffusion-3.5-large-turbo | `hf-sd-3.5-turbo` _(image gen)_   |
+Sign up: [huggingface.co](https://huggingface.co/settings/tokens) — free tier with rate limits per provider.
+
+| Model                                        | Alias                  | Notes          |
+| -------------------------------------------- | ---------------------- | -------------- |
+| meta-llama/Llama-3.1-8B-Instruct             | `hf-llama-3.1-8b`      |                |
+| meta-llama/Llama-3.3-70B-Instruct            | `hf-llama-3.3-70b`     |                |
+| meta-llama/Llama-4-Scout-17B-16E-Instruct    | `hf-llama-4-scout`     | multimodal     |
+| Qwen/Qwen3-8B                                | `hf-qwen3-8b`          |                |
+| Qwen/QwQ-32B                                 | `hf-qwq-32b`           | reasoning      |
+| deepseek-ai/DeepSeek-R1                      | `hf-deepseek-r1`       | reasoning      |
+| Qwen/Qwen2.5-VL-72B-Instruct                 | `hf-qwen-vl-72b`       | multimodal     |
+| Qwen/Qwen2.5-VL-7B-Instruct                  | `hf-qwen3-vl-8b`       | multimodal     |
+| google/gemma-3-12b-it                        | `hf-gemma-3-12b`       | multimodal     |
+| black-forest-labs/FLUX.1-schnell             | `hf-flux-schnell`      | image gen, fast |
+| black-forest-labs/FLUX.1-dev                 | `hf-flux-dev`          | image gen      |
+| stabilityai/stable-diffusion-3.5-large-turbo | `hf-sd-3.5-turbo`      | image gen      |
 
 ## Mistral AI (free tier: 1B tokens/month, 60 RPM)
 
-Chat, code, reasoning, embedding, and audio models. The core chat models (Large, Small, Ministral 8B, Codestral) are on the free tier with no credit card required. Magistral (reasoning) and Devstral (coding agent) are paid.
+Sign up: [console.mistral.ai](https://console.mistral.ai) — no credit card required for free models.
 
-| Model                 | Alias              | Notes                 |
-| --------------------- | ------------------ | --------------------- |
-| mistral-large-2512    | `mistral-large`    | free                  |
-| mistral-small-2603    | `mistral-small`    | free, multimodal      |
-| ministral-3-8b-2512   | `ministral-8b`     | free, fast            |
-| magistral-medium-2509 | `magistral-medium` | paid, reasoning       |
-| magistral-small-2509  | `magistral-small`  | paid, reasoning       |
-| devstral-2512         | `devstral`         | paid, coding agent    |
-| codestral-2508        | `codestral`        | paid, code completion |
-| mistral-embed         | `mistral-embed`    | free, embeddings      |
-| voxtral-small-25-07   | `voxtral-small`    | audio                 |
+| Model                 | Alias              | Tier | Notes              |
+| --------------------- | ------------------ | ---- | ------------------ |
+| mistral-large-2512    | `mistral-large`    | free |                    |
+| mistral-small-2603    | `mistral-small`    | free | multimodal         |
+| ministral-3-8b-2512   | `ministral-8b`     | free | fast               |
+| magistral-medium-2509 | `magistral-medium` | paid | reasoning          |
+| magistral-small-2509  | `magistral-small`  | paid | reasoning          |
+| devstral-2512         | `devstral`         | paid | coding agent       |
+| codestral-2508        | `codestral`        | paid | code completion    |
+| mistral-embed         | `mistral-embed`    | free | embeddings         |
+| voxtral-small-25-07   | `voxtral-small`    | -    | audio transcription |
 
 ## Cohere (trial: 1K req/day, 20 RPM — all models included)
 
-All chat models are accessible on the trial key with no credit card required. Command A is their flagship with 256K context and native tool use. Aya Expanse is their strongest multilingual model (23 languages).
+Sign up: [dashboard.cohere.com](https://dashboard.cohere.com) — no credit card required. Trial key gives access to all models.
 
 | Model                  | Alias                   | Notes                        |
 | ---------------------- | ----------------------- | ---------------------------- |
@@ -91,49 +97,57 @@ All chat models are accessible on the trial key with no credit card required. Co
 
 ## Claudebox (requires Claude subscription or API key)
 
-Full Claude Code CLI in API mode. Authenticate with either an OAuth token (Claude Pro/Max/Team subscription) or an Anthropic API key (pay-per-use). These are not standard API calls — each request runs through Claude Code's full agentic loop with tool use, file I/O, shell access, and web browsing within a persistent workspace.
+Full Claude Code CLI in API mode — not a standard LLM API. Each request runs Claude Code's full agentic loop with tool use, file I/O, shell access, and web browsing. Authentication: either an OAuth token from a Claude Pro/Max/Team subscription, or an Anthropic API key (pay-per-use).
 
-| Model  | Alias              |
-| ------ | ------------------ |
-| opus   | `claudebox-opus`   |
-| sonnet | `claudebox-sonnet` |
-| haiku  | `claudebox-haiku`  |
+Set up with `claude setup-token` or generate at [console.anthropic.com](https://console.anthropic.com/settings/keys).
+
+| Alias              | Underlying model      | Best for                                        |
+| ------------------ | --------------------- | ----------------------------------------------- |
+| `claudebox-haiku`  | Claude Haiku 4.5      | Quick tasks, high-volume, minimal token use      |
+| `claudebox-sonnet` | Claude Sonnet 4.6     | Daily coding, balanced speed/intelligence        |
+| `claudebox-opus`   | Claude Opus 4.6       | Complex reasoning, architecture, hard debugging  |
 
 ## Claudebox GLM — via z.ai (requires z.ai account)
 
-[z.ai](https://z.ai) provides an Anthropic-compatible API backed by GLM models. Routed through a second claudebox instance pointed at z.ai — same agentic capabilities and workspace features as the OAuth instance above.
+[z.ai](https://z.ai) provides an Anthropic-compatible API backed by GLM models. Routed through a second claudebox instance pointed at z.ai — same agentic capabilities (shell, files, tools) as the OAuth instance above.
 
-| Model       | Alias                   |
-| ----------- | ----------------------- |
-| glm-5.1     | `claudebox-glm-5.1`     |
-| glm-4.7     | `claudebox-glm-4.7`     |
-| glm-4.5-air | `claudebox-glm-4.5-air` |
+| Alias                   | Underlying model |
+| ----------------------- | ---------------- |
+| `claudebox-glm-4.5-air` | GLM-4.5-Air      |
+| `claudebox-glm-4.7`     | GLM-4.7          |
+| `claudebox-glm-5.1`     | GLM-5.1          |
 
 ## Anthropic (optional, API key required)
 
-| Model             | Alias                                      |
-| ----------------- | ------------------------------------------ |
-| claude-opus-4-6   | `anthropic-claude-opus-4` _(multimodal)_   |
-| claude-sonnet-4-6 | `anthropic-claude-sonnet-4` _(multimodal)_ |
-| claude-haiku-4-5  | `anthropic-claude-haiku-4` _(multimodal)_  |
+Standard Anthropic API — not agentic, just LLM inference. Sign up: [console.anthropic.com](https://console.anthropic.com).
+
+| Alias                        | Model             | Notes      |
+| ---------------------------- | ----------------- | ---------- |
+| `anthropic-claude-opus-4`    | claude-opus-4-6   | multimodal |
+| `anthropic-claude-sonnet-4`  | claude-sonnet-4-6 | multimodal |
+| `anthropic-claude-haiku-4`   | claude-haiku-4-5  | multimodal |
 
 ## OpenAI (optional, API key required)
 
-| Model       | Alias                               |
-| ----------- | ----------------------------------- |
-| gpt-4o      | `openai-gpt-4o` _(multimodal)_      |
-| gpt-4o-mini | `openai-gpt-4o-mini` _(multimodal)_ |
-| o3          | `openai-o3`                         |
-| o3-mini     | `openai-o3-mini`                    |
-| dall-e-3    | `openai-dall-e-3` _(image gen)_     |
-| gpt-image-1 | `openai-gpt-image-1` _(image gen)_  |
-| whisper-1   | `openai-whisper`                    |
-| tts-1       | `openai-tts-1`                      |
-| tts-1-hd    | `openai-tts-1-hd`                   |
+Sign up: [platform.openai.com](https://platform.openai.com).
+
+| Alias                  | Model       | Notes          |
+| ---------------------- | ----------- | -------------- |
+| `openai-gpt-4o`        | gpt-4o      | multimodal     |
+| `openai-gpt-4o-mini`   | gpt-4o-mini | multimodal     |
+| `openai-o3`            | o3          | reasoning      |
+| `openai-o3-mini`       | o3-mini     | reasoning      |
+| `openai-dall-e-3`      | dall-e-3    | image gen      |
+| `openai-gpt-image-1`   | gpt-image-1 | image gen      |
+| `openai-whisper`       | whisper-1   | transcription  |
+| `openai-tts-1`         | tts-1       | text-to-speech |
+| `openai-tts-1-hd`      | tts-1-hd    | text-to-speech |
+
+---
 
 ## Model Groups and Fallbacks
 
-Model groups let you use a single alias and let the gateway figure out which provider to hit. LiteLLM tries each model in priority order and automatically falls back to the next one when a provider fails, is rate-limited, or returns an error. Free providers are always tried first.
+Model groups let you use a single alias and let the gateway pick the provider. LiteLLM tries each model in priority order and automatically falls back when a provider fails, is rate-limited, or returns an error. Free providers are always tried first.
 
 | Group           | Fallback chain (priority order)                                                                                                                                                                                                                                                                                                       |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -143,4 +157,4 @@ Model groups let you use a single alias and let the gateway figure out which pro
 | `image-gen`     | openai-dall-e-3 → hf-flux-schnell → hf-flux-dev                                                                                                                                                                                                                                                                                       |
 | `transcription` | groq-whisper-large-v3-turbo → groq-whisper-large-v3 → voxtral-small → openai-whisper                                                                                                                                                                                                                                                  |
 
-Every individual model also has its own fallback chain configured. For example, if `groq-llama-3.3-70b` fails, it automatically tries `cerebras-qwen3-235b`, then `or-llama-3.3-70b`, then `hf-llama-3.3-70b`, then `claudebox-sonnet`, and so on. See `config.yaml` for the full fallback configuration.
+Every individual model also has its own fallback chain. For example, `groq-llama-3.3-70b` falls back to `cerebras-qwen3-235b` → `or-llama-3.3-70b` → `hf-llama-3.3-70b` → `claudebox-sonnet`. See `config.yaml` for the full configuration.
