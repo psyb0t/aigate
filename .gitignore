@@ -5,5 +5,23 @@
 CLAUDE.md
 git-update.sh
 
-# data dirs — fully ignored, docker creates them on first run
-.data/
+# data dirs — ignore everything, except the .gitkeep placeholders we know about
+.data/**
+!.data/postgres/
+!.data/postgres/.gitkeep
+!.data/redis/
+!.data/redis/.gitkeep
+!.data/stealthy-auto-browse-redis/
+!.data/stealthy-auto-browse-redis/.gitkeep
+!.data/hybrids3/
+!.data/hybrids3/.gitkeep
+!.data/claudebox/
+!.data/claudebox/config/
+!.data/claudebox/config/.gitkeep
+!.data/claudebox/workspaces/
+!.data/claudebox/workspaces/.gitkeep
+!.data/claudebox-zai/
+!.data/claudebox-zai/config/
+!.data/claudebox-zai/config/.gitkeep
+!.data/claudebox-zai/workspaces/
+!.data/claudebox-zai/workspaces/.gitkeep
