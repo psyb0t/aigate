@@ -2,7 +2,7 @@
 
 A self-hosted AI gateway that unifies every major LLM provider behind a single OpenAI-compatible API. Automatic fallback chains burn through free tiers before touching anything paid. Beyond routing, the gateway integrates a full tool ecosystem through the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) — stealth browser automation, object storage, and agentic Claude Code instances — all exposed as tools that any model on the gateway can call autonomously.
 
-One `docker compose up` and you have a production-ready AI stack with 53 models across 9 providers, 34 MCP tools, and automatic failover.
+One `docker compose up` and you have a production-ready AI stack with 69 models across 10 providers, 34 MCP tools, and automatic failover.
 
 Built on [LiteLLM](https://github.com/BerriAI/litellm).
 
@@ -45,6 +45,8 @@ client
                                         ├─ Cerebras      (free)
                                         ├─ OpenRouter     (free)
                                         ├─ HuggingFace    (free)
+                                        ├─ Mistral        (free: 1B tokens/month)
+                                        ├─ Cohere         (free: 1K req/day)
                                         ├─ claudebox      (paid, sub or API key)
                                         ├─ claudebox-zai  (paid, z.ai)
                                         ├─ Anthropic      (optional, paid)
@@ -192,6 +194,36 @@ Same 5 tools as above, but backed by GLM models through [z.ai](https://z.ai)'s A
 | black-forest-labs/FLUX.1-dev | `hf-flux-dev` _(image gen)_ |
 | stabilityai/stable-diffusion-3.5-large-turbo | `hf-sd-3.5-turbo` _(image gen)_ |
 
+### Mistral AI (free tier: 1B tokens/month, 60 RPM)
+
+Chat, code, reasoning, embedding, and audio models. The core chat models (Large, Small, Ministral 8B, Codestral) are on the free tier with no credit card required. Magistral (reasoning) and Devstral (coding agent) are paid.
+
+| Model | Alias | Notes |
+|-------|-------|-------|
+| mistral-large-2512 | `mistral-large` | free |
+| mistral-small-2603 | `mistral-small` | free, multimodal |
+| ministral-3-8b-2512 | `ministral-8b` | free, fast |
+| magistral-medium-2509 | `magistral-medium` | paid, reasoning |
+| magistral-small-2509 | `magistral-small` | paid, reasoning |
+| devstral-2512 | `devstral` | paid, coding agent |
+| codestral-2508 | `codestral` | paid, code completion |
+| mistral-embed | `mistral-embed` | free, embeddings |
+| voxtral-small-25-07 | `voxtral-small` | audio |
+
+### Cohere (trial: 1K req/day, 20 RPM — all models included)
+
+All chat models are accessible on the trial key with no credit card required. Command A is their flagship with 256K context and native tool use. Aya Expanse is their strongest multilingual model (23 languages).
+
+| Model | Alias | Notes |
+|-------|-------|-------|
+| command-a-03-2025 | `cohere-command-a` | flagship, 256K ctx, tool use |
+| command-r-plus-08-2024 | `cohere-command-r-plus` | strong, 128K ctx |
+| command-r-08-2024 | `cohere-command-r` | balanced |
+| command-r7b-12-2024 | `cohere-command-r7b` | fast, small |
+| c4ai-aya-expanse-32b | `cohere-aya-32b` | multilingual (23 languages) |
+| embed-v4.0 | `cohere-embed` | embeddings |
+| rerank-v3.5 | `cohere-rerank` | reranking |
+
 ### Claudebox (requires Claude subscription or API key)
 
 Full Claude Code CLI in API mode. Authenticate with either an OAuth token (Claude Pro/Max/Team subscription) or an Anthropic API key (pay-per-use). These are not standard API calls — each request runs through Claude Code's full agentic loop with tool use, file I/O, shell access, and web browsing within a persistent workspace.
@@ -240,9 +272,9 @@ Model groups let you use a single alias and let the gateway figure out which pro
 
 | Group | Fallback chain (priority order) |
 |-------|--------------------------------|
-| `fast` | groq-llama-3.1-8b → cerebras-llama-3.1-8b → claudebox-haiku → claudebox-glm-4.5-air → or-gpt-oss-20b → hf-llama-3.1-8b → openai-gpt-4o-mini |
-| `smart` | cerebras-qwen3-235b → claudebox-sonnet → or-hermes-3-405b → or-qwen3-80b → cerebras-gpt-oss-120b → or-nemotron-120b → or-minimax-m2.5 → claudebox-glm-4.7 → cerebras-glm-4.7 → openai-gpt-4o → anthropic-claude-sonnet-4 → claudebox-opus → claudebox-glm-5.1 → groq-llama-3.3-70b |
-| `vision` | openai-gpt-4o → anthropic-claude-sonnet-4 → claudebox-sonnet → claudebox-glm-4.7 → groq-llama-4-scout → hf-llama-4-scout → hf-qwen-vl-72b |
+| `fast` | groq-llama-3.1-8b → cerebras-llama-3.1-8b → ministral-8b → cohere-command-r7b → claudebox-haiku → claudebox-glm-4.5-air → or-gpt-oss-20b → hf-llama-3.1-8b → openai-gpt-4o-mini |
+| `smart` | cerebras-qwen3-235b → claudebox-sonnet → mistral-large → mistral-small → cohere-command-a → or-hermes-3-405b → or-qwen3-80b → cerebras-gpt-oss-120b → or-nemotron-120b → or-minimax-m2.5 → claudebox-glm-4.7 → cerebras-glm-4.7 → openai-gpt-4o → anthropic-claude-sonnet-4 → claudebox-opus → claudebox-glm-5.1 → groq-llama-3.3-70b |
+| `vision` | openai-gpt-4o → anthropic-claude-sonnet-4 → claudebox-sonnet → claudebox-glm-4.7 → mistral-small → cohere-command-a → groq-llama-4-scout → hf-llama-4-scout → hf-qwen-vl-72b |
 | `image-gen` | openai-dall-e-3 → hf-flux-schnell → hf-flux-dev |
 | `transcription` | groq-whisper-large-v3-turbo → groq-whisper-large-v3 → openai-whisper |
 
@@ -284,10 +316,12 @@ CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...
 ZAI_AUTH_TOKEN=...
 
 # Required — free tier provider API keys
-GROQ_API_KEY=gsk_...          # https://console.groq.com
-HF_TOKEN=hf_...               # https://huggingface.co/settings/tokens
-CEREBRAS_API_KEY=csk-...      # https://cloud.cerebras.ai
+GROQ_API_KEY=gsk_...            # https://console.groq.com
+HF_TOKEN=hf_...                 # https://huggingface.co/settings/tokens
+CEREBRAS_API_KEY=csk-...        # https://cloud.cerebras.ai
 OPENROUTER_API_KEY=sk-or-v1-... # https://openrouter.ai
+MISTRAL_API_KEY=...             # https://console.mistral.ai (1B tokens/month free)
+COHERE_API_KEY=...              # https://dashboard.cohere.com (1K req/day free)
 
 # Optional — object storage auth keys
 HYBRIDS3_MASTER_KEY=    # generate with: openssl rand -hex 32
@@ -336,8 +370,8 @@ curl http://localhost:4000/chat/completions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "groq-llama-3.3-70b",
-    "messages": [{"role": "user", "content": "explain what an LPU is"}]
+    "model": "mistral-large",
+    "messages": [{"role": "user", "content": "explain mixture of experts"}]
   }'
 
 # Streaming
@@ -453,7 +487,7 @@ requests.put(
 # Ask an LLM to summarize
 r = requests.post(f"{BASE}/chat/completions",
     headers={"Authorization": f"Bearer {MASTER_KEY}", "Content-Type": "application/json"},
-    json={"model": "groq-llama-3.3-70b", "messages": [
+    json={"model": "smart", "messages": [
         {"role": "user", "content": f"Summarize these search results:\n\n{text[:8000]}"}
     ]})
 print(r.json()["choices"][0]["message"]["content"])

@@ -293,6 +293,96 @@ model_list:
       model: huggingface/stabilityai/stable-diffusion-3.5-large-turbo
       api_key: os.environ/HF_TOKEN
 
+  # ── Mistral AI (free tier: 1B tokens/month, 60 RPM) ──────────────────────────
+
+  - model_name: mistral-large
+    litellm_params:
+      model: mistral/mistral-large-2512
+      api_key: os.environ/MISTRAL_API_KEY
+
+  - model_name: mistral-small
+    litellm_params:
+      model: mistral/mistral-small-2603
+      api_key: os.environ/MISTRAL_API_KEY
+
+  - model_name: ministral-8b
+    litellm_params:
+      model: mistral/ministral-3-8b-2512
+      api_key: os.environ/MISTRAL_API_KEY
+
+  # Reasoning (paid)
+  - model_name: magistral-medium
+    litellm_params:
+      model: mistral/magistral-medium-2509
+      api_key: os.environ/MISTRAL_API_KEY
+
+  - model_name: magistral-small
+    litellm_params:
+      model: mistral/magistral-small-2509
+      api_key: os.environ/MISTRAL_API_KEY
+
+  # Code (paid)
+  - model_name: devstral
+    litellm_params:
+      model: mistral/devstral-2512
+      api_key: os.environ/MISTRAL_API_KEY
+
+  - model_name: codestral
+    litellm_params:
+      model: mistral/codestral-2508
+      api_key: os.environ/MISTRAL_API_KEY
+
+  # Embeddings (free)
+  - model_name: mistral-embed
+    litellm_params:
+      model: mistral/mistral-embed
+      api_key: os.environ/MISTRAL_API_KEY
+
+  # Audio
+  - model_name: voxtral-small
+    litellm_params:
+      model: mistral/voxtral-small-25-07
+      api_key: os.environ/MISTRAL_API_KEY
+
+  # ── Cohere (trial: 1K RPD, 20 RPM — all chat models free) ────────────────────
+
+  - model_name: cohere-command-a
+    litellm_params:
+      model: cohere_chat/command-a-03-2025
+      api_key: os.environ/COHERE_API_KEY
+
+  - model_name: cohere-command-r-plus
+    litellm_params:
+      model: cohere_chat/command-r-plus-08-2024
+      api_key: os.environ/COHERE_API_KEY
+
+  - model_name: cohere-command-r
+    litellm_params:
+      model: cohere_chat/command-r-08-2024
+      api_key: os.environ/COHERE_API_KEY
+
+  - model_name: cohere-command-r7b
+    litellm_params:
+      model: cohere_chat/command-r7b-12-2024
+      api_key: os.environ/COHERE_API_KEY
+
+  - model_name: cohere-aya-32b
+    litellm_params:
+      model: cohere_chat/c4ai-aya-expanse-32b
+      api_key: os.environ/COHERE_API_KEY
+
+  # Embeddings
+  - model_name: cohere-embed
+    litellm_params:
+      model: cohere/embed-v4.0
+      api_key: os.environ/COHERE_API_KEY
+
+  # Rerank
+  - model_name: cohere-rerank
+    litellm_params:
+      model: cohere/rerank-v3.5
+      api_key: os.environ/COHERE_API_KEY
+
 
 # ── Model Groups ──────────────────────────────────────────────────────────────
 
@@ -302,6 +392,8 @@ model_group_alias:
   fast:
     - groq-llama-3.1-8b
     - cerebras-llama-3.1-8b
+    - ministral-8b
+    - cohere-command-r7b
     - claudebox-haiku
     - claudebox-glm-4.5-air
     - or-gpt-oss-20b
@@ -312,6 +404,9 @@ model_group_alias:
   smart:
     - cerebras-qwen3-235b
     - claudebox-sonnet
+    - mistral-large
+    - mistral-small
+    - cohere-command-a
     - or-hermes-3-405b
     - or-qwen3-80b
     - cerebras-gpt-oss-120b
@@ -331,6 +426,8 @@ model_group_alias:
     - anthropic-claude-sonnet-4
     - claudebox-sonnet
     - claudebox-glm-4.7
+    - mistral-small
+    - cohere-command-a
     - groq-llama-4-scout
     - hf-llama-4-scout
     - hf-qwen-vl-72b
@@ -345,6 +442,7 @@ model_group_alias:
   transcription:
     - groq-whisper-large-v3-turbo
     - groq-whisper-large-v3
+    - voxtral-small
     - openai-whisper
 
 
@@ -416,10 +514,12 @@ router_settings:
   # Fallback chain: same-tier free alternatives first → other free providers → paid last
   fallbacks:
 
-    # ── Anthropic (paid) → free claudebox → other free → other paid ────────────
+    # ── Anthropic (paid) → free alternatives → other paid ──────────────────────
     - anthropic-claude-opus-4:
         - claudebox-opus
         - claudebox-glm-5.1
+        - mistral-large
+        - cohere-command-a
         - or-hermes-3-405b
         - or-qwen3-80b
         - cerebras-qwen3-235b
@@ -428,6 +528,8 @@ router_settings:
     - anthropic-claude-sonnet-4:
         - claudebox-sonnet
         - claudebox-glm-4.7
+        - mistral-small
+        - cohere-command-a
         - or-qwen3-80b
         - or-hermes-3-405b
         - cerebras-qwen3-235b
@@ -437,15 +539,19 @@ router_settings:
     - anthropic-claude-haiku-4:
         - claudebox-haiku
         - claudebox-glm-4.5-air
+        - ministral-8b
+        - cohere-command-r7b
         - groq-llama-3.1-8b
         - cerebras-llama-3.1-8b
         - or-gpt-oss-20b
         - hf-llama-3.1-8b
         - openai-gpt-4o-mini
 
-    # ── claudebox (Max sub, free) → GLM → other free → paid ───────────────────
+    # ── claudebox (Max sub) → GLM → free → paid ────────────────────────────────
     - claudebox-opus:
         - claudebox-glm-5.1
+        - mistral-large
+        - cohere-command-a
         - or-hermes-3-405b
         - or-qwen3-80b
         - cerebras-qwen3-235b
@@ -455,6 +561,8 @@ router_settings:
         - openai-gpt-4o
     - claudebox-sonnet:
         - claudebox-glm-4.7
+        - mistral-small
+        - cohere-command-a
         - or-qwen3-80b
         - or-hermes-3-405b
         - cerebras-qwen3-235b
@@ -464,6 +572,8 @@ router_settings:
         - openai-gpt-4o
     - claudebox-haiku:
         - claudebox-glm-4.5-air
+        - ministral-8b
+        - cohere-command-r7b
         - groq-llama-3.1-8b
         - cerebras-llama-3.1-8b
         - or-gpt-oss-20b
@@ -471,9 +581,11 @@ router_settings:
         - anthropic-claude-haiku-4
         - openai-gpt-4o-mini
 
-    # ── GLM via z.ai (free) → claudebox → other free → paid ───────────────────
+    # ── GLM via z.ai → claudebox → free → paid ─────────────────────────────────
     - claudebox-glm-5.1:
         - claudebox-opus
+        - mistral-large
+        - cohere-command-a
         - or-hermes-3-405b
         - or-qwen3-80b
         - cerebras-qwen3-235b
@@ -483,6 +595,8 @@ router_settings:
         - openai-gpt-4o
     - claudebox-glm-4.7:
         - claudebox-sonnet
+        - mistral-small
+        - cohere-command-a
         - or-qwen3-80b
         - or-hermes-3-405b
         - cerebras-qwen3-235b
@@ -492,6 +606,8 @@ router_settings:
         - openai-gpt-4o
     - claudebox-glm-4.5-air:
         - claudebox-haiku
+        - ministral-8b
+        - cohere-command-r7b
         - groq-llama-3.1-8b
         - cerebras-llama-3.1-8b
         - or-gpt-oss-20b
@@ -499,8 +615,10 @@ router_settings:
         - anthropic-claude-haiku-4
         - openai-gpt-4o-mini
 
-    # ── Cerebras (free) → other free OR → groq/hf → paid ────────────────────────
+    # ── Cerebras (free) → other free → paid ────────────────────────────────────
     - cerebras-qwen3-235b:
+        - mistral-large
+        - cohere-command-a
         - or-hermes-3-405b
         - or-qwen3-80b
         - or-nemotron-120b
@@ -515,6 +633,7 @@ router_settings:
         - openai-gpt-4o
     - cerebras-gpt-oss-120b:
         - cerebras-qwen3-235b
+        - mistral-large
         - or-gpt-oss-120b
         - groq-gpt-oss-120b
         - or-hermes-3-405b
@@ -524,11 +643,15 @@ router_settings:
     - cerebras-glm-4.7:
         - claudebox-glm-4.7
         - claudebox-sonnet
+        - mistral-small
+        - cohere-command-a
         - or-qwen3-80b
         - groq-llama-3.3-70b
         - hf-llama-3.3-70b
         - openai-gpt-4o
     - cerebras-llama-3.1-8b:
+        - ministral-8b
+        - cohere-command-r7b
         - groq-llama-3.1-8b
         - or-gpt-oss-20b
         - groq-gpt-oss-20b
@@ -536,9 +659,11 @@ router_settings:
         - claudebox-haiku
         - openai-gpt-4o-mini
 
-    # ── Groq (free) → cerebras → hf → claudebox → paid ────────────────────────
+    # ── Groq (free) → cerebras/mistral/cohere → hf → paid ─────────────────────
     - groq-llama-3.1-8b:
         - cerebras-llama-3.1-8b
+        - ministral-8b
+        - cohere-command-r7b
         - or-gpt-oss-20b
         - groq-gpt-oss-20b
         - hf-llama-3.1-8b
@@ -546,6 +671,8 @@ router_settings:
         - openai-gpt-4o-mini
     - groq-llama-3.3-70b:
         - cerebras-qwen3-235b
+        - mistral-small
+        - cohere-command-r
         - or-llama-3.3-70b
         - hf-llama-3.3-70b
         - claudebox-sonnet
@@ -553,97 +680,124 @@ router_settings:
         - openai-gpt-4o
     - groq-llama-4-scout:
         - hf-llama-4-scout
+        - mistral-small
         - or-hermes-3-405b
         - claudebox-sonnet
         - openai-gpt-4o
     - groq-kimi-k2:
+        - mistral-large
+        - cohere-command-a
         - or-hermes-3-405b
         - cerebras-qwen3-235b
         - claudebox-sonnet
         - openai-gpt-4o
     - groq-qwen3-32b:
         - cerebras-qwen3-235b
+        - mistral-small
+        - cohere-command-r
         - or-qwen3-80b
         - hf-qwq-32b
         - claudebox-sonnet
         - openai-gpt-4o
     - groq-gpt-oss-20b:
         - cerebras-llama-3.1-8b
+        - ministral-8b
+        - cohere-command-r7b
         - or-gpt-oss-20b
         - groq-llama-3.1-8b
         - hf-llama-3.1-8b
         - openai-gpt-4o-mini
     - groq-gpt-oss-120b:
         - cerebras-gpt-oss-120b
+        - mistral-large
         - or-gpt-oss-120b
         - groq-llama-3.3-70b
         - hf-llama-3.3-70b
         - openai-gpt-4o
     - groq-compound:
         - groq-compound-mini
+        - mistral-large
+        - cohere-command-a
         - cerebras-qwen3-235b
         - claudebox-sonnet
         - openai-gpt-4o
     - groq-compound-mini:
         - groq-compound
+        - ministral-8b
+        - cohere-command-r7b
         - cerebras-llama-3.1-8b
         - claudebox-haiku
         - openai-gpt-4o-mini
 
-    # ── HuggingFace (free) → groq/cerebras → claudebox → paid ─────────────────
+    # ── HuggingFace (free) → groq/cerebras/mistral/cohere → paid ──────────────
     - hf-llama-3.1-8b:
         - groq-llama-3.1-8b
         - cerebras-llama-3.1-8b
+        - ministral-8b
+        - cohere-command-r7b
         - or-gpt-oss-20b
         - claudebox-haiku
         - openai-gpt-4o-mini
     - hf-llama-3.3-70b:
         - groq-llama-3.3-70b
+        - mistral-small
+        - cohere-command-r
         - or-llama-3.3-70b
         - cerebras-qwen3-235b
         - claudebox-sonnet
         - openai-gpt-4o
     - hf-llama-4-scout:
         - groq-llama-4-scout
+        - mistral-small
         - hf-qwen-vl-72b
         - claudebox-sonnet
         - openai-gpt-4o
     - hf-qwen3-8b:
         - groq-llama-3.1-8b
+        - ministral-8b
+        - cohere-command-r7b
         - cerebras-llama-3.1-8b
         - hf-llama-3.1-8b
         - openai-gpt-4o-mini
     - hf-qwq-32b:
         - hf-deepseek-r1
+        - mistral-small
         - cerebras-qwen3-235b
         - groq-qwen3-32b
         - claudebox-sonnet
         - openai-gpt-4o
     - hf-deepseek-r1:
         - hf-qwq-32b
+        - mistral-small
         - cerebras-qwen3-235b
         - or-hermes-3-405b
         - claudebox-sonnet
         - openai-gpt-4o
     - hf-qwen-vl-72b:
         - hf-llama-4-scout
+        - mistral-small
         - groq-llama-4-scout
         - claudebox-sonnet
         - openai-gpt-4o
     - hf-qwen3-vl-8b:
         - hf-llama-4-scout
+        - mistral-small
         - groq-llama-4-scout
         - hf-qwen-vl-72b
         - openai-gpt-4o
     - hf-gemma-3-12b:
         - hf-llama-3.3-70b
+        - mistral-small
+        - cohere-command-r
         - groq-llama-3.3-70b
         - cerebras-qwen3-235b
         - openai-gpt-4o
 
-    # ── OpenRouter (free) → other free OR → other free providers → paid ──────────
+    # ── OpenRouter (free) → other free → paid ──────────────────────────────────
     - or-hermes-3-405b:
         - or-qwen3-80b
+        - mistral-large
+        - cohere-command-a
         - or-nemotron-120b
         - or-minimax-m2.5
         - or-gpt-oss-120b
@@ -656,6 +810,8 @@ router_settings:
         - anthropic-claude-sonnet-4
     - or-qwen3-80b:
         - or-hermes-3-405b
+        - mistral-large
+        - cohere-command-a
         - or-nemotron-120b
         - or-minimax-m2.5
         - or-gpt-oss-120b
@@ -667,6 +823,8 @@ router_settings:
         - anthropic-claude-sonnet-4
     - or-nemotron-120b:
         - or-hermes-3-405b
+        - mistral-large
+        - cohere-command-a
         - or-qwen3-80b
         - or-minimax-m2.5
         - or-gpt-oss-120b
@@ -676,6 +834,8 @@ router_settings:
         - openai-gpt-4o
     - or-minimax-m2.5:
         - or-hermes-3-405b
+        - mistral-large
+        - cohere-command-a
         - or-qwen3-80b
         - or-nemotron-120b
         - or-gpt-oss-120b
@@ -686,6 +846,8 @@ router_settings:
         - openai-gpt-4o
     - or-llama-3.3-70b:
         - or-qwen3-80b
+        - mistral-small
+        - cohere-command-r
         - or-gpt-oss-120b
         - or-hermes-3-405b
         - groq-llama-3.3-70b
@@ -695,6 +857,7 @@ router_settings:
         - openai-gpt-4o
     - or-gpt-oss-120b:
         - or-hermes-3-405b
+        - mistral-large
         - or-qwen3-80b
         - or-nemotron-120b
         - cerebras-gpt-oss-120b
@@ -703,6 +866,8 @@ router_settings:
         - claudebox-sonnet
         - openai-gpt-4o
     - or-gpt-oss-20b:
+        - ministral-8b
+        - cohere-command-r7b
         - or-llama-3.3-70b
         - groq-gpt-oss-20b
         - groq-llama-3.1-8b
@@ -710,16 +875,101 @@ router_settings:
         - hf-llama-3.1-8b
         - openai-gpt-4o-mini
     - or-qwen3-coder:
+        - devstral
+        - codestral
         - cerebras-qwen3-235b
         - groq-qwen3-32b
         - claudebox-sonnet
         - claudebox-glm-4.7
         - openai-gpt-4o
 
-    # ── Group-level: if whole group fails → best free outside the group ───────────
+    # ── Mistral AI (free: large/small/ministral-8b/codestral) ──────────────────
+    - mistral-large:
+        - mistral-small
+        - cohere-command-a
+        - cerebras-qwen3-235b
+        - claudebox-opus
+        - or-hermes-3-405b
+        - openai-gpt-4o
+    - mistral-small:
+        - mistral-large
+        - cohere-command-a
+        - cerebras-qwen3-235b
+        - claudebox-sonnet
+        - or-qwen3-80b
+        - openai-gpt-4o
+    - ministral-8b:
+        - cohere-command-r7b
+        - groq-llama-3.1-8b
+        - cerebras-llama-3.1-8b
+        - claudebox-haiku
+        - openai-gpt-4o-mini
+    - magistral-medium:
+        - magistral-small
+        - mistral-large
+        - claudebox-opus
+        - cerebras-qwen3-235b
+        - openai-gpt-4o
+    - magistral-small:
+        - magistral-medium
+        - mistral-small
+        - claudebox-sonnet
+        - cerebras-qwen3-235b
+        - openai-gpt-4o
+    - devstral:
+        - codestral
+        - mistral-small
+        - claudebox-sonnet
+        - or-qwen3-coder
+        - openai-gpt-4o
+    - codestral:
+        - devstral
+        - mistral-small
+        - claudebox-sonnet
+        - or-qwen3-coder
+        - openai-gpt-4o
+    - voxtral-small:
+        - groq-whisper-large-v3-turbo
+        - groq-whisper-large-v3
+        - openai-whisper
+
+    # ── Cohere (trial: 1K RPD, 20 RPM) ────────────────────────────────────────
+    - cohere-command-a:
+        - mistral-large
+        - cerebras-qwen3-235b
+        - claudebox-sonnet
+        - or-hermes-3-405b
+        - openai-gpt-4o
+    - cohere-command-r-plus:
+        - cohere-command-a
+        - mistral-small
+        - cerebras-qwen3-235b
+        - claudebox-sonnet
+        - openai-gpt-4o
+    - cohere-command-r:
+        - cohere-command-r-plus
+        - mistral-small
+        - groq-llama-3.3-70b
+        - claudebox-sonnet
+        - openai-gpt-4o
+    - cohere-command-r7b:
+        - ministral-8b
+        - groq-llama-3.1-8b
+        - cerebras-llama-3.1-8b
+        - claudebox-haiku
+        - openai-gpt-4o-mini
+    - cohere-aya-32b:
+        - cohere-command-a
+        - mistral-small
+        - cerebras-qwen3-235b
+        - openai-gpt-4o
+
+    # ── Group-level: if whole group fails → best free outside the group ─────────
     - fast:
         - groq-llama-3.1-8b
         - cerebras-llama-3.1-8b
+        - ministral-8b
+        - cohere-command-r7b
         - or-gpt-oss-20b
         - hf-llama-3.1-8b
         - claudebox-haiku
@@ -727,6 +977,9 @@ router_settings:
         - openai-gpt-4o-mini
     - smart:
         - cerebras-qwen3-235b
+        - mistral-large
+        - mistral-small
+        - cohere-command-a
         - or-hermes-3-405b
         - or-qwen3-80b
         - claudebox-sonnet
@@ -736,6 +989,8 @@ router_settings:
         - openai-gpt-4o
         - anthropic-claude-sonnet-4
     - vision:
+        - mistral-small
+        - cohere-command-a
         - groq-llama-4-scout
         - hf-llama-4-scout
         - hf-qwen-vl-72b

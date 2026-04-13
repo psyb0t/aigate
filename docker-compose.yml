@@ -37,6 +37,8 @@ services:
       WORKERS: ${WORKERS:-8}
       # Disable telemetry
       LITELLM_TELEMETRY: "False"
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      COHERE_API_KEY: ${COHERE_API_KEY:-}
     depends_on:
       redis:
         condition: service_healthy
