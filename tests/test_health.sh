@@ -60,7 +60,39 @@ test_health_compose_services() {
     echo "OK: compose_services (${#REQUIRED_SERVICES[@]} services + $sab_count browser replicas)"
 }
 
+# ── cloudflared quick tunnel (optional, skipped if not in COMPOSE_PROFILES) ──
+
+test_health_cloudflared_tunnel() {
+    if ! docker compose ps cloudflared 2>/dev/null | grep -q "Up"; then
+        echo "OK: cloudflared_tunnel (skipped — container not running)"
+        return 0
+    fi
+
+    # extract tunnel URL from container logs
+    local tunnel_url
+    tunnel_url=$(docker compose logs cloudflared 2>/dev/null \
+        | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' | tail -1)
+
+    if [ -z "$tunnel_url" ]; then
+        echo "  FAIL: cloudflared running but no trycloudflare.com URL in logs"
+        return 1
+    fi
+    echo "  OK: tunnel URL found: $tunnel_url"
+
+    # wait up to 30s for tunnel to become reachable
+    local i code
+    for i in $(seq 1 10); do
+        code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$tunnel_url/health/liveliness" 2>/dev/null)
+        [ "$code" = "200" ] && break
+        sleep 3
+    done
+
+    assert_eq "$code" "200" "tunnel $tunnel_url/health/liveliness reachable" || return 1
+    echo "OK: cloudflared_tunnel"
+}
+
 ALL_TESTS+=(
     test_health_endpoints
     test_health_compose_services
+    test_health_cloudflared_tunnel
 )

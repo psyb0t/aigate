@@ -23,14 +23,71 @@ test_litellm_endpoints() {
 
 # format: model_name
 EXPECTED_MODELS=(
+    # claudebox (OAuth)
     "claudebox-opus"
     "claudebox-sonnet"
     "claudebox-haiku"
+    # claudebox-zai (GLM via z.ai)
     "claudebox-glm-5.1"
     "claudebox-glm-4.7"
     "claudebox-glm-4.5-air"
+    # Groq
     "groq-llama-3.1-8b"
     "groq-llama-3.3-70b"
+    "groq-llama-4-scout"
+    "groq-kimi-k2"
+    "groq-qwen3-32b"
+    "groq-gpt-oss-20b"
+    "groq-gpt-oss-120b"
+    "groq-compound"
+    "groq-compound-mini"
+    "groq-whisper-large-v3"
+    "groq-whisper-large-v3-turbo"
+    # Cerebras
+    "cerebras-qwen3-235b"
+    "cerebras-gpt-oss-120b"
+    "cerebras-llama-3.1-8b"
+    "cerebras-glm-4.7"
+    # OpenRouter
+    "or-hermes-3-405b"
+    "or-qwen3-coder"
+    "or-qwen3-80b"
+    "or-nemotron-120b"
+    "or-minimax-m2.5"
+    "or-llama-3.3-70b"
+    "or-gpt-oss-120b"
+    "or-gpt-oss-20b"
+    # HuggingFace
+    "hf-llama-3.1-8b"
+    "hf-llama-3.3-70b"
+    "hf-llama-4-scout"
+    "hf-qwen3-8b"
+    "hf-qwq-32b"
+    "hf-deepseek-r1"
+    "hf-qwen-vl-72b"
+    "hf-qwen3-vl-8b"
+    "hf-gemma-3-12b"
+    "hf-flux-schnell"
+    "hf-flux-dev"
+    "hf-sd-3.5-turbo"
+    # Mistral
+    "mistral-large"
+    "mistral-small"
+    "ministral-8b"
+    "magistral-medium"
+    "magistral-small"
+    "devstral"
+    "codestral"
+    "mistral-embed"
+    "voxtral-small"
+    # Cohere
+    "cohere-command-a"
+    "cohere-command-r-plus"
+    "cohere-command-r"
+    "cohere-command-r7b"
+    "cohere-aya-32b"
+    "cohere-embed"
+    "cohere-rerank"
 )
 
 test_litellm_models_registered() {
@@ -39,7 +96,7 @@ test_litellm_models_registered() {
 
     local m
     for m in "${EXPECTED_MODELS[@]}"; do
-        assert_contains "$models" "$m" "model $m registered" || return 1
+        assert_contains "$models" "\"$m\"" "model $m registered" || return 1
     done
     echo "OK: models_registered (${#EXPECTED_MODELS[@]} models)"
 }

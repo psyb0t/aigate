@@ -103,8 +103,45 @@ test_hybrids3_auth_write() {
     echo "OK: hybrids3_auth_write"
 }
 
+# ── presigned URL ─────────────────────────────────────────────────────────
+
+test_hybrids3_presign() {
+    local test_key="presign-test-$(date +%s).txt"
+    local test_content="presigned content"
+
+    # upload
+    curl -s -o /dev/null -X PUT \
+        "$_STORAGE_URL/uploads/$test_key" \
+        -H "Authorization: Bearer $_UPLOAD_KEY" \
+        -H "Content-Type: text/plain" \
+        -d "$test_content"
+
+    # generate presigned URL
+    local presign_out
+    presign_out=$(curl -sf -X POST \
+        "$_STORAGE_URL/presign/uploads/$test_key" \
+        -H "Authorization: Bearer $_UPLOAD_KEY")
+    assert_not_empty "$presign_out" "presign response not empty" || return 1
+
+    local presigned_url
+    presigned_url=$(echo "$presign_out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('url',''))" 2>/dev/null)
+    assert_not_empty "$presigned_url" "presigned url in response" || return 1
+
+    # download via presigned URL (no auth header)
+    local body
+    body=$(curl -sf "$presigned_url")
+    assert_eq "$body" "$test_content" "presigned url downloads correct content" || return 1
+
+    # cleanup
+    curl -s -o /dev/null -X DELETE "$_STORAGE_URL/uploads/$test_key" \
+        -H "Authorization: Bearer $_UPLOAD_KEY"
+
+    echo "OK: hybrids3_presign"
+}
+
 ALL_TESTS+=(
     test_hybrids3_crud
     test_hybrids3_public_read
     test_hybrids3_auth_write
+    test_hybrids3_presign
 )

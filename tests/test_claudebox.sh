@@ -82,9 +82,35 @@ test_claudebox_zai_reachable() {
     echo "OK: claudebox_zai_reachable"
 }
 
+# ── OpenAI-compatible models endpoint ─────────────────────────────────────
+
+test_claudebox_openai_models() {
+    local out
+    out=$(curl -sf "$BASE_URL/claudebox/openai/v1/models" \
+        -H "Authorization: Bearer $CLAUDEBOX_API_TOKEN" 2>/dev/null)
+    assert_contains "$out" '"object":"list"' "claudebox openai models returns list" || return 1
+    assert_contains "$out" '"haiku"' "claudebox openai models has haiku" || return 1
+    assert_contains "$out" '"sonnet"' "claudebox openai models has sonnet" || return 1
+    assert_contains "$out" '"opus"' "claudebox openai models has opus" || return 1
+    echo "OK: claudebox_openai_models"
+}
+
+test_claudebox_zai_openai_models() {
+    local out
+    out=$(curl -sf "$BASE_URL/claudebox-zai/openai/v1/models" \
+        -H "Authorization: Bearer $CLAUDEBOX_ZAI_API_TOKEN" 2>/dev/null)
+    assert_contains "$out" '"object":"list"' "claudebox-zai openai models returns list" || return 1
+    assert_contains "$out" '"haiku"' "claudebox-zai openai models has haiku" || return 1
+    assert_contains "$out" '"sonnet"' "claudebox-zai openai models has sonnet" || return 1
+    assert_contains "$out" '"opus"' "claudebox-zai openai models has opus" || return 1
+    echo "OK: claudebox_zai_openai_models"
+}
+
 ALL_TESTS+=(
     test_claudebox_chat
     test_claudebox_direct_api
     test_claudebox_file_ops
     test_claudebox_zai_reachable
+    test_claudebox_openai_models
+    test_claudebox_zai_openai_models
 )

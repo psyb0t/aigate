@@ -25,3 +25,4 @@ git-update.sh
 !.data/claudebox-zai/config/.gitkeep
 !.data/claudebox-zai/workspaces/
 !.data/claudebox-zai/workspaces/.gitkeep
+!.data/nginx/
