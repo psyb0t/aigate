@@ -1,10 +1,10 @@
 # aigate
 
-A self-hosted AI gateway that unifies every major LLM provider behind a single OpenAI-compatible API. Automatic fallback chains burn through free tiers before touching anything paid. Beyond routing, the gateway integrates a full tool ecosystem through the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) — stealth browser automation, object storage, and agentic Claude Code instances — all exposed as tools that any model on the gateway can call autonomously.
+One endpoint. 69 models across 10 providers. A stealth browser cluster that passes Cloudflare. Two agentic Claude Code instances. S3-compatible object storage. All exposed as MCP tools so any model on the gateway can use them autonomously.
 
-One `docker compose up` and you have a production-ready AI stack with 69 models across 10 providers, 34 MCP tools, and automatic failover.
+Point your OpenAI client at `http://localhost:4000`. The gateway routes to the best available free provider and falls back through the chain if it rate-limits or fails — six free providers before it touches anything paid. Add a prompt that needs web research and the model opens a browser, reads pages, and returns results. Add file I/O and it reads and writes through object storage. Add code execution and it spins up a full Claude Code instance with shell access and a persistent workspace. The model calls the tools. You just ask.
 
-Built on [LiteLLM](https://github.com/BerriAI/litellm).
+`docker compose up -d`. That's it.
 
 ## Architecture
 
@@ -14,7 +14,7 @@ client
 cloudflared (optional)
   ▼
 nginx :4000
-  ├─► /claudebox/            → claudebox (Claude Code, OAuth/API key)
+  ├─► /claudebox/            → claudebox (Claude Code, OAuth or API key)
   ├─► /claudebox-zai/        → claudebox-zai (Claude Code, GLM via z.ai)
   ├─► /stealthy-auto-browse/ → HAProxy → [browser ×5]
   ├─► /storage/              → hybrids3
@@ -37,7 +37,7 @@ MCP servers (34 tools, available to all models):
   └─ claudebox_zai         (5 tools)  — agentic Claude Code via z.ai/GLM
 ```
 
-All persistent data lives under `.data/` (bind mounts). The directory structure is tracked in git via `.gitkeep` files so the right directories exist on a fresh clone — contents are gitignored. Everything is defined in a single `docker-compose.yml` — no external config files.
+All persistent data lives under `.data/` (bind mounts). The directory structure is tracked in git via `.gitkeep` files so the right directories exist on a fresh clone — contents are gitignored. Everything is defined in a single `docker-compose.yml` with all service configs embedded inline — no external config files.
 
 Notable writable locations:
 
@@ -52,26 +52,26 @@ Notable writable locations:
 
 ## Services
 
-| Service                                                                           | Description                                                                                                                                                                                                        |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Nginx**                                                                         | Single entry point on port 4000. Routes traffic to the correct backend based on URL path. All service configs are embedded inline in `docker-compose.yml`.                                                         |
-| **LiteLLM**                                                                       | OpenAI-compatible API proxy with latency-based routing, Redis response caching, automatic retries, and provider fallback chains. Manages API keys, budgets, and usage tracking via PostgreSQL.                     |
-| **PostgreSQL**                                                                    | Stores LiteLLM key management, budget tracking, and usage analytics.                                                                                                                                               |
-| **Redis**                                                                         | Powers LiteLLM's response cache (10-minute TTL) and rate limiting.                                                                                                                                                 |
-| **[claudebox](https://github.com/psyb0t/docker-claudebox)** ×2                    | Claude Code CLI in API mode. Full agentic loop with shell access, file I/O, tool use, and persistent workspaces. One instance uses OAuth/API key, the other connects to z.ai for GLM models.                       |
-| **[hybrids3](https://github.com/psyb0t/docker-hybrids3)**                         | S3-compatible object storage with bearer token auth, TTL-based expiry, and an MCP server. The `uploads` bucket is public-read.                                                                                     |
-| **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** | 5 stealth browser replicas behind HAProxy. Runs Camoufox (hardened Firefox fork) with real OS-level mouse/keyboard input. Passes all major bot detectors. Exposed as REST API and MCP server.                      |
-| **cloudflared** _(optional)_                                                      | Exposes the gateway via [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/). Disabled by default — enable with `COMPOSE_PROFILES=cloudflared`. Supports quick tunnels (no account) and named tunnels (fixed domain). |
+| Service                                                                           | Description                                                                                                                                                                                                                                                          |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Nginx**                                                                         | Single entry point on port 4000. Routes by URL path, enforces rate limits on the admin UI, and optionally adds HTTP basic auth. All config is embedded inline.                                                                                                       |
+| **LiteLLM**                                                                       | OpenAI-compatible API proxy. Latency-based routing, Redis response caching (10-minute TTL), automatic retries, and per-model fallback chains. Manages API keys and usage via PostgreSQL.                                                                             |
+| **PostgreSQL**                                                                    | Key management, budget tracking, usage analytics for LiteLLM.                                                                                                                                                                                                       |
+| **Redis**                                                                         | LiteLLM response cache and rate limiting.                                                                                                                                                                                                                            |
+| **[claudebox](https://github.com/psyb0t/docker-claudebox)** ×2                    | Claude Code CLI in API mode. Full agentic loop — shell access, file I/O, tool use, persistent workspaces. One instance uses your OAuth token or Anthropic API key; the other points at z.ai for GLM models. Both expose REST API, OpenAI-compatible endpoint, and MCP server. |
+| **[hybrids3](https://github.com/psyb0t/docker-hybrids3)**                         | S3-compatible object storage. Plain HTTP upload/download, boto3-compatible, bearer token auth, auto-expiry, MCP server. The `uploads` bucket is public-read — files are accessible by direct URL without signing.                                                   |
+| **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** | 5 Camoufox (hardened Firefox) replicas behind HAProxy. Real OS-level mouse and keyboard input via PyAutoGUI — no CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan. Redis cookie sync across replicas. REST API and MCP server.                       |
+| **cloudflared** _(optional)_                                                      | Cloudflare Tunnel. Disabled by default — enable with `COMPOSE_PROFILES=cloudflared`. Quick tunnel (random `*.trycloudflare.com` URL, no account) or named tunnel (fixed domain).                                                                                     |
 
 ## MCP Tools
 
-34 tools across 4 MCP servers, available to any model that supports function calling. A Groq model can browse a website, screenshot it, upload to storage, and return the public URL — all autonomously through MCP.
+34 tools across 4 servers. Any model that supports function calling can invoke them — the model decides when and how to use them based on the prompt.
 
-→ [Full MCP tool reference](docs/mcp-tools.md)
+→ [Full MCP tool reference with parameters](docs/mcp-tools.md)
 
 ## Providers and Models
 
-69 models across 10 providers. Groq, Cerebras, OpenRouter, HuggingFace, Mistral, and Cohere are all free tier. Model groups (`fast`, `smart`, `vision`, `image-gen`, `transcription`) route automatically with per-provider fallback chains.
+69 models across 10 providers. Six are free tier with no credit card required. Model groups (`fast`, `smart`, `vision`, `image-gen`, `transcription`) route automatically with per-provider fallback chains — free first, paid last.
 
 → [Full provider and model list](docs/providers.md)
 
@@ -90,7 +90,7 @@ cd aigate
 cp .env.example .env
 ```
 
-Edit `.env` with your API keys:
+Edit `.env`:
 
 ```env
 # Required — gateway master key
@@ -100,12 +100,12 @@ LITELLM_MASTER_KEY=sk-your-secret-here
 CLAUDEBOX_API_TOKEN=       # openssl rand -hex 32
 CLAUDEBOX_ZAI_API_TOKEN=   # openssl rand -hex 32
 
-# Required — claudebox auth (OAuth token OR API key)
-CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...
-# CLAUDEBOX_ANTHROPIC_API_KEY=sk-ant-...
+# Required — claudebox auth (OAuth token OR Anthropic API key, one is enough)
+CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...    # claude setup-token
+# CLAUDEBOX_ANTHROPIC_API_KEY=sk-ant-...   # or use a pay-per-use API key
 
 # Required — z.ai auth (powers claudebox-glm-* models)
-ZAI_AUTH_TOKEN=...
+ZAI_AUTH_TOKEN=...    # https://z.ai
 
 # Required — free tier providers
 GROQ_API_KEY=gsk_...            # https://console.groq.com
@@ -115,21 +115,21 @@ OPENROUTER_API_KEY=sk-or-v1-... # https://openrouter.ai
 MISTRAL_API_KEY=...             # https://console.mistral.ai
 COHERE_API_KEY=...              # https://dashboard.cohere.com
 
-# Optional — object storage
+# Optional — object storage keys
 HYBRIDS3_MASTER_KEY=    # openssl rand -hex 32
 HYBRIDS3_UPLOADS_KEY=   # openssl rand -hex 32
 
 # Optional — browser cluster
-STEALTHY_AUTO_BROWSE_AUTH_TOKEN=
+STEALTHY_AUTO_BROWSE_AUTH_TOKEN=     # leave empty to disable auth
 STEALTHY_AUTO_BROWSE_NUM_REPLICAS=5
 
 # Optional — Cloudflare Tunnel
-COMPOSE_PROFILES=        # set to "cloudflared" to enable
-CLOUDFLARED_CONFIG=      # absolute path to config.yml
-CLOUDFLARED_CREDS=       # absolute path to credentials.json
+COMPOSE_PROFILES=          # set to "cloudflared" to enable
+CLOUDFLARED_CONFIG=        # absolute path to tunnel config.yml
+CLOUDFLARED_CREDS=         # absolute path to credentials.json
 
-# Optional — admin UI basic auth (user:password)
-LITELLM_UI_BASIC_AUTH=
+# Optional — LiteLLM admin UI basic auth
+LITELLM_UI_BASIC_AUTH=     # user:password format
 
 # Optional — paid providers
 # ANTHROPIC_API_KEY=sk-ant-...
@@ -151,33 +151,36 @@ Gateway is now at `http://localhost:4000`. Admin UI at `http://localhost:4000/li
 
 ## Usage
 
-Quick examples:
-
 ```bash
-# Chat with the best available free model
+# best available free model
 curl http://localhost:4000/chat/completions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model": "smart", "messages": [{"role": "user", "content": "hello"}]}'
 
-# Image generation
+# specific provider
+curl http://localhost:4000/chat/completions \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "cerebras-qwen3-235b", "messages": [{"role": "user", "content": "hello"}]}'
+
+# image generation
 curl http://localhost:4000/images/generations \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model": "image-gen", "prompt": "a cat riding a skateboard, photorealistic"}'
+  -d '{"model": "image-gen", "prompt": "a cat riding a skateboard"}'
 
-# Audio transcription
+# transcription
 curl http://localhost:4000/audio/transcriptions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -F "model=transcription" \
-  -F "file=@audio.mp3"
+  -F "model=transcription" -F "file=@audio.mp3"
 ```
 
-→ [Full usage guide](docs/usage.md) — browser automation, object storage, claudebox agentic tasks, vision, streaming
+→ [Full usage guide](docs/usage.md) — browser automation, object storage, agentic claudebox tasks, vision, streaming, Python SDK examples
 
 ## Services Reference
 
-All endpoints, auth requirements, and configuration options for every service.
+All endpoints, auth requirements, request/response formats, and config options.
 
 → [Services reference](docs/services-reference.md)
 
@@ -185,7 +188,6 @@ All endpoints, auth requirements, and configuration options for every service.
 
 ```bash
 make test
-# or: bash test.sh
 ```
 
 Covers health, routing, auth, MCP, storage CRUD, browser automation, claudebox, and security. Designed for zero/minimal token usage.
