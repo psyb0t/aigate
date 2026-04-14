@@ -40,7 +40,7 @@ run-bg:
 	docker compose up -d
 
 down:
-	docker compose down
+	docker compose down --remove-orphans
 
 restart: down run
 

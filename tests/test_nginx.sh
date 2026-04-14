@@ -49,20 +49,13 @@ test_nginx_sab_queue_status() {
     echo "OK: nginx_sab_queue_status"
 }
 
-# ── /ui blocked, /litellm-admin/ with optional basic auth ──────────────────
-
-test_nginx_ui_blocked() {
-    local code
-    code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/ui")
-    assert_eq "$code" "404" "/ui is blocked" || return 1
-    echo "OK: nginx_ui_blocked"
-}
+# ── /ui/ with optional basic auth ──────────────────────────────────────────
 
 test_nginx_admin_auth() {
     if [ -z "${LITELLM_UI_BASIC_AUTH:-}" ]; then
         local code
-        code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/litellm-admin/")
-        assert_eq "$code" "200" "/litellm-admin/ open when no auth configured" || return 1
+        code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/ui/")
+        assert_eq "$code" "200" "/ui/ open when no auth configured" || return 1
         echo "OK: nginx_admin_auth (no auth)"
         return 0
     fi
@@ -72,13 +65,13 @@ test_nginx_admin_auth() {
     pass="${LITELLM_UI_BASIC_AUTH#*:}"
 
     local code_no_creds code_bad_creds code_good_creds
-    code_no_creds=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/litellm-admin/")
-    code_bad_creds=$(curl -s -o /dev/null -w "%{http_code}" -u "wrong:wrong" "$BASE_URL/litellm-admin/")
-    code_good_creds=$(curl -s -o /dev/null -w "%{http_code}" -u "$user:$pass" "$BASE_URL/litellm-admin/")
+    code_no_creds=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/ui/")
+    code_bad_creds=$(curl -s -o /dev/null -w "%{http_code}" -u "wrong:wrong" "$BASE_URL/ui/")
+    code_good_creds=$(curl -s -o /dev/null -w "%{http_code}" -u "$user:$pass" "$BASE_URL/ui/")
 
-    assert_eq "$code_no_creds"  "401" "/litellm-admin/ rejected without creds" || return 1
-    assert_eq "$code_bad_creds" "401" "/litellm-admin/ rejected with bad creds" || return 1
-    assert_eq "$code_good_creds" "200" "/litellm-admin/ accepted with correct creds" || return 1
+    assert_eq "$code_no_creds"  "401" "/ui/ rejected without creds" || return 1
+    assert_eq "$code_bad_creds" "401" "/ui/ rejected with bad creds" || return 1
+    assert_eq "$code_good_creds" "200" "/ui/ accepted with correct creds" || return 1
     echo "OK: nginx_admin_auth (basic auth enforced)"
 }
 
@@ -93,7 +86,7 @@ test_nginx_admin_rate_limit() {
     # fire 10 rapid requests — burst is 5, so at least some must be rejected
     local i code rejected=0
     for i in $(seq 1 10); do
-        code=$(curl -s -o /dev/null -w "%{http_code}" "${creds[@]}" "$BASE_URL/litellm-admin/")
+        code=$(curl -s -o /dev/null -w "%{http_code}" "${creds[@]}" "$BASE_URL/ui/")
         [ "$code" = "503" ] || [ "$code" = "429" ] && rejected=$((rejected + 1))
     done
 
@@ -110,7 +103,6 @@ ALL_TESTS+=(
     test_nginx_claudebox_status
     test_nginx_claudebox_zai_status
     test_nginx_sab_queue_status
-    test_nginx_ui_blocked
     test_nginx_admin_auth
     test_nginx_admin_rate_limit
 )

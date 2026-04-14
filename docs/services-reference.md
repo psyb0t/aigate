@@ -11,9 +11,9 @@
 | Models list            | `GET /models`                                 | `Bearer $LITELLM_MASTER_KEY` |
 | Health check           | `GET /health/liveliness`                      | none                    |
 | MCP server (all tools) | `POST /mcp/`                                  | `Bearer $LITELLM_MASTER_KEY` |
-| Admin UI               | `GET /litellm-admin/`                         | optional basic auth     |
+| Admin UI               | `GET /ui/`                                    | optional basic auth     |
 
-The admin UI at `/litellm-admin/` is rate-limited to 5 requests/minute. Set `LITELLM_UI_BASIC_AUTH=user:password` in `.env` to enable HTTP basic auth on top of that. Direct access to `/ui` returns 404.
+The admin UI at `/ui/` is rate-limited to 5 requests/minute. Set `LITELLM_UI_BASIC_AUTH=user:password` in `.env` to enable HTTP basic auth on top of that.
 
 ---
 

@@ -166,7 +166,7 @@ make run      # foreground with logs
 
 Profiles are auto-detected from `.env` — services that don't have credentials are skipped automatically.
 
-Gateway is now at `http://localhost:4000`. Admin UI at `http://localhost:4000/litellm-admin/`.
+Gateway is now at `http://localhost:4000`. Admin UI at `http://localhost:4000/ui/`.
 
 ## Usage
 

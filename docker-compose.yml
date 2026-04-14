@@ -66,6 +66,8 @@ services:
       LITELLM_TELEMETRY: "False"
       MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
       COHERE_API_KEY: ${COHERE_API_KEY:-}
+      UI_USERNAME: ${LITELLM_USERNAME:-}
+      UI_PASSWORD: ${LITELLM_PASSWORD:-}
     depends_on:
       redis:
         condition: service_healthy
@@ -176,9 +178,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-litellm}
       POSTGRES_USER: ${POSTGRES_USER:-litellm}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      - ./.data/postgres:/var/lib/postgresql/data
+      - ./.data/postgres:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-litellm} -d ${POSTGRES_DB:-litellm}"]
       interval: 10s
@@ -244,7 +245,7 @@ services:
     restart: unless-stopped
     volumes:
       - ${CLOUDFLARED_CONFIG:-/dev/null}:/etc/cloudflared/config.yml:ro
-      - ${CLOUDFLARED_CREDS:-/dev/null}:/etc/cloudflared/credentials.json:ro
+      - ${CLOUDFLARED_CREDS:-/dev/null}:/etc/cloudflared/creds.json:ro
     security_opt:
       - no-new-privileges:true
     networks:
@@ -255,19 +256,15 @@ configs:
     content: |
       server {
           listen 4000;
+          absolute_redirect off;
 
           client_max_body_size 50m;
 
-          # block direct access to /ui — use /litellm-admin/ instead
+          # litellm admin UI + login — rate limited, optional basic auth
           location /ui {
-              return 404;
-          }
-
-          # litellm admin panel — rate limited, optional basic auth
-          location /litellm-admin/ {
               limit_req zone=admin burst=5 nodelay;
               include /etc/nginx/auth/auth.conf;
-              proxy_pass http://litellm:4000/ui/;
+              proxy_pass http://litellm:4000/ui;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
               proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
@@ -276,6 +273,16 @@ configs:
               proxy_send_timeout 60s;
               proxy_buffering off;
               proxy_cache off;
+          }
+
+          location /login {
+              limit_req zone=admin burst=5 nodelay;
+              include /etc/nginx/auth/auth.conf;
+              proxy_pass http://litellm:4000/login;
+              proxy_set_header Host $$http_host;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
           }
 
           # claudebox (OAuth) — full API access
