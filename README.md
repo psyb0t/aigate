@@ -8,7 +8,7 @@ That's the routing. The real part is what the models can *do*. Four MCP servers 
 
 Security is not an afterthought. Internal services are network-isolated — PostgreSQL, Redis, hybrids3, and the browser cluster have no host ports, period. Every endpoint requires auth. When you want to expose the gateway publicly, Cloudflare Tunnel handles it: one env var, no open ports, Cloudflare's DDoS protection and TLS in front of everything.
 
-`docker compose up -d`. That's the whole install.
+`make run-bg`. That's the whole install.
 
 ## Architecture
 
@@ -160,8 +160,11 @@ WORKERS=8
 ### 3. Start
 
 ```bash
-docker compose up -d
+make run-bg   # detached (background)
+make run      # foreground with logs
 ```
+
+Profiles are auto-detected from `.env` — services that don't have credentials are skipped automatically.
 
 Gateway is now at `http://localhost:4000`. Admin UI at `http://localhost:4000/litellm-admin/`.
 
@@ -199,6 +202,17 @@ curl http://localhost:4000/audio/transcriptions \
 All endpoints, auth requirements, request/response formats, and config options.
 
 → [Services reference](docs/services-reference.md)
+
+## Makefile
+
+```bash
+make run      # start stack in foreground
+make run-bg   # start stack in background
+make down     # stop everything
+make restart  # full restart
+make logs     # follow logs
+make test     # run test suite (stack must be running)
+```
 
 ## Testing
 

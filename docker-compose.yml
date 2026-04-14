@@ -71,10 +71,6 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-      claudebox:
-        condition: service_healthy
-      claudebox-zai:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness')"]
       interval: 30s
@@ -88,6 +84,7 @@ services:
       - litellm-public
 
   claudebox:
+    profiles: ["claudebox"]
     image: psyb0t/claudebox:v1.2.0-minimal
     restart: unless-stopped
     environment:
@@ -110,6 +107,7 @@ services:
       - litellm-public
 
   claudebox-zai:
+    profiles: ["claudebox-zai"]
     image: psyb0t/claudebox:v1.2.0-minimal
     restart: unless-stopped
     environment:
