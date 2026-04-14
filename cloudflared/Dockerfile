@@ -1,4 +1,4 @@
-FROM cloudflare/cloudflared:latest AS src
+FROM cloudflare/cloudflared:2026.3.0 AS src
 FROM alpine:3.21
 COPY --from=src /usr/local/bin/cloudflared /usr/local/bin/cloudflared
 COPY entrypoint.sh /entrypoint.sh
