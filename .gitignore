@@ -30,3 +30,10 @@ git-update.sh
 !.data/claudebox-zai/workspaces/
 !.data/claudebox-zai/workspaces/.gitkeep
 !.data/nginx/
+!.data/nginx/.gitkeep
+!.data/cloudflared/
+!.data/cloudflared/.gitkeep
+!.data/ollama/
+!.data/ollama/.gitkeep
+!.data/speaches/
+!.data/speaches/.gitkeep

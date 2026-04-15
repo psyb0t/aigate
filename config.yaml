@@ -344,6 +344,58 @@ model_list:
       model: mistral/voxtral-small-25-07
       api_key: os.environ/MISTRAL_API_KEY
 
+  # ── Speaches / local transcription ──────────────────────────────────────────
+
+  # faster-distil-whisper-large-v3: multilingual, high accuracy
+  - model_name: local-speaches-whisper-distil-large-v3
+    litellm_params:
+      model: openai/whisper-1
+      api_base: http://speaches:8000/v1
+      api_key: none
+    model_info:
+      mode: audio_transcription
+
+  # Parakeet TDT 0.6B v2: English-only, ~3000x RTF — insanely fast on CPU
+  - model_name: local-speaches-parakeet-tdt-0.6b
+    litellm_params:
+      model: openai/nvidia/parakeet-tdt-0.6b-v2
+      api_base: http://speaches:8000/v1
+      api_key: none
+    model_info:
+      mode: audio_transcription
+
+  # ── Ollama (local, free, no rate limits) ─────────────────────────────────────
+
+  - model_name: local-ollama-llama3.2-3b
+    litellm_params:
+      model: ollama/llama3.2:3b
+      api_base: http://ollama:11434
+
+  - model_name: local-ollama-qwen2.5-1.5b
+    litellm_params:
+      model: ollama/qwen2.5:1.5b
+      api_base: http://ollama:11434
+
+  - model_name: local-ollama-qwen2.5-coder-1.5b
+    litellm_params:
+      model: ollama/qwen2.5-coder:1.5b
+      api_base: http://ollama:11434
+
+  - model_name: local-ollama-phi3.5
+    litellm_params:
+      model: ollama/phi3.5
+      api_base: http://ollama:11434
+
+  - model_name: local-ollama-moondream
+    litellm_params:
+      model: ollama/moondream
+      api_base: http://ollama:11434
+
+  - model_name: local-ollama-nomic-embed
+    litellm_params:
+      model: ollama/nomic-embed-text
+      api_base: http://ollama:11434
+
   # ── Cohere (trial: 1K RPD, 20 RPM — all chat models free) ────────────────────
 
   - model_name: cohere-command-a
@@ -394,16 +446,18 @@ model_group_alias:
     - cerebras-llama-3.1-8b
     - ministral-8b
     - cohere-command-r7b
-    - claudebox-haiku
-    - claudebox-glm-4.5-air
     - or-gpt-oss-20b
     - hf-llama-3.1-8b
+    - claudebox-haiku
+    - claudebox-glm-4.5-air
     - openai-gpt-4o-mini
+    - local-ollama-llama3.2-3b
+    - local-ollama-qwen2.5-1.5b
+    - local-ollama-phi3.5
 
   # Best available smart model — free first, paid last
   smart:
     - cerebras-qwen3-235b
-    - claudebox-sonnet
     - mistral-large
     - mistral-small
     - cohere-command-a
@@ -412,38 +466,46 @@ model_group_alias:
     - cerebras-gpt-oss-120b
     - or-nemotron-120b
     - or-minimax-m2.5
-    - claudebox-glm-4.7
     - cerebras-glm-4.7
-    - openai-gpt-4o
-    - anthropic-claude-sonnet-4
+    - groq-llama-3.3-70b
+    - hf-llama-3.3-70b
+    - claudebox-sonnet
+    - claudebox-glm-4.7
     - claudebox-opus
     - claudebox-glm-5.1
-    - groq-llama-3.3-70b
+    - anthropic-claude-sonnet-4
+    - openai-gpt-4o
+    - local-ollama-llama3.2-3b
+    - local-ollama-phi3.5
 
   # Best available vision/multimodal model
   vision:
-    - openai-gpt-4o
-    - anthropic-claude-sonnet-4
-    - claudebox-sonnet
-    - claudebox-glm-4.7
-    - mistral-small
-    - cohere-command-a
     - groq-llama-4-scout
     - hf-llama-4-scout
     - hf-qwen-vl-72b
+    - mistral-small
+    - cohere-command-a
+    - claudebox-sonnet
+    - claudebox-glm-4.7
+    - anthropic-claude-sonnet-4
+    - openai-gpt-4o
 
   # Image generation
   image-gen:
-    - openai-dall-e-3
     - hf-flux-schnell
     - hf-flux-dev
+    - hf-sd-3.5-turbo
+    - openai-dall-e-3
+    - openai-gpt-image-1
 
   # Transcription
   transcription:
-    - groq-whisper-large-v3-turbo
     - groq-whisper-large-v3
+    - groq-whisper-large-v3-turbo
     - voxtral-small
     - openai-whisper
+    - local-speaches-whisper-distil-large-v3
+    - local-speaches-parakeet-tdt-0.6b
 
 
 # ── MCP Servers ───────────────────────────────────────────────────────────────
@@ -546,6 +608,9 @@ router_settings:
         - or-gpt-oss-20b
         - hf-llama-3.1-8b
         - openai-gpt-4o-mini
+        - local-ollama-llama3.2-3b
+        - local-ollama-qwen2.5-1.5b
+        - local-ollama-phi3.5
 
     # ── claudebox (Max sub) → GLM → free → paid ────────────────────────────────
     - claudebox-opus:
@@ -580,6 +645,9 @@ router_settings:
         - hf-llama-3.1-8b
         - anthropic-claude-haiku-4
         - openai-gpt-4o-mini
+        - local-ollama-llama3.2-3b
+        - local-ollama-qwen2.5-1.5b
+        - local-ollama-phi3.5
 
     # ── GLM via z.ai → claudebox → free → paid ─────────────────────────────────
     - claudebox-glm-5.1:
@@ -658,6 +726,9 @@ router_settings:
         - hf-llama-3.1-8b
         - claudebox-haiku
         - openai-gpt-4o-mini
+        - local-ollama-llama3.2-3b
+        - local-ollama-qwen2.5-1.5b
+        - local-ollama-phi3.5
 
     # ── Groq (free) → cerebras/mistral/cohere → hf → paid ─────────────────────
     - groq-llama-3.1-8b:
@@ -669,6 +740,9 @@ router_settings:
         - hf-llama-3.1-8b
         - claudebox-haiku
         - openai-gpt-4o-mini
+        - local-ollama-llama3.2-3b
+        - local-ollama-qwen2.5-1.5b
+        - local-ollama-phi3.5
     - groq-llama-3.3-70b:
         - cerebras-qwen3-235b
         - mistral-small
@@ -684,6 +758,7 @@ router_settings:
         - or-hermes-3-405b
         - claudebox-sonnet
         - openai-gpt-4o
+        - local-ollama-moondream
     - groq-kimi-k2:
         - mistral-large
         - cohere-command-a
@@ -752,6 +827,7 @@ router_settings:
         - hf-qwen-vl-72b
         - claudebox-sonnet
         - openai-gpt-4o
+        - local-ollama-moondream
     - hf-qwen3-8b:
         - groq-llama-3.1-8b
         - ministral-8b
@@ -882,6 +958,7 @@ router_settings:
         - claudebox-sonnet
         - claudebox-glm-4.7
         - openai-gpt-4o
+        - local-ollama-qwen2.5-coder-1.5b
 
     # ── Mistral AI (free: large/small/ministral-8b/codestral) ──────────────────
     - mistral-large:
@@ -922,12 +999,14 @@ router_settings:
         - claudebox-sonnet
         - or-qwen3-coder
         - openai-gpt-4o
+        - local-ollama-qwen2.5-coder-1.5b
     - codestral:
         - devstral
         - mistral-small
         - claudebox-sonnet
         - or-qwen3-coder
         - openai-gpt-4o
+        - local-ollama-qwen2.5-coder-1.5b
     - voxtral-small:
         - groq-whisper-large-v3-turbo
         - groq-whisper-large-v3
@@ -966,6 +1045,9 @@ router_settings:
 
     # ── Group-level: if whole group fails → best free outside the group ─────────
     - fast:
+        - local-ollama-llama3.2-3b
+        - local-ollama-qwen2.5-1.5b
+        - local-ollama-phi3.5
         - groq-llama-3.1-8b
         - cerebras-llama-3.1-8b
         - ministral-8b
@@ -988,6 +1070,8 @@ router_settings:
         - hf-llama-3.3-70b
         - openai-gpt-4o
         - anthropic-claude-sonnet-4
+        - local-ollama-llama3.2-3b
+        - local-ollama-phi3.5
     - vision:
         - mistral-small
         - cohere-command-a
@@ -997,3 +1081,4 @@ router_settings:
         - claudebox-sonnet
         - claudebox-glm-4.7
         - openai-gpt-4o
+        - local-ollama-moondream

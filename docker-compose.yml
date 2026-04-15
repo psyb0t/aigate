@@ -82,7 +82,7 @@ services:
         ]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
       start_period: 60s
     security_opt:
       - no-new-privileges:true
@@ -251,6 +251,58 @@ services:
       - no-new-privileges:true
     networks:
       - stealthy-auto-browse
+      - litellm-internal
+
+  # ── Speaches (local transcription — faster-whisper + Parakeet TDT) ──────────
+
+  speaches:
+    image: ghcr.io/speaches-ai/speaches:0.9.0-rc.3-cpu
+    restart: unless-stopped
+    environment:
+      WHISPER__MODEL: Systran/faster-distil-whisper-large-v3
+      WHISPER__INFERENCE_DEVICE: cpu
+      WHISPER__COMPUTE_TYPE: int8
+    volumes:
+      - ./.data/speaches:/home/ubuntu/.cache/huggingface/hub
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - litellm-internal
+
+  # ── Ollama (local inference) ─────────────────────────────────────────────────
+
+  ollama:
+    image: ollama/ollama:0.20.7
+    restart: unless-stopped
+    volumes:
+      - ./.data/ollama:/root/.ollama
+    networks:
+      - litellm-internal
+
+  ollama-pull:
+    image: ollama/ollama:0.20.7
+    restart: on-failure
+    entrypoint: >
+      sh -c "
+        until curl -sf http://ollama:11434/api/tags > /dev/null; do sleep 2; done;
+        ollama pull nomic-embed-text &&
+        ollama pull llama3.2:3b &&
+        ollama pull qwen2.5:1.5b &&
+        ollama pull qwen2.5-coder:1.5b &&
+        ollama pull phi3.5 &&
+        ollama pull moondream
+      "
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    depends_on:
+      - ollama
+    networks:
       - litellm-internal
 
   cloudflared:

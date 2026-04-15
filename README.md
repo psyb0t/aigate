@@ -2,7 +2,7 @@
 
 Your own AI infrastructure. One compose file. One endpoint. Everything.
 
-69 models across 10 providers behind a single OpenAI-compatible API — point any existing client at `http://localhost:4000` and it just works. Six of those providers are completely free. The gateway burns through them in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
+77 models across 12 providers behind a single OpenAI-compatible API — point any existing client at `http://localhost:4000` and it just works. Six of those providers are completely free. Two more run entirely on your own hardware with no network calls, no rate limits, and no usage costs. The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
 
 That's the routing. The real part is what the models can *do*. Four MCP servers are wired directly into the gateway — 34 tools any model with function calling can invoke autonomously. A stealth browser cluster (5 Camoufox replicas, real OS-level mouse and keyboard, zero CDP exposure) that passes Cloudflare, CreepJS, and every other bot detector we've thrown at it. S3-compatible object storage with public-read URLs, presigned links, and auto-expiry. Two agentic Claude Code instances — one on your Claude subscription or API key, one running GLM models through z.ai — each with a full shell, persistent workspaces, and file I/O. Ask a Groq model to research something and it opens a browser, reads pages, saves files, and comes back with an answer. The model orchestrates. You just prompt.
 
@@ -23,16 +23,18 @@ nginx :4000
   ├─► /stealthy-auto-browse/ → HAProxy → [browser ×5]
   ├─► /storage/              → hybrids3
   └─► /                      → LiteLLM
-                                  ├─ Groq          (free)
-                                  ├─ Cerebras      (free)
-                                  ├─ OpenRouter     (free)
-                                  ├─ HuggingFace    (free)
-                                  ├─ Mistral        (free: 1B tokens/month)
-                                  ├─ Cohere         (free: 1K req/day)
-                                  ├─ claudebox      (paid, sub or API key)
-                                  ├─ claudebox-zai  (paid, z.ai)
-                                  ├─ Anthropic      (optional, paid)
-                                  └─ OpenAI         (optional, paid)
+                                  ├─ Groq              (free)
+                                  ├─ Cerebras           (free)
+                                  ├─ OpenRouter         (free tier)
+                                  ├─ HuggingFace        (free)
+                                  ├─ Mistral            (free: 1B tokens/month)
+                                  ├─ Cohere             (free: 1K req/day)
+                                  ├─ Ollama             (local, CPU, no limits)
+                                  ├─ Speaches           (local, CPU, transcription)
+                                  ├─ claudebox          (flat-rate, Max sub or API key)
+                                  ├─ claudebox-zai      (flat-rate, z.ai)
+                                  ├─ Anthropic          (optional, pay-per-token)
+                                  └─ OpenAI             (optional, pay-per-token)
 
 MCP servers (34 tools, available to all models):
   ├─ stealthy_auto_browse  (17 tools) — browser navigation, clicks, typing, screenshots
@@ -41,41 +43,48 @@ MCP servers (34 tools, available to all models):
   └─ claudebox_zai         (5 tools)  — agentic Claude Code via z.ai/GLM
 ```
 
-All persistent data lives under `.data/` (bind mounts). The directory structure is tracked in git via `.gitkeep` files so the right directories exist on a fresh clone — contents are gitignored. Everything is defined in a single `docker-compose.yml` with all service configs embedded inline — no external config files.
+All persistent data lives under `.data/` (bind mounts). The directory structure is tracked in git via `.gitkeep` files so the right directories exist on a fresh clone — contents are gitignored.
 
 Notable writable locations:
 
-| Path                                         | Used by         | Notes                                                                                 |
-| -------------------------------------------- | --------------- | ------------------------------------------------------------------------------------- |
-| `.data/claudebox/config/.always-skills/`     | claudebox       | Drop `<name>/SKILL.md` files here — injected into every Claude session automatically |
-| `.data/claudebox-zai/config/.always-skills/` | claudebox-zai   | Same, for the z.ai instance                                                           |
-| `.data/claudebox/workspaces/`                | claudebox       | Persistent task workspaces                                                            |
-| `.data/claudebox-zai/workspaces/`            | claudebox-zai   | Persistent task workspaces                                                            |
-| `.data/hybrids3/`                            | hybrids3        | Object storage data                                                                   |
-| `.data/nginx/`                               | nginx-auth-init | Generated htpasswd (from `LITELLM_UI_BASIC_AUTH`)                                     |
+| Path | Used by | Notes |
+| ---- | ------- | ----- |
+| `.data/claudebox/config/.always-skills/` | claudebox | Drop `<name>/SKILL.md` files here — injected into every Claude session automatically |
+| `.data/claudebox-zai/config/.always-skills/` | claudebox-zai | Same, for the z.ai instance |
+| `.data/claudebox/workspaces/` | claudebox | Persistent task workspaces |
+| `.data/claudebox-zai/workspaces/` | claudebox-zai | Persistent task workspaces |
+| `.data/hybrids3/` | hybrids3 | Object storage data |
+| `.data/nginx/` | nginx-auth-init | Generated htpasswd (from `LITELLM_UI_BASIC_AUTH`) |
+| `.data/ollama/` | ollama | Downloaded model weights |
+| `.data/speaches/` | speaches | Downloaded Whisper and Parakeet model weights (HuggingFace cache) |
+| `.data/cloudflared/` | cloudflared | Tunnel config and credentials (if using named tunnel) |
 
 ## Services
 
-| Service                                                                           | Description                                                                                                                                                                                                                                                          |
-| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Nginx**                                                                         | Single entry point on port 4000. Routes by URL path, enforces rate limits on the admin UI, and optionally adds HTTP basic auth. All config is embedded inline.                                                                                                       |
-| **LiteLLM**                                                                       | OpenAI-compatible API proxy. Latency-based routing, Redis response caching (10-minute TTL), automatic retries, and per-model fallback chains. Manages API keys and usage via PostgreSQL.                                                                             |
-| **PostgreSQL**                                                                    | Key management, budget tracking, usage analytics for LiteLLM.                                                                                                                                                                                                       |
-| **Redis**                                                                         | LiteLLM response cache and rate limiting.                                                                                                                                                                                                                            |
-| **[claudebox](https://github.com/psyb0t/docker-claudebox)** ×2                    | Claude Code CLI in API mode. Full agentic loop — shell access, file I/O, tool use, persistent workspaces. One instance uses your OAuth token or Anthropic API key; the other points at z.ai for GLM models. Both expose REST API, OpenAI-compatible endpoint, and MCP server. |
-| **[hybrids3](https://github.com/psyb0t/docker-hybrids3)**                         | S3-compatible object storage. Plain HTTP upload/download, boto3-compatible, bearer token auth, auto-expiry, MCP server. The `uploads` bucket is public-read — files are accessible by direct URL without signing.                                                   |
-| **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** | 5 Camoufox (hardened Firefox) replicas behind HAProxy. Real OS-level mouse and keyboard input via PyAutoGUI — no CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan. Redis cookie sync across replicas. REST API and MCP server.                       |
-| **cloudflared** _(optional)_                                                      | Cloudflare Tunnel. Disabled by default — enable with `COMPOSE_PROFILES=cloudflared`. Quick tunnel (random `*.trycloudflare.com` URL, no account) or named tunnel (fixed domain).                                                                                     |
+| Service | Description |
+| ------- | ----------- |
+| **Nginx** | Single entry point on port 4000. Routes by URL path, enforces rate limits on the admin UI, and optionally adds HTTP basic auth. All config is embedded inline. |
+| **LiteLLM** | OpenAI-compatible API proxy. Latency-based routing, Redis response caching (10-minute TTL), automatic retries, and per-model fallback chains. Manages API keys and usage via PostgreSQL. |
+| **PostgreSQL** | Key management, budget tracking, usage analytics for LiteLLM. |
+| **Redis** | LiteLLM response cache and rate limiting. |
+| **[claudebox](https://github.com/psyb0t/docker-claudebox) ×2** | Claude Code CLI in API mode. Full agentic loop — shell access, file I/O, tool use, persistent workspaces. One instance uses your OAuth token or Anthropic API key; the other points at z.ai for GLM models. Both expose REST API, OpenAI-compatible endpoint, and MCP server. |
+| **[hybrids3](https://github.com/psyb0t/docker-hybrids3)** | S3-compatible object storage. Plain HTTP upload/download, boto3-compatible, bearer token auth, auto-expiry, MCP server. The `uploads` bucket is public-read — files are accessible by direct URL without signing. |
+| **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** | 5 Camoufox (hardened Firefox) replicas behind HAProxy. Real OS-level mouse and keyboard input via PyAutoGUI — no CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan. Redis cookie sync across replicas. REST API and MCP server. |
+| **Ollama** | Local CPU inference. Runs llama3.2:3b, qwen2.5:1.5b, qwen2.5-coder:1.5b, phi3.5, moondream (vision), and nomic-embed-text (embeddings). Models are downloaded automatically on first start and cached in `.data/ollama/`. No GPU required — sized for CPU with reasonable RAM. |
+| **Speaches** | Local CPU transcription via [speaches-ai/speaches](https://github.com/speaches-ai/speaches) (the upstream-endorsed faster-whisper server). Serves two models: `faster-distil-whisper-large-v3` for multilingual transcription and `nvidia/parakeet-tdt-0.6b-v2` for English at extreme speed (~3400× real-time on CPU). Models are downloaded from HuggingFace on first use and cached in `.data/speaches/`. |
+| **cloudflared** _(optional)_ | Cloudflare Tunnel. Disabled by default — enable with `CLOUDFLARED=1` in `.env`. Runs a quick tunnel (random `*.trycloudflare.com` URL, no account) or a named tunnel (fixed domain, requires config file and credentials). |
 
 ## Security and Exposure
 
-**Network isolation** — internal services (PostgreSQL, Redis, hybrids3, HAProxy) are on a private Docker network with no host port bindings. They're unreachable from outside the stack. Only nginx is exposed.
+**Network isolation** — internal services (PostgreSQL, Redis, hybrids3, HAProxy, Ollama, Speaches) are on a private Docker network with no host port bindings. They're unreachable from outside the stack. Only nginx is exposed.
 
 **Auth on everything** — every service requires a bearer token. LiteLLM needs `LITELLM_MASTER_KEY`. Claudebox instances each have their own token. Hybrids3 uses per-bucket keys. The stealthy browser cluster has an optional `AUTH_TOKEN`. The admin UI supports HTTP basic auth with rate limiting (5 req/min).
 
 **No new privileges** — all containers run with `no-new-privileges:true`.
 
-**Public exposure** — if you want to reach the gateway from outside, use Cloudflare Tunnel instead of opening ports. Set `COMPOSE_PROFILES=cloudflared` for a quick `*.trycloudflare.com` URL (no account needed), or configure a named tunnel for a fixed custom domain. Traffic goes through Cloudflare's network before it reaches nginx — DDoS protection and TLS termination included.
+**Pre-flight validation** — `make run` and `make run-bg` validate that any file paths set in `.env` (e.g. `CLOUDFLARED_CONFIG`, `CLOUDFLARED_CREDS`) actually exist before starting Docker. If a path is set but missing, the stack refuses to start with a clear error rather than silently creating a broken directory mount.
+
+**Public exposure** — if you want to reach the gateway from outside, use Cloudflare Tunnel instead of opening ports. Set `CLOUDFLARED=1` in `.env` for a quick `*.trycloudflare.com` URL (no account needed), or configure a named tunnel for a fixed custom domain. Traffic goes through Cloudflare's network before it reaches nginx — DDoS protection and TLS termination included.
 
 → [Cloudflare Tunnel setup](docs/services-reference.md#cloudflared-optional)
 
@@ -87,7 +96,46 @@ Notable writable locations:
 
 ## Providers and Models
 
-69 models across 10 providers. Six are free tier with no credit card required. Model groups (`fast`, `smart`, `vision`, `image-gen`, `transcription`) route automatically with per-provider fallback chains — free first, paid last.
+77 models across 12 providers. Six are free tier with no credit card required. Two run locally on CPU with no rate limits. Model groups (`fast`, `smart`, `vision`, `image-gen`, `transcription`) route automatically through per-provider fallback chains.
+
+### Routing philosophy
+
+| Priority | Tier | Providers |
+| -------- | ---- | --------- |
+| 1st | Free cloud | Groq, Cerebras, OpenRouter, HuggingFace, Mistral, Cohere |
+| 2nd | Flat-rate | claudebox (Max sub), claudebox-zai (z.ai) |
+| 3rd | Pay-per-token | Anthropic, OpenAI |
+| Last resort | Local CPU | Ollama, Speaches |
+
+### Model groups
+
+| Group | Description | Models |
+| ----- | ----------- | ------ |
+| `fast` | Small, low-latency chat | groq-llama-3.1-8b, cerebras-llama-3.1-8b, ministral-8b, cohere-command-r7b, and more |
+| `smart` | Large, high-capability chat | cerebras-qwen3-235b, mistral-large, or-hermes-3-405b, claudebox-sonnet, and more |
+| `vision` | Multimodal / image understanding | groq-llama-4-scout, hf-llava, hf-qwen-vl-72b, claudebox-sonnet, openai-gpt-4o, local-ollama-moondream |
+| `image-gen` | Image generation | hf-flux-schnell, hf-flux-dev, hf-sd-3.5-turbo, openai-dall-e-3, openai-gpt-image-1 |
+| `transcription` | Speech-to-text | groq-whisper-large-v3, voxtral-small, openai-whisper, local-speaches-whisper-distil-large-v3, local-speaches-parakeet-tdt-0.6b |
+
+### Local models (Ollama, CPU)
+
+All local models are last in fallback chains — used when cloud providers are rate-limited or unavailable. ~6.5GB total RAM if all are loaded simultaneously; Ollama unloads models after 5 minutes of inactivity.
+
+| Model name | Description | RAM |
+| ---------- | ----------- | --- |
+| `local-ollama-llama3.2-3b` | General chat | ~2GB |
+| `local-ollama-qwen2.5-1.5b` | General chat, tiny | ~1GB |
+| `local-ollama-qwen2.5-coder-1.5b` | Code | ~1GB |
+| `local-ollama-phi3.5` | General chat (Microsoft) | ~2.2GB |
+| `local-ollama-moondream` | Vision / image captioning | ~1.7GB |
+| `local-ollama-nomic-embed` | Text embeddings | ~270MB |
+
+### Local transcription (Speaches, CPU)
+
+| Model name | Description |
+| ---------- | ----------- |
+| `local-speaches-whisper-distil-large-v3` | Multilingual, high accuracy |
+| `local-speaches-parakeet-tdt-0.6b` | English-only, ~3400× real-time on CPU |
 
 → [Full provider and model list](docs/providers.md)
 
@@ -140,9 +188,9 @@ STEALTHY_AUTO_BROWSE_AUTH_TOKEN=     # leave empty to disable auth
 STEALTHY_AUTO_BROWSE_NUM_REPLICAS=5
 
 # Optional — Cloudflare Tunnel
-COMPOSE_PROFILES=          # set to "cloudflared" to enable
-CLOUDFLARED_CONFIG=        # absolute path to tunnel config.yml
-CLOUDFLARED_CREDS=         # absolute path to credentials.json
+CLOUDFLARED=           # set to 1 to enable
+CLOUDFLARED_CONFIG=    # path to tunnel config.yml (relative or absolute)
+CLOUDFLARED_CREDS=     # path to credentials.json (relative or absolute)
 
 # Optional — LiteLLM admin UI basic auth
 LITELLM_UI_BASIC_AUTH=     # user:password format
@@ -157,6 +205,13 @@ REDIS_PASSWORD=...
 WORKERS=8
 ```
 
+Profiles are auto-detected from `.env`:
+- `claudebox` profile activates when `CLAUDE_CODE_OAUTH_TOKEN` or `CLAUDEBOX_ANTHROPIC_API_KEY` is set
+- `claudebox-zai` profile activates when `ZAI_AUTH_TOKEN` is set
+- `cloudflared` profile activates when `CLOUDFLARED=1` is set
+
+If `CLOUDFLARED_CONFIG` or `CLOUDFLARED_CREDS` are set, `make run`/`make run-bg` will verify those files exist before starting. A missing file causes an immediate error — better than Docker silently mounting a directory instead.
+
 ### 3. Start
 
 ```bash
@@ -164,14 +219,14 @@ make run-bg   # detached (background)
 make run      # foreground with logs
 ```
 
-Profiles are auto-detected from `.env` — services that don't have credentials are skipped automatically.
+Gateway is at `http://localhost:4000`. Admin UI at `http://localhost:4000/ui/`.
 
-Gateway is now at `http://localhost:4000`. Admin UI at `http://localhost:4000/ui/`.
+On first start, Ollama will pull all local models in the background. Speaches will download transcription models from HuggingFace on first use. Both cache to `.data/` and won't re-download on restart.
 
 ## Usage
 
 ```bash
-# best available free model
+# best available free smart model
 curl http://localhost:4000/chat/completions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
@@ -183,16 +238,33 @@ curl http://localhost:4000/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model": "cerebras-qwen3-235b", "messages": [{"role": "user", "content": "hello"}]}'
 
+# local model (no network, no rate limits)
+curl http://localhost:4000/chat/completions \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "local-ollama-llama3.2-3b", "messages": [{"role": "user", "content": "hello"}]}'
+
 # image generation
 curl http://localhost:4000/images/generations \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model": "image-gen", "prompt": "a cat riding a skateboard"}'
 
-# transcription
+# transcription (routes through groq → speaches → openai)
 curl http://localhost:4000/audio/transcriptions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -F "model=transcription" -F "file=@audio.mp3"
+
+# local transcription directly (Parakeet — English, insanely fast)
+curl http://localhost:4000/audio/transcriptions \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -F "model=local-speaches-parakeet-tdt-0.6b" -F "file=@audio.mp3"
+
+# text embeddings (local)
+curl http://localhost:4000/embeddings \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "local-ollama-nomic-embed", "input": "your text here"}'
 ```
 
 → [Full usage guide](docs/usage.md) — browser automation, object storage, agentic claudebox tasks, vision, streaming, Python SDK examples
@@ -207,7 +279,7 @@ All endpoints, auth requirements, request/response formats, and config options.
 
 ```bash
 make run      # start stack in foreground
-make run-bg   # start stack in background
+make run-bg   # start stack in background (validates file paths first)
 make down     # stop everything
 make restart  # full restart
 make logs     # follow logs
