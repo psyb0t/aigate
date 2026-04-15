@@ -2,7 +2,7 @@
 
 Your own AI infrastructure. One endpoint. Everything.
 
-83 models across 12 providers behind a single OpenAI-compatible API — point any existing client at `http://localhost:4000` and it just works. Six of those providers are completely free. Two more run entirely on your own hardware with no network calls, no rate limits, and no usage costs. The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
+82 models across 12 providers behind a single OpenAI-compatible API — point any existing client at `http://localhost:4000` and it just works. Six of those providers are completely free. Two more run entirely on your own hardware with no network calls, no rate limits, and no usage costs. The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
 
 That's the routing. The real part is what the models can *do*. Four MCP servers are wired directly into the gateway — 34 tools any model with function calling can invoke autonomously. A stealth browser cluster (5 Camoufox replicas, real OS-level mouse and keyboard, zero CDP exposure) that passes Cloudflare, CreepJS, and every other bot detector we've thrown at it. S3-compatible object storage with public-read URLs, presigned links, and auto-expiry. Two agentic Claude Code instances — one on your Claude subscription or API key, one running GLM models through z.ai — each with a full shell, persistent workspaces, and file I/O. Ask a Groq model to research something and it opens a browser, reads pages, saves files, and comes back with an answer. The model orchestrates. You just prompt.
 
@@ -57,7 +57,6 @@ Notable writable locations:
 | `.data/nginx/` | nginx-auth-init | Generated htpasswd (from `LITELLM_UI_BASIC_AUTH`) |
 | `.data/ollama/` | ollama | Downloaded model weights |
 | `.data/speaches/` | speaches | Downloaded Whisper and Parakeet model weights (HuggingFace cache) |
-| `.data/infinity/` | infinity | Downloaded reranking model weights (HuggingFace cache) |
 | `.data/cloudflared/` | cloudflared | Tunnel config and credentials (if using named tunnel) |
 
 ## Services
@@ -73,7 +72,6 @@ Notable writable locations:
 | **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** | 5 Camoufox (hardened Firefox) replicas behind HAProxy. Real OS-level mouse and keyboard input via PyAutoGUI — no CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan. Redis cookie sync across replicas. REST API and MCP server. |
 | **Ollama** | Local CPU inference. Runs llama3.2:3b, qwen3:4b, smollm2:1.7b, qwen2.5-coder:1.5b, qwen2.5-coder:3b, phi3.5, moondream (vision), nomic-embed-text, bge-m3, and qwen3-embedding:0.6b (embeddings). Models are downloaded automatically on first start and cached in `.data/ollama/`. No GPU required — sized for CPU with reasonable RAM. |
 | **Speaches** | Local CPU audio via [speaches-ai/speaches](https://github.com/speaches-ai/speaches). Transcription: `faster-distil-whisper-large-v3` (multilingual) and `parakeet-tdt-0.6b-v2` (English, ~3400× real-time on CPU). Text-to-speech: `Kokoro-82M` int8 (high-quality, multiple voices). All models are pre-downloaded on first start and cached in `.data/speaches/`. |
-| **Infinity** | Local CPU reranking via [michaelfeil/infinity](https://github.com/michaelfeil/infinity). Runs `mxbai-rerank-xsmall-v1` (~70MB ONNX model) for cross-encoder reranking in RAG pipelines. Model downloads on first start and caches in `.data/infinity/`. |
 | **cloudflared** _(optional)_ | Cloudflare Tunnel. Disabled by default — enable with `CLOUDFLARED=1` in `.env`. Runs a quick tunnel (random `*.trycloudflare.com` URL, no account) or a named tunnel (fixed domain, requires config file and credentials). |
 
 ## Security and Exposure
@@ -98,7 +96,7 @@ Notable writable locations:
 
 ## Providers and Models
 
-83 models across 12 providers. Six are free tier with no credit card required. Two run locally on CPU with no rate limits. Model groups (`fast`, `smart`, `vision`, `image-gen`, `transcription`) route automatically through per-provider fallback chains.
+82 models across 12 providers. Six are free tier with no credit card required. Two run locally on CPU with no rate limits. Model groups (`fast`, `smart`, `vision`, `image-gen`, `transcription`) route automatically through per-provider fallback chains.
 
 ### Routing philosophy
 
@@ -148,12 +146,6 @@ All local models are last in fallback chains — used when cloud providers are r
 | Model name | Description |
 | ---------- | ----------- |
 | `local-speaches-kokoro-tts` | Kokoro 82M int8 — high-quality, multiple voices (af_heart, af_alloy, af_bella, etc.) |
-
-### Local reranking (Infinity, CPU)
-
-| Model name | Description |
-| ---------- | ----------- |
-| `local-infinity-rerank` | mxbai-rerank-xsmall-v1 — cross-encoder reranking for RAG pipelines (~70MB, ONNX) |
 
 → [Full provider and model list](docs/providers.md)
 
@@ -309,12 +301,6 @@ curl http://localhost:4000/embeddings \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model": "local-ollama-nomic-embed", "input": "your text here"}'
-
-# reranking (local — re-score documents for RAG pipelines)
-curl http://localhost:4000/rerank \
-  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"model": "local-infinity-rerank", "query": "how does authentication work?", "documents": ["JWT tokens are issued on login", "The database schema has 12 tables", "Auth middleware validates bearer tokens on every request"]}'
 ```
 
 → [Full usage guide](docs/usage.md) — browser automation, object storage, agentic claudebox tasks, vision, streaming, Python SDK examples

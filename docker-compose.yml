@@ -281,34 +281,6 @@ services:
       - stealthy-auto-browse
       - litellm-internal
 
-  # ── Infinity (local reranking — CPU, ONNX) ──────────────────────────────────
-
-  infinity:
-    image: michaelf34/infinity:0.0.77-cpu
-    restart: unless-stopped
-    mem_limit: ${INFINITY_MEM_LIMIT:-512m}
-    memswap_limit: ${INFINITY_MEMSWAP_LIMIT:-1g}
-    cpus: ${INFINITY_CPUS:-2.0}
-    command: >
-      v2
-      --model-id mixedbread-ai/mxbai-rerank-xsmall-v1
-      --device cpu
-      --engine torch
-      --port 7997
-    volumes:
-      - ./.data/infinity:/app/.cache
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:7997/health"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 120s
-    security_opt:
-      - no-new-privileges:true
-    networks:
-      - litellm-internal
-      - litellm-public
-
   # ── Speaches (local transcription — faster-whisper + Parakeet TDT) ──────────
 
   speaches:

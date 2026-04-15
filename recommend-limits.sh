@@ -103,7 +103,6 @@ postgres_mem=$(    mem  3  256 ); postgres_swap=$(    swap $postgres_mem    ); p
 sab_redis_mem=$(   mem  1   64 ); sab_redis_swap=$(   swap $sab_redis_mem   ); sab_redis_cpu=$(   cpu  1  1 )
 sab_mem=$(         mem  3  128 ); sab_swap=$(         swap $sab_mem         ); sab_cpu=$(         cpu 10  2 )
 sab_proxy_mem=$(   mem  1   64 ); sab_proxy_swap=$(   swap $sab_proxy_mem   ); sab_proxy_cpu=$(   cpu  2  1 )
-infinity_mem=$(    mem  3  256 ); infinity_swap=$(    swap $infinity_mem    ); infinity_cpu=$(    cpu 10  2 )
 speaches_mem=$(    mem 15  512 ); speaches_swap=$(    swap $speaches_mem    ); speaches_cpu=$(    cpu 25  2 )
 ollama_mem=$(      mem 24  512 ); ollama_swap=$(      swap $ollama_mem      ); ollama_cpu=$(      cpu 40  2 )
 ollama_pull_mem=$( mem  2  128 ); ollama_pull_swap=$( swap $ollama_pull_mem ); ollama_pull_cpu=$( cpu  5  1 )
@@ -127,7 +126,6 @@ row "postgres"                    $postgres_mem     $postgres_swap     $postgres
 row "stealthy-auto-browse-redis"  $sab_redis_mem    $sab_redis_swap    $sab_redis_cpu
 row "stealthy-auto-browse (×${sab_replicas})" $sab_mem          $sab_swap          $sab_cpu
 row "stealthy-auto-browse-proxy"  $sab_proxy_mem    $sab_proxy_swap    $sab_proxy_cpu
-row "infinity"                    $infinity_mem     $infinity_swap     $infinity_cpu
 row "speaches"                    $speaches_mem     $speaches_swap     $speaches_cpu
 row "ollama"                      $ollama_mem       $ollama_swap       $ollama_cpu
 row "ollama-pull (one-shot)"      $ollama_pull_mem  $ollama_pull_swap  $ollama_pull_cpu
@@ -135,7 +133,7 @@ row "cloudflared"                 $cloudflared_mem  $cloudflared_swap  $cloudfla
 
 total_mem=$(( nginx_mem + claudebox_mem + cbzai_mem + hybrids3_mem +
               redis_mem + postgres_mem + sab_redis_mem + sab_mem * sab_replicas +
-              sab_proxy_mem + infinity_mem + speaches_mem + ollama_mem + cloudflared_mem ))
+              sab_proxy_mem + speaches_mem + ollama_mem + cloudflared_mem ))
 echo ""
 echo "Total max RAM (all persistent services): $(fmt $total_mem)"
 echo "  ($(( total_mem * 100 / total_ram_mb ))% of total RAM, MAXUSE=${maxuse}%)"
@@ -188,10 +186,6 @@ SAB_CPUS=${sab_cpu}
 SAB_PROXY_MEM_LIMIT=$(fmt $sab_proxy_mem)
 SAB_PROXY_MEMSWAP_LIMIT=$(fmt $sab_proxy_swap)
 SAB_PROXY_CPUS=${sab_proxy_cpu}
-
-INFINITY_MEM_LIMIT=$(fmt $infinity_mem)
-INFINITY_MEMSWAP_LIMIT=$(fmt $infinity_swap)
-INFINITY_CPUS=${infinity_cpu}
 
 SPEACHES_MEM_LIMIT=$(fmt $speaches_mem)
 SPEACHES_MEMSWAP_LIMIT=$(fmt $speaches_swap)
