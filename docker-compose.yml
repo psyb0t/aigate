@@ -53,7 +53,7 @@ services:
 
   litellm:
     build: .
-    image: litellm-local:latest
+    image: litellm-aigate:latest
     restart: unless-stopped
     volumes:
       - ./config.yaml:/app/config.yaml:ro
@@ -74,7 +74,13 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness')",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -145,7 +151,13 @@ services:
       - source: hybrids3_config
         target: /config/config.yaml
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/storage/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8080/storage/health')",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -181,7 +193,11 @@ services:
     volumes:
       - ./.data/postgres:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-litellm} -d ${POSTGRES_DB:-litellm}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-litellm} -d ${POSTGRES_DB:-litellm}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -241,7 +257,7 @@ services:
   cloudflared:
     profiles: ["cloudflared"]
     build: ./cloudflared
-    image: cloudflared-local:latest
+    image: cloudflared-aigate:latest
     restart: unless-stopped
     volumes:
       - ${CLOUDFLARED_CONFIG:-/dev/null}:/etc/cloudflared/config.yml:ro
