@@ -525,6 +525,7 @@ model_group_alias:
     - claudebox-glm-4.7
     - anthropic-claude-sonnet-4
     - openai-gpt-4o
+    - local-ollama-moondream
 
   # Image generation
   image-gen:

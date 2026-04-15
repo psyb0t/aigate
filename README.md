@@ -30,7 +30,7 @@ nginx :4000
                                   ├─ Mistral            (free: 1B tokens/month)
                                   ├─ Cohere             (free: 1K req/day)
                                   ├─ Ollama             (local, CPU, no limits)
-                                  ├─ Speaches           (local, CPU, transcription)
+                                  ├─ Speaches           (local, CPU, transcription + TTS)
                                   ├─ claudebox          (flat-rate, Max sub or API key)
                                   ├─ claudebox-zai      (flat-rate, z.ai)
                                   ├─ Anthropic          (optional, pay-per-token)
@@ -113,7 +113,7 @@ Notable writable locations:
 | ----- | ----------- | ------ |
 | `fast` | Small, low-latency chat | groq-llama-3.1-8b, cerebras-llama-3.1-8b, ministral-8b, cohere-command-r7b, and more |
 | `smart` | Large, high-capability chat | cerebras-qwen3-235b, mistral-large, or-hermes-3-405b, claudebox-sonnet, and more |
-| `vision` | Multimodal / image understanding | groq-llama-4-scout, hf-llava, hf-qwen-vl-72b, claudebox-sonnet, openai-gpt-4o, local-ollama-moondream |
+| `vision` | Multimodal / image understanding | groq-llama-4-scout, hf-llama-4-scout, hf-qwen-vl-72b, mistral-small, claudebox-sonnet, openai-gpt-4o, local-ollama-moondream |
 | `image-gen` | Image generation | hf-flux-schnell, hf-flux-dev, hf-sd-3.5-turbo, openai-dall-e-3, openai-gpt-image-1 |
 | `transcription` | Speech-to-text | groq-whisper-large-v3, voxtral-small, openai-whisper, local-speaches-whisper-distil-large-v3, local-speaches-parakeet-tdt-0.6b |
 
