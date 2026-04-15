@@ -19,6 +19,16 @@ total_ram_mb=$(awk '/MemTotal/ { printf "%d", $2/1024 }' /proc/meminfo)
 total_swap_mb=$(awk '/SwapTotal/ { printf "%d", $2/1024 }' /proc/meminfo)
 total_cores=$(nproc)
 
+# Read config from .env if present
+sab_replicas=5
+litellm_workers=4
+if [ -f .env ]; then
+    val=$(grep -E '^STEALTHY_AUTO_BROWSE_NUM_REPLICAS=' .env | cut -d= -f2 | tr -d '[:space:]')
+    [ -n "$val" ] && sab_replicas=$val
+    val=$(grep -E '^LITELLM_WORKERS=' .env | cut -d= -f2 | tr -d '[:space:]')
+    [ -n "$val" ] && litellm_workers=$val
+fi
+
 maxuse=${MAXUSE:-100}
 if [ "$maxuse" -lt 10 ] || [ "$maxuse" -gt 100 ]; then
     echo "ERROR: MAXUSE must be between 10 and 100 (got: $maxuse)" >&2
@@ -83,7 +93,9 @@ fmt() {
 #                          RAM%  floor(MB)   CPU%  floor(0.1 cores)
 nginx_init_mem=$(  mem  1   64 ); nginx_init_swap=$(  swap $nginx_init_mem  ); nginx_init_cpu=$(  cpu  2  2 )
 nginx_mem=$(       mem  1   64 ); nginx_swap=$(       swap $nginx_mem       ); nginx_cpu=$(       cpu  2  2 )
-litellm_mem=$(     mem  9  512 ); litellm_swap=$(     swap $litellm_mem     ); litellm_cpu=$(     cpu 25  4 )
+# litellm: ~400MB base + ~350MB per worker
+litellm_floor=$(( 400 + litellm_workers * 350 ))
+litellm_mem=$(     mem  9  $litellm_floor ); litellm_swap=$(     swap $litellm_mem     ); litellm_cpu=$(     cpu 25  $litellm_workers )
 claudebox_mem=$(   mem  4  256 ); claudebox_swap=$(   swap $claudebox_mem   ); claudebox_cpu=$(   cpu 15  2 )
 cbzai_mem=$(       mem  4  256 ); cbzai_swap=$(       swap $cbzai_mem       ); cbzai_cpu=$(       cpu 15  2 )
 hybrids3_mem=$(    mem  2  128 ); hybrids3_swap=$(    swap $hybrids3_mem    ); hybrids3_cpu=$(    cpu  3  1 )
@@ -113,7 +125,7 @@ row "hybrids3"                    $hybrids3_mem     $hybrids3_swap     $hybrids3
 row "redis"                       $redis_mem        $redis_swap        $redis_cpu
 row "postgres"                    $postgres_mem     $postgres_swap     $postgres_cpu
 row "stealthy-auto-browse-redis"  $sab_redis_mem    $sab_redis_swap    $sab_redis_cpu
-row "stealthy-auto-browse (each)" $sab_mem          $sab_swap          $sab_cpu
+row "stealthy-auto-browse (×${sab_replicas})" $sab_mem          $sab_swap          $sab_cpu
 row "stealthy-auto-browse-proxy"  $sab_proxy_mem    $sab_proxy_swap    $sab_proxy_cpu
 row "speaches"                    $speaches_mem     $speaches_swap     $speaches_cpu
 row "ollama"                      $ollama_mem       $ollama_swap       $ollama_cpu
@@ -121,7 +133,7 @@ row "ollama-pull (one-shot)"      $ollama_pull_mem  $ollama_pull_swap  $ollama_p
 row "cloudflared"                 $cloudflared_mem  $cloudflared_swap  $cloudflared_cpu
 
 total_mem=$(( nginx_mem + litellm_mem + claudebox_mem + cbzai_mem + hybrids3_mem +
-              redis_mem + postgres_mem + sab_redis_mem + sab_mem * 5 +
+              redis_mem + postgres_mem + sab_redis_mem + sab_mem * sab_replicas +
               sab_proxy_mem + speaches_mem + ollama_mem + cloudflared_mem ))
 echo ""
 echo "Total max RAM (all persistent services): $(fmt $total_mem)"
