@@ -345,6 +345,7 @@ services:
     depends_on:
       - ollama
     networks:
+      - litellm-public
       - litellm-internal
 
   cloudflared:
