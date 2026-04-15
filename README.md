@@ -2,7 +2,7 @@
 
 Your own AI infrastructure. One compose file. One endpoint. Everything.
 
-81 models across 12 providers behind a single OpenAI-compatible API — point any existing client at `http://localhost:4000` and it just works. Six of those providers are completely free. Two more run entirely on your own hardware with no network calls, no rate limits, and no usage costs. The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
+82 models across 12 providers behind a single OpenAI-compatible API — point any existing client at `http://localhost:4000` and it just works. Six of those providers are completely free. Two more run entirely on your own hardware with no network calls, no rate limits, and no usage costs. The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
 
 That's the routing. The real part is what the models can *do*. Four MCP servers are wired directly into the gateway — 34 tools any model with function calling can invoke autonomously. A stealth browser cluster (5 Camoufox replicas, real OS-level mouse and keyboard, zero CDP exposure) that passes Cloudflare, CreepJS, and every other bot detector we've thrown at it. S3-compatible object storage with public-read URLs, presigned links, and auto-expiry. Two agentic Claude Code instances — one on your Claude subscription or API key, one running GLM models through z.ai — each with a full shell, persistent workspaces, and file I/O. Ask a Groq model to research something and it opens a browser, reads pages, saves files, and comes back with an answer. The model orchestrates. You just prompt.
 
@@ -71,7 +71,7 @@ Notable writable locations:
 | **[hybrids3](https://github.com/psyb0t/docker-hybrids3)** | S3-compatible object storage. Plain HTTP upload/download, boto3-compatible, bearer token auth, auto-expiry, MCP server. The `uploads` bucket is public-read — files are accessible by direct URL without signing. |
 | **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** | 5 Camoufox (hardened Firefox) replicas behind HAProxy. Real OS-level mouse and keyboard input via PyAutoGUI — no CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan. Redis cookie sync across replicas. REST API and MCP server. |
 | **Ollama** | Local CPU inference. Runs llama3.2:3b, qwen3:4b, smollm2:1.7b, qwen2.5-coder:1.5b, qwen2.5-coder:3b, phi3.5, moondream (vision), nomic-embed-text, bge-m3, and qwen3-embedding:0.6b (embeddings). Models are downloaded automatically on first start and cached in `.data/ollama/`. No GPU required — sized for CPU with reasonable RAM. |
-| **Speaches** | Local CPU transcription via [speaches-ai/speaches](https://github.com/speaches-ai/speaches) (the upstream-endorsed faster-whisper server). Serves two models: `faster-distil-whisper-large-v3` for multilingual transcription and `nvidia/parakeet-tdt-0.6b-v2` for English at extreme speed (~3400× real-time on CPU). Models are downloaded from HuggingFace on first use and cached in `.data/speaches/`. |
+| **Speaches** | Local CPU audio via [speaches-ai/speaches](https://github.com/speaches-ai/speaches). Transcription: `faster-distil-whisper-large-v3` (multilingual) and `parakeet-tdt-0.6b-v2` (English, ~3400× real-time on CPU). Text-to-speech: `Kokoro-82M` int8 (high-quality, multiple voices). All models are pre-downloaded on first start and cached in `.data/speaches/`. |
 | **cloudflared** _(optional)_ | Cloudflare Tunnel. Disabled by default — enable with `CLOUDFLARED=1` in `.env`. Runs a quick tunnel (random `*.trycloudflare.com` URL, no account) or a named tunnel (fixed domain, requires config file and credentials). |
 
 ## Security and Exposure
@@ -96,7 +96,7 @@ Notable writable locations:
 
 ## Providers and Models
 
-81 models across 12 providers. Six are free tier with no credit card required. Two run locally on CPU with no rate limits. Model groups (`fast`, `smart`, `vision`, `image-gen`, `transcription`) route automatically through per-provider fallback chains.
+82 models across 12 providers. Six are free tier with no credit card required. Two run locally on CPU with no rate limits. Model groups (`fast`, `smart`, `vision`, `image-gen`, `transcription`) route automatically through per-provider fallback chains.
 
 ### Routing philosophy
 
@@ -140,6 +140,12 @@ All local models are last in fallback chains — used when cloud providers are r
 | ---------- | ----------- |
 | `local-speaches-whisper-distil-large-v3` | Multilingual, high accuracy |
 | `local-speaches-parakeet-tdt-0.6b` | English-only, ~3400× real-time on CPU |
+
+### Local text-to-speech (Speaches, CPU)
+
+| Model name | Description |
+| ---------- | ----------- |
+| `local-speaches-kokoro-tts` | Kokoro 82M int8 — high-quality, multiple voices (af_heart, af_alloy, af_bella, etc.) |
 
 → [Full provider and model list](docs/providers.md)
 
@@ -244,7 +250,7 @@ make run      # foreground with logs
 
 Gateway is at `http://localhost:4000`. Admin UI at `http://localhost:4000/ui/`.
 
-On first start, Ollama will pull all local models in the background. Speaches will download transcription models from HuggingFace on first use. Both cache to `.data/` and won't re-download on restart.
+On first start, Ollama will pull all local models in the background. Speaches models (whisper, parakeet, kokoro) are pre-downloaded automatically. Both cache to `.data/` and won't re-download on restart.
 
 ## Usage
 
@@ -282,6 +288,13 @@ curl http://localhost:4000/audio/transcriptions \
 curl http://localhost:4000/audio/transcriptions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -F "model=local-speaches-parakeet-tdt-0.6b" -F "file=@audio.mp3"
+
+# text-to-speech (local — Kokoro, multiple voices)
+curl http://localhost:4000/audio/speech \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "local-speaches-kokoro-tts", "input": "Hello world", "voice": "af_heart"}' \
+  -o speech.mp3
 
 # text embeddings (local)
 curl http://localhost:4000/embeddings \
