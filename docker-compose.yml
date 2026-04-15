@@ -318,6 +318,7 @@ services:
       - ./.data/ollama:/root/.ollama
     networks:
       - litellm-internal
+      - litellm-public
 
   ollama-pull:
     image: ollama/ollama:0.20.7
@@ -325,27 +326,26 @@ services:
     mem_limit: ${OLLAMA_PULL_MEM_LIMIT:-512m}
     memswap_limit: ${OLLAMA_PULL_MEMSWAP_LIMIT:-1g}
     cpus: ${OLLAMA_PULL_CPUS:-0.5}
+    network_mode: "service:ollama"
     entrypoint: >
-      sh -c "
+      sh -c '
         until ollama list > /dev/null 2>&1; do sleep 2; done;
-        ollama pull nomic-embed-text &&
-        ollama pull bge-m3 &&
-        ollama pull qwen3-embedding:0.6b &&
-        ollama pull llama3.2:3b &&
-        ollama pull qwen3:4b &&
-        ollama pull smollm2:1.7b &&
-        ollama pull qwen2.5-coder:1.5b &&
-        ollama pull qwen2.5-coder:3b &&
-        ollama pull phi3.5 &&
-        ollama pull moondream
-      "
+        pull() { for i in 1 2 3 4 5; do ollama pull "$$1" && return 0; sleep 5; done; return 1; };
+        pull nomic-embed-text &&
+        pull bge-m3 &&
+        pull qwen3-embedding:0.6b &&
+        pull llama3.2:3b &&
+        pull qwen3:4b &&
+        pull smollm2:1.7b &&
+        pull qwen2.5-coder:1.5b &&
+        pull qwen2.5-coder:3b &&
+        pull phi3.5 &&
+        pull moondream
+      '
     environment:
-      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_HOST=http://localhost:11434
     depends_on:
       - ollama
-    networks:
-      - litellm-public
-      - litellm-internal
 
   cloudflared:
     profiles: ["cloudflared"]
