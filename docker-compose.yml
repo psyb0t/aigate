@@ -296,7 +296,7 @@ services:
     volumes:
       - ./.data/speaches:/home/ubuntu/.cache/huggingface/hub
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8000/healthz"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -305,6 +305,22 @@ services:
       - no-new-privileges:true
     networks:
       - litellm-internal
+
+  speaches-pull:
+    image: ghcr.io/speaches-ai/speaches:0.9.0-rc.3-cpu
+    restart: "no"
+    mem_limit: ${SPEACHES_MEM_LIMIT:-4g}
+    memswap_limit: ${SPEACHES_MEMSWAP_LIMIT:-8g}
+    cpus: ${SPEACHES_CPUS:-4.0}
+    entrypoint: >
+      sh -c '
+        huggingface-cli download Systran/faster-distil-whisper-large-v3 &&
+        huggingface-cli download nvidia/parakeet-tdt-0.6b-v2
+      '
+    volumes:
+      - ./.data/speaches:/home/ubuntu/.cache/huggingface/hub
+    networks:
+      - litellm-public
 
   # ── Ollama (local inference) ─────────────────────────────────────────────────
 
