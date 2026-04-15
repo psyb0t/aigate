@@ -38,3 +38,5 @@ git-update.sh
 !.data/ollama/.gitkeep
 !.data/speaches/
 !.data/speaches/.gitkeep
+!.data/infinity/
+!.data/infinity/.gitkeep

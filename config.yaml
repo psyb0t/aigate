@@ -470,6 +470,14 @@ model_list:
       model: cohere/rerank-v3.5
       api_key: os.environ/COHERE_API_KEY
 
+  # ── Infinity (local reranking, CPU) ──────────────────────────────────────────
+
+  - model_name: local-infinity-rerank
+    litellm_params:
+      model: infinity/mixedbread-ai/mxbai-rerank-xsmall-v1
+      api_base: http://infinity:7997
+      api_key: "none"
+
 
 # ── Model Groups ──────────────────────────────────────────────────────────────
 
