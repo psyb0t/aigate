@@ -349,7 +349,7 @@ model_list:
   # faster-distil-whisper-large-v3: multilingual, high accuracy
   - model_name: local-speaches-whisper-distil-large-v3
     litellm_params:
-      model: openai/whisper-1
+      model: hosted_vllm/Systran/faster-distil-whisper-large-v3
       api_base: http://speaches:8000/v1
       api_key: none
     model_info:
@@ -358,11 +358,20 @@ model_list:
   # Parakeet TDT 0.6B v2: English-only, ~3000x RTF — insanely fast on CPU
   - model_name: local-speaches-parakeet-tdt-0.6b
     litellm_params:
-      model: openai/nvidia/parakeet-tdt-0.6b-v2
+      model: hosted_vllm/istupakov/parakeet-tdt-0.6b-v2-onnx
       api_base: http://speaches:8000/v1
       api_key: none
     model_info:
       mode: audio_transcription
+
+  # Kokoro 82M v1.0 int8: high-quality TTS, ~80MB, multiple voices
+  - model_name: local-speaches-kokoro-tts
+    litellm_params:
+      model: hosted_vllm/speaches-ai/Kokoro-82M-v1.0-ONNX-int8
+      api_base: http://speaches:8000/v1
+      api_key: none
+    model_info:
+      mode: audio_speech
 
   # ── Ollama (local, free, no rate limits) ─────────────────────────────────────
 
@@ -533,6 +542,7 @@ model_group_alias:
     - openai-whisper
     - local-speaches-whisper-distil-large-v3
     - local-speaches-parakeet-tdt-0.6b
+
 
 
 # ── MCP Servers ───────────────────────────────────────────────────────────────

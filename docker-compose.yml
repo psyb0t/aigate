@@ -315,7 +315,8 @@ services:
     entrypoint: >
       sh -c '
         huggingface-cli download Systran/faster-distil-whisper-large-v3 &&
-        huggingface-cli download nvidia/parakeet-tdt-0.6b-v2
+        huggingface-cli download istupakov/parakeet-tdt-0.6b-v2-onnx &&
+        huggingface-cli download speaches-ai/Kokoro-82M-v1.0-ONNX-int8
       '
     volumes:
       - ./.data/speaches:/home/ubuntu/.cache/huggingface/hub
@@ -460,6 +461,11 @@ configs:
               proxy_set_header X-Forwarded-Proto $$scheme;
               proxy_buffering off;
               proxy_request_buffering off;
+          }
+
+          # block root — don't expose LiteLLM swagger
+          location = / {
+              return 404;
           }
 
           # everything else — LiteLLM
