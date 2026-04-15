@@ -93,9 +93,9 @@ fmt() {
 #                          RAM%  floor(MB)   CPU%  floor(0.1 cores)
 nginx_init_mem=$(  mem  1   64 ); nginx_init_swap=$(  swap $nginx_init_mem  ); nginx_init_cpu=$(  cpu  2  2 )
 nginx_mem=$(       mem  1   64 ); nginx_swap=$(       swap $nginx_mem       ); nginx_cpu=$(       cpu  2  2 )
-# litellm: ~400MB base + ~350MB per worker
-litellm_floor=$(( 400 + litellm_workers * 350 ))
-litellm_mem=$(     mem  9  $litellm_floor ); litellm_swap=$(     swap $litellm_mem     ); litellm_cpu=$(     cpu 25  $litellm_workers )
+# litellm: ~800MB base + ~400MB per worker (base includes prisma, config load, etc.)
+litellm_floor=$(( 800 + litellm_workers * 400 ))
+litellm_mem=$(     mem 12  $litellm_floor ); litellm_swap=$(     swap $litellm_mem     ); litellm_cpu=$(     cpu 25  $litellm_workers )
 claudebox_mem=$(   mem  4  256 ); claudebox_swap=$(   swap $claudebox_mem   ); claudebox_cpu=$(   cpu 15  2 )
 cbzai_mem=$(       mem  4  256 ); cbzai_swap=$(       swap $cbzai_mem       ); cbzai_cpu=$(       cpu 15  2 )
 hybrids3_mem=$(    mem  2  128 ); hybrids3_swap=$(    swap $hybrids3_mem    ); hybrids3_cpu=$(    cpu  3  1 )
