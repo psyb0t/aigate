@@ -1,6 +1,6 @@
 # aigate
 
-Your own AI infrastructure. One compose file. One endpoint. Everything.
+Your own AI infrastructure. One endpoint. Everything.
 
 83 models across 12 providers behind a single OpenAI-compatible API — point any existing client at `http://localhost:4000` and it just works. Six of those providers are completely free. Two more run entirely on your own hardware with no network calls, no rate limits, and no usage costs. The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
 
