@@ -12,4 +12,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 
 # Config is bind-mounted at runtime (see docker-compose.yml)
 # Override with: -v ./config.yaml:/app/config.yaml
-CMD ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "8"]
+CMD ["sh", "-c", "exec litellm --config /app/config.yaml --port 4000 --num_workers ${WORKERS:-4}"]
