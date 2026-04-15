@@ -69,8 +69,6 @@ services:
     environment:
       # Disable telemetry
       LITELLM_TELEMETRY: "False"
-      # Disable telemetry
-      LITELLM_TELEMETRY: "False"
       MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
       COHERE_API_KEY: ${COHERE_API_KEY:-}
       UI_USERNAME: ${LITELLM_USERNAME:-}
