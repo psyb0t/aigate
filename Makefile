@@ -51,12 +51,12 @@ endef
 run:
 	$(check_file_vars)
 	@echo "Active profiles: $(if $(COMPOSE_PROFILES),$(COMPOSE_PROFILES),(none))"
-	docker compose up
+	docker compose up --build
 
 run-bg:
 	$(check_file_vars)
 	@echo "Active profiles: $(if $(COMPOSE_PROFILES),$(COMPOSE_PROFILES),(none))"
-	docker compose up -d
+	docker compose up -d --build
 
 down:
 	docker compose down --remove-orphans
