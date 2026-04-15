@@ -248,7 +248,7 @@ services:
     restart: unless-stopped
     environment:
       REDIS_URL: redis://:${STEALTHY_AUTO_BROWSE_REDIS_PASSWORD}@stealthy-auto-browse-redis:6379
-      AUTH_TOKEN: ${STEALTHY_AUTO_BROWSE_AUTH_TOKEN:-}
+      AUTH_TOKEN: ${STEALTHY_AUTO_BROWSE_AUTH_TOKEN:-lulz-4-security}
     mem_limit: ${SAB_MEM_LIMIT:-256m}
     memswap_limit: ${SAB_MEMSWAP_LIMIT:-512m}
     cpus: ${SAB_CPUS:-1.0}
@@ -390,7 +390,7 @@ configs:
 
           # litellm admin UI + login — rate limited, optional basic auth
           location /ui {
-              limit_req zone=admin burst=5 nodelay;
+              limit_req zone=admin burst=20 nodelay;
               include /etc/nginx/auth/auth.conf;
               proxy_pass http://litellm:4000/ui;
               proxy_set_header Host $$http_host;
@@ -404,7 +404,7 @@ configs:
           }
 
           location /login {
-              limit_req zone=admin burst=5 nodelay;
+              limit_req zone=admin burst=20 nodelay;
               include /etc/nginx/auth/auth.conf;
               proxy_pass http://litellm:4000/login;
               proxy_set_header Host $$http_host;
@@ -415,6 +415,7 @@ configs:
 
           # claudebox (OAuth) — full API access
           location /claudebox/ {
+              limit_req zone=claudebox burst=10 nodelay;
               proxy_pass http://claudebox:8080/;
               proxy_set_header Host localhost:8080;
               proxy_set_header X-Real-IP $$remote_addr;
@@ -428,6 +429,7 @@ configs:
 
           # claudebox-zai (GLM models) — full API access
           location /claudebox-zai/ {
+              limit_req zone=claudebox burst=10 nodelay;
               proxy_pass http://claudebox-zai:8080/;
               proxy_set_header Host localhost:8080;
               proxy_set_header X-Real-IP $$remote_addr;
@@ -441,6 +443,7 @@ configs:
 
           # stealthy-auto-browse cluster — HAProxy → browser replicas
           location /stealthy-auto-browse/ {
+              limit_req zone=browser burst=10 nodelay;
               proxy_pass http://stealthy-auto-browse-proxy:8080/;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
@@ -454,6 +457,7 @@ configs:
 
           # hybrids3 — S3-compatible + plain HTTP + MCP
           location /storage {
+              limit_req zone=storage burst=20 nodelay;
               proxy_pass http://hybrids3:8080;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
@@ -468,8 +472,9 @@ configs:
               return 404;
           }
 
-          # everything else — LiteLLM
+          # everything else — LiteLLM API
           location / {
+              limit_req zone=api burst=30 nodelay;
               proxy_pass http://litellm:4000;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
@@ -505,8 +510,10 @@ configs:
       frontend main
           bind *:8080
           capture cookie INSTANCEID len 64
-          http-request return status 200 content-type "application/json" string '{"status":"ok"}' if { path /__queue/health }
-          http-request return status 200 content-type "application/json" string '{"status":"ok","num_replicas":${STEALTHY_AUTO_BROWSE_NUM_REPLICAS:-5}}' if { path /__queue/status }
+          acl is_private src 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 127.0.0.0/8
+          http-request return status 200 content-type "application/json" string '{"status":"ok"}' if { path /__queue/health } is_private
+          http-request return status 200 content-type "application/json" string '{"status":"ok","num_replicas":${STEALTHY_AUTO_BROWSE_NUM_REPLICAS:-5}}' if { path /__queue/status } is_private
+          http-request return status 403 content-type "application/json" string '{"error":"forbidden"}' if { path_beg /__queue/ } !is_private
           use_backend mcp if { path_beg /mcp }
           default_backend browsers
 
@@ -535,11 +542,25 @@ configs:
 
   nginx_limits_conf:
     content: |
-      limit_req_zone $$binary_remote_addr zone=admin:10m rate=5r/m;
+      # Cloudflare real IP restoration — when behind CF tunnel, $$binary_remote_addr
+      # is cloudflared's IP (one bucket for everyone). This restores the real client IP.
+      # Ranges from https://www.cloudflare.com/ips/
+      set_real_ip_from 172.16.0.0/12;
+      set_real_ip_from 10.0.0.0/8;
+      set_real_ip_from 192.168.0.0/16;
+      set_real_ip_from 127.0.0.0/8;
+      real_ip_header CF-Connecting-IP;
+      real_ip_recursive on;
+
+      limit_req_zone $$binary_remote_addr zone=admin:10m rate=30r/m;
+      limit_req_zone $$binary_remote_addr zone=api:10m rate=120r/m;
+      limit_req_zone $$binary_remote_addr zone=storage:10m rate=60r/m;
+      limit_req_zone $$binary_remote_addr zone=claudebox:10m rate=30r/m;
+      limit_req_zone $$binary_remote_addr zone=browser:10m rate=30r/m;
 
   hybrids3_config:
     content: |
-      master_key: "${HYBRIDS3_MASTER_KEY}"
+      master_key: "${HYBRIDS3_MASTER_KEY:-lulz-4-security}"
       master_public_key: "master"
       cleanup_interval: 1m
       lock_acquire_timeout: 30
@@ -549,7 +570,7 @@ configs:
       buckets:
         uploads:
           public: true
-          key: "${HYBRIDS3_UPLOADS_KEY}"
+          key: "${HYBRIDS3_UPLOADS_KEY:-lulz-4-security}"
           public_key: "uploads"
           ttl: "${HYBRIDS3_UPLOADS_TTL:-168h}"
           max_file_size: "${HYBRIDS3_UPLOADS_MAX_SIZE:-100MB}"
