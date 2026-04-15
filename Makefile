@@ -29,13 +29,31 @@ endif
 override COMPOSE_PROFILES := $(subst $(space),$(comma),$(strip $(_PROFILES)))
 export COMPOSE_PROFILES
 
+# ── File path env vars that get volume-mounted ───────────────────────────────
+# Add any env var here whose value is a host file path used in a volume mount.
+_FILE_VARS := CLOUDFLARED_CONFIG CLOUDFLARED_CREDS
+
+define check_file_vars
+	@for var in $(_FILE_VARS); do \
+		val=$$(eval echo "\$$$$var"); \
+		if [ -z "$$val" ] || [ "$$val" = "/dev/null" ]; then continue; fi; \
+		case "$$val" in /*) ;; *) val="$(CURDIR)/$$val" ;; esac; \
+		if [ ! -f "$$val" ]; then \
+			echo "ERROR: $$var — file does not exist: $$val" >&2; \
+			exit 1; \
+		fi; \
+	done
+endef
+
 # ── Targets ───────────────────────────────────────────────────────────────────
 
 run:
+	$(check_file_vars)
 	@echo "Active profiles: $(if $(COMPOSE_PROFILES),$(COMPOSE_PROFILES),(none))"
 	docker compose up
 
 run-bg:
+	$(check_file_vars)
 	@echo "Active profiles: $(if $(COMPOSE_PROFILES),$(COMPOSE_PROFILES),(none))"
 	docker compose up -d
 
