@@ -328,7 +328,7 @@ services:
     cpus: ${OLLAMA_PULL_CPUS:-0.5}
     entrypoint: >
       sh -c "
-        until curl -sf http://ollama:11434/api/tags > /dev/null; do sleep 2; done;
+        until ollama list > /dev/null 2>&1; do sleep 2; done;
         ollama pull nomic-embed-text &&
         ollama pull bge-m3 &&
         ollama pull qwen3-embedding:0.6b &&
