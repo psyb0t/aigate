@@ -96,7 +96,7 @@ Notable writable locations:
 
 ## Providers and Models
 
-82 models across 12 providers. Six are free tier with no credit card required. Two run locally on CPU with no rate limits. Model groups (`fast`, `smart`, `vision`, `image-gen`, `transcription`) route automatically through per-provider fallback chains.
+82 models across 12 providers. Six are free tier with no credit card required. Two run locally on CPU with no rate limits. Per-model fallback chains route automatically through alternative providers when one fails or rate-limits.
 
 ### Routing philosophy
 
@@ -106,16 +106,6 @@ Notable writable locations:
 | 2nd | Flat-rate | claudebox (Max sub), claudebox-zai (z.ai) |
 | 3rd | Pay-per-token | Anthropic, OpenAI |
 | Last resort | Local CPU | Ollama, Speaches |
-
-### Model groups
-
-| Group | Description | Models |
-| ----- | ----------- | ------ |
-| `fast` | Small, low-latency chat | groq-llama-3.1-8b, cerebras-llama-3.1-8b, ministral-8b, cohere-command-r7b, and more |
-| `smart` | Large, high-capability chat | cerebras-qwen3-235b, mistral-large, or-hermes-3-405b, claudebox-sonnet, and more |
-| `vision` | Multimodal / image understanding | groq-llama-4-scout, hf-llama-4-scout, hf-qwen-vl-72b, mistral-small, claudebox-sonnet, openai-gpt-4o, local-ollama-moondream |
-| `image-gen` | Image generation | hf-flux-schnell, hf-flux-dev, hf-sd-3.5-turbo, openai-dall-e-3, openai-gpt-image-1 |
-| `transcription` | Speech-to-text | groq-whisper-large-v3, voxtral-small, openai-whisper, local-speaches-whisper-distil-large-v3, local-speaches-parakeet-tdt-0.6b |
 
 ### Local models (Ollama, CPU)
 
@@ -255,13 +245,7 @@ On first start, Ollama will pull all local models in the background. Speaches mo
 ## Usage
 
 ```bash
-# best available free smart model
-curl http://localhost:4000/chat/completions \
-  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"model": "smart", "messages": [{"role": "user", "content": "hello"}]}'
-
-# specific provider
+# cloud provider (free tier, auto-fallback on rate limit)
 curl http://localhost:4000/chat/completions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
@@ -277,14 +261,14 @@ curl http://localhost:4000/chat/completions \
 curl http://localhost:4000/images/generations \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model": "image-gen", "prompt": "a cat riding a skateboard"}'
+  -d '{"model": "hf-flux-schnell", "prompt": "a cat riding a skateboard"}'
 
-# transcription (routes through groq → speaches → openai)
+# transcription (cloud — Groq Whisper, fast)
 curl http://localhost:4000/audio/transcriptions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -F "model=transcription" -F "file=@audio.mp3"
+  -F "model=groq-whisper-large-v3" -F "file=@audio.mp3"
 
-# local transcription directly (Parakeet — English, insanely fast)
+# local transcription (Parakeet — English, insanely fast)
 curl http://localhost:4000/audio/transcriptions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -F "model=local-speaches-parakeet-tdt-0.6b" -F "file=@audio.mp3"
