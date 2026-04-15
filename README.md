@@ -2,7 +2,7 @@
 
 Your own AI infrastructure. One compose file. One endpoint. Everything.
 
-77 models across 12 providers behind a single OpenAI-compatible API — point any existing client at `http://localhost:4000` and it just works. Six of those providers are completely free. Two more run entirely on your own hardware with no network calls, no rate limits, and no usage costs. The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
+81 models across 12 providers behind a single OpenAI-compatible API — point any existing client at `http://localhost:4000` and it just works. Six of those providers are completely free. Two more run entirely on your own hardware with no network calls, no rate limits, and no usage costs. The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
 
 That's the routing. The real part is what the models can *do*. Four MCP servers are wired directly into the gateway — 34 tools any model with function calling can invoke autonomously. A stealth browser cluster (5 Camoufox replicas, real OS-level mouse and keyboard, zero CDP exposure) that passes Cloudflare, CreepJS, and every other bot detector we've thrown at it. S3-compatible object storage with public-read URLs, presigned links, and auto-expiry. Two agentic Claude Code instances — one on your Claude subscription or API key, one running GLM models through z.ai — each with a full shell, persistent workspaces, and file I/O. Ask a Groq model to research something and it opens a browser, reads pages, saves files, and comes back with an answer. The model orchestrates. You just prompt.
 
@@ -70,7 +70,7 @@ Notable writable locations:
 | **[claudebox](https://github.com/psyb0t/docker-claudebox) ×2** | Claude Code CLI in API mode. Full agentic loop — shell access, file I/O, tool use, persistent workspaces. One instance uses your OAuth token or Anthropic API key; the other points at z.ai for GLM models. Both expose REST API, OpenAI-compatible endpoint, and MCP server. |
 | **[hybrids3](https://github.com/psyb0t/docker-hybrids3)** | S3-compatible object storage. Plain HTTP upload/download, boto3-compatible, bearer token auth, auto-expiry, MCP server. The `uploads` bucket is public-read — files are accessible by direct URL without signing. |
 | **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** | 5 Camoufox (hardened Firefox) replicas behind HAProxy. Real OS-level mouse and keyboard input via PyAutoGUI — no CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan. Redis cookie sync across replicas. REST API and MCP server. |
-| **Ollama** | Local CPU inference. Runs llama3.2:3b, qwen2.5:1.5b, qwen2.5-coder:1.5b, phi3.5, moondream (vision), and nomic-embed-text (embeddings). Models are downloaded automatically on first start and cached in `.data/ollama/`. No GPU required — sized for CPU with reasonable RAM. |
+| **Ollama** | Local CPU inference. Runs llama3.2:3b, qwen3:4b, smollm2:1.7b, qwen2.5-coder:1.5b, qwen2.5-coder:3b, phi3.5, moondream (vision), nomic-embed-text, bge-m3, and qwen3-embedding:0.6b (embeddings). Models are downloaded automatically on first start and cached in `.data/ollama/`. No GPU required — sized for CPU with reasonable RAM. |
 | **Speaches** | Local CPU transcription via [speaches-ai/speaches](https://github.com/speaches-ai/speaches) (the upstream-endorsed faster-whisper server). Serves two models: `faster-distil-whisper-large-v3` for multilingual transcription and `nvidia/parakeet-tdt-0.6b-v2` for English at extreme speed (~3400× real-time on CPU). Models are downloaded from HuggingFace on first use and cached in `.data/speaches/`. |
 | **cloudflared** _(optional)_ | Cloudflare Tunnel. Disabled by default — enable with `CLOUDFLARED=1` in `.env`. Runs a quick tunnel (random `*.trycloudflare.com` URL, no account) or a named tunnel (fixed domain, requires config file and credentials). |
 
@@ -96,7 +96,7 @@ Notable writable locations:
 
 ## Providers and Models
 
-77 models across 12 providers. Six are free tier with no credit card required. Two run locally on CPU with no rate limits. Model groups (`fast`, `smart`, `vision`, `image-gen`, `transcription`) route automatically through per-provider fallback chains.
+81 models across 12 providers. Six are free tier with no credit card required. Two run locally on CPU with no rate limits. Model groups (`fast`, `smart`, `vision`, `image-gen`, `transcription`) route automatically through per-provider fallback chains.
 
 ### Routing philosophy
 
@@ -119,16 +119,20 @@ Notable writable locations:
 
 ### Local models (Ollama, CPU)
 
-All local models are last in fallback chains — used when cloud providers are rate-limited or unavailable. ~6.5GB total RAM if all are loaded simultaneously; Ollama unloads models after 5 minutes of inactivity.
+All local models are last in fallback chains — used when cloud providers are rate-limited or unavailable. Ollama unloads models after 5 minutes of inactivity, so RAM is only consumed when a model is in use.
 
 | Model name | Description | RAM |
 | ---------- | ----------- | --- |
-| `local-ollama-llama3.2-3b` | General chat | ~2GB |
-| `local-ollama-qwen2.5-1.5b` | General chat, tiny | ~1GB |
-| `local-ollama-qwen2.5-coder-1.5b` | Code | ~1GB |
+| `local-ollama-llama3.2-3b` | General chat — smallest/fastest | ~2GB |
+| `local-ollama-qwen3-4b` | General chat — better quality, thinking mode | ~2.6GB |
+| `local-ollama-smollm2-1.7b` | General chat — absolute tiniest | ~1GB |
+| `local-ollama-qwen2.5-coder-1.5b` | Code — smallest | ~1GB |
+| `local-ollama-qwen2.5-coder-3b` | Code — better quality | ~2GB |
 | `local-ollama-phi3.5` | General chat (Microsoft) | ~2.2GB |
 | `local-ollama-moondream` | Vision / image captioning | ~1.7GB |
-| `local-ollama-nomic-embed` | Text embeddings | ~270MB |
+| `local-ollama-nomic-embed` | Text embeddings — fastest, smallest (270MB, 512 token context) | ~270MB |
+| `local-ollama-bge-m3` | Text embeddings — long docs, multilingual (8192 token context) | ~570MB |
+| `local-ollama-qwen3-embed-0.6b` | Text embeddings — modern, efficient | ~500MB |
 
 ### Local transcription (Speaches, CPU)
 

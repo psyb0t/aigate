@@ -332,9 +332,13 @@ services:
       sh -c "
         until curl -sf http://ollama:11434/api/tags > /dev/null; do sleep 2; done;
         ollama pull nomic-embed-text &&
+        ollama pull bge-m3 &&
+        ollama pull qwen3-embedding:0.6b &&
         ollama pull llama3.2:3b &&
-        ollama pull qwen2.5:1.5b &&
+        ollama pull qwen3:4b &&
+        ollama pull smollm2:1.7b &&
         ollama pull qwen2.5-coder:1.5b &&
+        ollama pull qwen2.5-coder:3b &&
         ollama pull phi3.5 &&
         ollama pull moondream
       "
