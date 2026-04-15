@@ -61,13 +61,14 @@ services:
     build: .
     restart: unless-stopped
     cpus: ${LITELLM_CPUS:-4.0}
+    command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "${LITELLM_WORKERS:-4}"]
     volumes:
       - ./config.yaml:/app/config.yaml:ro
     env_file:
       - .env
     environment:
-      # Tune workers to your core count
-      WORKERS: ${LITELLM_WORKERS:-4}
+      # Disable telemetry
+      LITELLM_TELEMETRY: "False"
       # Disable telemetry
       LITELLM_TELEMETRY: "False"
       MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
