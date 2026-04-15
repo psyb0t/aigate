@@ -202,7 +202,7 @@ LITELLM_UI_BASIC_AUTH=     # user:password format
 # Infrastructure
 POSTGRES_PASSWORD=...
 REDIS_PASSWORD=...
-WORKERS=8
+LITELLM_WORKERS=4
 ```
 
 Profiles are auto-detected from `.env`:
