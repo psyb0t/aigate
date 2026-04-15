@@ -63,7 +63,7 @@ Notable writable locations:
 
 | Service | Description |
 | ------- | ----------- |
-| **Nginx** | Single entry point on port 4000. Routes by URL path, enforces rate limits on the admin UI, and optionally adds HTTP basic auth. All config is embedded inline. |
+| **Nginx** | Single entry point on port 4000. Routes by URL path, enforces per-endpoint rate limits, restores real client IP behind Cloudflare, and optionally adds HTTP basic auth on the admin UI. All config is embedded inline. |
 | **LiteLLM** | OpenAI-compatible API proxy. Latency-based routing, Redis response caching (10-minute TTL), automatic retries, and per-model fallback chains. Manages API keys and usage via PostgreSQL. |
 | **PostgreSQL** | Key management, budget tracking, usage analytics for LiteLLM. |
 | **Redis** | LiteLLM response cache and rate limiting. |
@@ -78,7 +78,7 @@ Notable writable locations:
 
 **Network isolation** — internal services (PostgreSQL, Redis, hybrids3, HAProxy, Ollama, Speaches) are on a private Docker network with no host port bindings. They're unreachable from outside the stack. Only nginx is exposed.
 
-**Auth on everything** — every service requires a bearer token. LiteLLM needs `LITELLM_MASTER_KEY`. Claudebox instances each have their own token. Hybrids3 uses per-bucket keys. The stealthy browser cluster has an optional `AUTH_TOKEN`. The admin UI supports HTTP basic auth with rate limiting (5 req/min).
+**Auth on everything** — every service requires a bearer token. LiteLLM needs `LITELLM_MASTER_KEY`. Claudebox instances each have their own token. Hybrids3 uses per-bucket keys. The stealthy browser cluster requires `AUTH_TOKEN` (defaults to `lulz-4-security`). The admin UI supports HTTP basic auth with rate limiting.
 
 **No new privileges** — all containers run with `no-new-privileges:true`.
 
@@ -194,7 +194,7 @@ HYBRIDS3_MASTER_KEY=    # openssl rand -hex 32
 HYBRIDS3_UPLOADS_KEY=   # openssl rand -hex 32
 
 # Optional — browser cluster
-STEALTHY_AUTO_BROWSE_AUTH_TOKEN=     # leave empty to disable auth
+STEALTHY_AUTO_BROWSE_AUTH_TOKEN=     # defaults to lulz-4-security if unset
 STEALTHY_AUTO_BROWSE_NUM_REPLICAS=5
 
 # Optional — Cloudflare Tunnel
