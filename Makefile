@@ -1,7 +1,8 @@
 -include .env
+-include .env.limits
 export
 
-.PHONY: run run-bg down restart test logs help
+.PHONY: run run-bg down restart test logs limits help
 
 # ── Profile detection ─────────────────────────────────────────────────────────
 
@@ -67,6 +68,9 @@ test:
 
 logs:
 	docker compose logs -f
+
+limits:
+	@bash recommend-limits.sh
 
 help:
 	@echo ""

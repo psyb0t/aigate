@@ -212,7 +212,26 @@ Profiles are auto-detected from `.env`:
 
 If `CLOUDFLARED_CONFIG` or `CLOUDFLARED_CREDS` are set, `make run`/`make run-bg` will verify those files exist before starting. A missing file causes an immediate error — better than Docker silently mounting a directory instead.
 
-### 3. Start
+### 3. Set resource limits
+
+```bash
+make limits
+```
+
+Reads your system's RAM, swap, and CPU core count and writes a `.env.limits` file with recommended `mem_limit`, `memswap_limit`, and `cpus` for every service. The Makefile picks this up automatically — no other steps needed. Re-run it any time you move to a different server or change your hardware.
+
+Set `MAXUSE` to cap the entire stack to a percentage of your machine's resources — useful when you're sharing the server with other workloads:
+
+```bash
+make limits            # use 100% of system resources (default)
+MAXUSE=80 make limits  # cap the whole stack at 80% of RAM, swap, and CPU
+```
+
+Swap allocation is proportional: each service gets a swap budget matching its share of total RAM. If your server has abundant swap (e.g. 1TB on 16GB RAM), services can use up to 10× their RAM limit in swap — they'll crawl, but they won't get OOM-killed. Minimum is always 2×.
+
+The `.env.limits` file is gitignored. Each server maintains its own.
+
+### 4. Start
 
 ```bash
 make run-bg   # detached (background)
@@ -278,11 +297,13 @@ All endpoints, auth requirements, request/response formats, and config options.
 ## Makefile
 
 ```bash
-make run      # start stack in foreground
+make run      # start stack in foreground (validates file paths first)
 make run-bg   # start stack in background (validates file paths first)
 make down     # stop everything
 make restart  # full restart
 make logs     # follow logs
+make limits          # generate .env.limits with recommended resource limits for this machine
+MAXUSE=80 make limits  # same but cap the stack at 80% of total RAM/swap/CPU
 make test     # run test suite (stack must be running)
 ```
 

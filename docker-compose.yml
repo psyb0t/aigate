@@ -2,6 +2,9 @@ services:
   nginx-auth-init:
     image: alpine:3.21
     restart: "no"
+    mem_limit: ${NGINX_AUTH_INIT_MEM_LIMIT:-64m}
+    memswap_limit: ${NGINX_AUTH_INIT_MEMSWAP_LIMIT:-128m}
+    cpus: ${NGINX_AUTH_INIT_CPUS:-0.2}
     command:
       - sh
       - -c
@@ -23,6 +26,9 @@ services:
   nginx:
     image: nginx:1.27.5-alpine
     restart: unless-stopped
+    mem_limit: ${NGINX_MEM_LIMIT:-128m}
+    memswap_limit: ${NGINX_MEMSWAP_LIMIT:-256m}
+    cpus: ${NGINX_CPUS:-0.5}
     ports:
       - "4000:4000"
     volumes:
@@ -54,6 +60,9 @@ services:
   litellm:
     build: .
     restart: unless-stopped
+    mem_limit: ${LITELLM_MEM_LIMIT:-2g}
+    memswap_limit: ${LITELLM_MEMSWAP_LIMIT:-4g}
+    cpus: ${LITELLM_CPUS:-4.0}
     volumes:
       - ./config.yaml:/app/config.yaml:ro
     env_file:
@@ -94,6 +103,9 @@ services:
     profiles: ["claudebox"]
     image: psyb0t/claudebox:v1.2.0-minimal
     restart: unless-stopped
+    mem_limit: ${CLAUDEBOX_MEM_LIMIT:-1g}
+    memswap_limit: ${CLAUDEBOX_MEMSWAP_LIMIT:-2g}
+    cpus: ${CLAUDEBOX_CPUS:-2.0}
     environment:
       CLAUDE_MODE_API: "1"
       CLAUDE_MODE_API_PORT: "8080"
@@ -117,6 +129,9 @@ services:
     profiles: ["claudebox-zai"]
     image: psyb0t/claudebox:v1.2.0-minimal
     restart: unless-stopped
+    mem_limit: ${CLAUDEBOX_ZAI_MEM_LIMIT:-1g}
+    memswap_limit: ${CLAUDEBOX_ZAI_MEMSWAP_LIMIT:-2g}
+    cpus: ${CLAUDEBOX_ZAI_CPUS:-2.0}
     environment:
       CLAUDE_MODE_API: "1"
       CLAUDE_MODE_API_PORT: "8080"
@@ -144,6 +159,9 @@ services:
   hybrids3:
     image: psyb0t/hybrids3:v0.1.0
     restart: unless-stopped
+    mem_limit: ${HYBRIDS3_MEM_LIMIT:-256m}
+    memswap_limit: ${HYBRIDS3_MEMSWAP_LIMIT:-512m}
+    cpus: ${HYBRIDS3_CPUS:-0.5}
     volumes:
       - ./.data/hybrids3:/data
     configs:
@@ -169,6 +187,9 @@ services:
   redis:
     image: redis:7.4.8-alpine
     restart: unless-stopped
+    mem_limit: ${REDIS_MEM_LIMIT:-256m}
+    memswap_limit: ${REDIS_MEMSWAP_LIMIT:-512m}
+    cpus: ${REDIS_CPUS:-0.3}
     command: redis-server --save 60 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
     volumes:
       - ./.data/redis:/data
@@ -185,6 +206,9 @@ services:
   postgres:
     image: postgres:16.13-alpine
     restart: unless-stopped
+    mem_limit: ${POSTGRES_MEM_LIMIT:-512m}
+    memswap_limit: ${POSTGRES_MEMSWAP_LIMIT:-1g}
+    cpus: ${POSTGRES_CPUS:-1.0}
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-litellm}
       POSTGRES_USER: ${POSTGRES_USER:-litellm}
@@ -210,6 +234,9 @@ services:
   stealthy-auto-browse-redis:
     image: redis:7.4.8-alpine
     restart: unless-stopped
+    mem_limit: ${SAB_REDIS_MEM_LIMIT:-128m}
+    memswap_limit: ${SAB_REDIS_MEMSWAP_LIMIT:-256m}
+    cpus: ${SAB_REDIS_CPUS:-0.2}
     command: redis-server --appendonly yes --requirepass ${STEALTHY_AUTO_BROWSE_REDIS_PASSWORD}
     volumes:
       - ./.data/stealthy-auto-browse-redis:/data
@@ -225,8 +252,9 @@ services:
     environment:
       REDIS_URL: redis://:${STEALTHY_AUTO_BROWSE_REDIS_PASSWORD}@stealthy-auto-browse-redis:6379
       AUTH_TOKEN: ${STEALTHY_AUTO_BROWSE_AUTH_TOKEN:-}
-    mem_limit: 256m
-    memswap_limit: 1280m
+    mem_limit: ${SAB_MEM_LIMIT:-256m}
+    memswap_limit: ${SAB_MEMSWAP_LIMIT:-512m}
+    cpus: ${SAB_CPUS:-1.0}
     dns_search: ["."]
     depends_on:
       - stealthy-auto-browse-redis
@@ -238,6 +266,9 @@ services:
   stealthy-auto-browse-proxy:
     image: haproxy:3.2.15-alpine
     restart: unless-stopped
+    mem_limit: ${SAB_PROXY_MEM_LIMIT:-128m}
+    memswap_limit: ${SAB_PROXY_MEMSWAP_LIMIT:-256m}
+    cpus: ${SAB_PROXY_CPUS:-0.3}
     user: root
     command: >-
       sh -c 'mkdir -p /var/run/haproxy &&
@@ -258,6 +289,9 @@ services:
   speaches:
     image: ghcr.io/speaches-ai/speaches:0.9.0-rc.3-cpu
     restart: unless-stopped
+    mem_limit: ${SPEACHES_MEM_LIMIT:-4g}
+    memswap_limit: ${SPEACHES_MEMSWAP_LIMIT:-8g}
+    cpus: ${SPEACHES_CPUS:-4.0}
     environment:
       WHISPER__MODEL: Systran/faster-distil-whisper-large-v3
       WHISPER__INFERENCE_DEVICE: cpu
@@ -280,6 +314,9 @@ services:
   ollama:
     image: ollama/ollama:0.20.7
     restart: unless-stopped
+    mem_limit: ${OLLAMA_MEM_LIMIT:-6g}
+    memswap_limit: ${OLLAMA_MEMSWAP_LIMIT:-12g}
+    cpus: ${OLLAMA_CPUS:-4.0}
     volumes:
       - ./.data/ollama:/root/.ollama
     networks:
@@ -288,6 +325,9 @@ services:
   ollama-pull:
     image: ollama/ollama:0.20.7
     restart: on-failure
+    mem_limit: ${OLLAMA_PULL_MEM_LIMIT:-512m}
+    memswap_limit: ${OLLAMA_PULL_MEMSWAP_LIMIT:-1g}
+    cpus: ${OLLAMA_PULL_CPUS:-0.5}
     entrypoint: >
       sh -c "
         until curl -sf http://ollama:11434/api/tags > /dev/null; do sleep 2; done;
@@ -309,6 +349,9 @@ services:
     profiles: ["cloudflared"]
     build: ./cloudflared
     restart: unless-stopped
+    mem_limit: ${CLOUDFLARED_MEM_LIMIT:-128m}
+    memswap_limit: ${CLOUDFLARED_MEMSWAP_LIMIT:-256m}
+    cpus: ${CLOUDFLARED_CPUS:-0.2}
     volumes:
       - ${CLOUDFLARED_CONFIG:-/dev/null}:/etc/cloudflared/config.yml:ro
       - ${CLOUDFLARED_CREDS:-/dev/null}:/etc/cloudflared/creds.json:ro

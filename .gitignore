@@ -1,4 +1,5 @@
 .env
+.env.limits
 *.key
 *.pem
 .research_files
