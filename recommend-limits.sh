@@ -93,9 +93,8 @@ fmt() {
 #                          RAM%  floor(MB)   CPU%  floor(0.1 cores)
 nginx_init_mem=$(  mem  1   64 ); nginx_init_swap=$(  swap $nginx_init_mem  ); nginx_init_cpu=$(  cpu  2  2 )
 nginx_mem=$(       mem  1   64 ); nginx_swap=$(       swap $nginx_mem       ); nginx_cpu=$(       cpu  2  2 )
-# litellm: ~800MB base + ~400MB per worker (base includes prisma, config load, etc.)
-litellm_floor=$(( 800 + litellm_workers * 400 ))
-litellm_mem=$(     mem 12  $litellm_floor ); litellm_swap=$(     swap $litellm_mem     ); litellm_cpu=$(     cpu 25  $litellm_workers )
+# litellm: no RAM limit (workers OOM during startup under tight cgroup constraints)
+litellm_mem=0; litellm_swap=0; litellm_cpu=$(     cpu 25  $litellm_workers )
 claudebox_mem=$(   mem  4  256 ); claudebox_swap=$(   swap $claudebox_mem   ); claudebox_cpu=$(   cpu 15  2 )
 cbzai_mem=$(       mem  4  256 ); cbzai_swap=$(       swap $cbzai_mem       ); cbzai_cpu=$(       cpu 15  2 )
 hybrids3_mem=$(    mem  2  128 ); hybrids3_swap=$(    swap $hybrids3_mem    ); hybrids3_cpu=$(    cpu  3  1 )
@@ -118,7 +117,7 @@ row() { printf "%-30s %8s %10s %6s\n" "$1" "$(fmt $2)" "$(fmt $3)" "$4"; }
 
 row "nginx-auth-init (one-shot)"  $nginx_init_mem  $nginx_init_swap  $nginx_init_cpu
 row "nginx"                       $nginx_mem        $nginx_swap        $nginx_cpu
-row "litellm"                     $litellm_mem      $litellm_swap      $litellm_cpu
+printf "%-30s %8s %10s %6s\n" "litellm" "none" "none" "$litellm_cpu"
 row "claudebox"                   $claudebox_mem    $claudebox_swap    $claudebox_cpu
 row "claudebox-zai"               $cbzai_mem        $cbzai_swap        $cbzai_cpu
 row "hybrids3"                    $hybrids3_mem     $hybrids3_swap     $hybrids3_cpu
@@ -132,7 +131,7 @@ row "ollama"                      $ollama_mem       $ollama_swap       $ollama_c
 row "ollama-pull (one-shot)"      $ollama_pull_mem  $ollama_pull_swap  $ollama_pull_cpu
 row "cloudflared"                 $cloudflared_mem  $cloudflared_swap  $cloudflared_cpu
 
-total_mem=$(( nginx_mem + litellm_mem + claudebox_mem + cbzai_mem + hybrids3_mem +
+total_mem=$(( nginx_mem + claudebox_mem + cbzai_mem + hybrids3_mem +
               redis_mem + postgres_mem + sab_redis_mem + sab_mem * sab_replicas +
               sab_proxy_mem + speaches_mem + ollama_mem + cloudflared_mem ))
 echo ""
@@ -154,8 +153,6 @@ NGINX_MEM_LIMIT=$(fmt $nginx_mem)
 NGINX_MEMSWAP_LIMIT=$(fmt $nginx_swap)
 NGINX_CPUS=${nginx_cpu}
 
-LITELLM_MEM_LIMIT=$(fmt $litellm_mem)
-LITELLM_MEMSWAP_LIMIT=$(fmt $litellm_swap)
 LITELLM_CPUS=${litellm_cpu}
 
 CLAUDEBOX_MEM_LIMIT=$(fmt $claudebox_mem)

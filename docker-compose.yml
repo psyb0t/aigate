@@ -60,8 +60,6 @@ services:
   litellm:
     build: .
     restart: unless-stopped
-    mem_limit: ${LITELLM_MEM_LIMIT:-2g}
-    memswap_limit: ${LITELLM_MEMSWAP_LIMIT:-4g}
     cpus: ${LITELLM_CPUS:-4.0}
     volumes:
       - ./config.yaml:/app/config.yaml:ro
