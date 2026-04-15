@@ -58,12 +58,12 @@ services:
       - litellm-public
 
   litellm:
-    build: .
+    build: ./litellm
     restart: unless-stopped
     cpus: ${LITELLM_CPUS:-4.0}
     command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "${LITELLM_WORKERS:-4}"]
     volumes:
-      - ./config.yaml:/app/config.yaml:ro
+      - ./litellm/config.yaml:/app/config.yaml:ro
     env_file:
       - .env
     environment:
