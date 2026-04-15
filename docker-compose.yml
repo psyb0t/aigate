@@ -92,7 +92,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 300s
     security_opt:
       - no-new-privileges:true
     networks:
@@ -300,10 +300,10 @@ services:
       - ./.data/speaches:/home/ubuntu/.cache/huggingface/hub
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8000/healthz"]
-      interval: 15s
-      timeout: 5s
+      interval: 30s
+      timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 900s
     security_opt:
       - no-new-privileges:true
     networks:
