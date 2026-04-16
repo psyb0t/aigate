@@ -5,13 +5,7 @@
 Standard OpenAI-compatible chat completions. Works with any OpenAI SDK, library, or tool that supports custom base URLs.
 
 ```bash
-# use a model group — gateway picks the best available free provider
-curl http://localhost:4000/chat/completions \
-  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"model": "smart", "messages": [{"role": "user", "content": "hello"}]}'
-
-# target a specific provider
+# cloud provider (free tier, auto-fallback on rate limit)
 curl http://localhost:4000/chat/completions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
@@ -36,7 +30,7 @@ client = OpenAI(
 
 # chat
 resp = client.chat.completions.create(
-    model="smart",
+    model="cerebras-qwen3-235b",
     messages=[{"role": "user", "content": "hello"}],
 )
 print(resp.choices[0].message.content)
@@ -50,18 +44,6 @@ stream = client.chat.completions.create(
 for chunk in stream:
     print(chunk.choices[0].delta.content or "", end="", flush=True)
 ```
-
-### Model groups
-
-| Group           | Use case                                          |
-| --------------- | ------------------------------------------------- |
-| `fast`          | Quick answers, high-volume, latency-sensitive     |
-| `smart`         | Complex reasoning, long context, best quality     |
-| `vision`        | Image understanding (pass image URLs in content)  |
-| `image-gen`     | Image generation from text prompts                |
-| `transcription` | Audio transcription (multipart/form-data)         |
-
-See [providers.md](providers.md) for the full fallback chain for each group.
 
 ---
 
@@ -151,7 +133,7 @@ requests.put(
 # ask an LLM to summarize
 r = requests.post(f"{BASE}/chat/completions",
     headers={"Authorization": f"Bearer {LITELLM_MASTER_KEY}", "Content-Type": "application/json"},
-    json={"model": "smart", "messages": [
+    json={"model": "cerebras-qwen3-235b", "messages": [
         {"role": "user", "content": f"Summarize these search results:\n\n{text[:8000]}"}
     ]})
 print(r.json()["choices"][0]["message"]["content"])
@@ -376,13 +358,7 @@ Skills stack — every `SKILL.md` found is appended in alphabetical order by dir
 ## Image Generation
 
 ```bash
-# use the image-gen group (tries dall-e-3, then FLUX models)
-curl http://localhost:4000/images/generations \
-  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"model": "image-gen", "prompt": "a cat riding a skateboard, photorealistic"}'
-
-# target a specific model
+# image generation
 curl http://localhost:4000/images/generations \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
@@ -410,7 +386,7 @@ curl http://localhost:4000/chat/completions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "vision",
+    "model": "groq-llama-4-scout",
     "messages": [{
       "role": "user",
       "content": [
@@ -421,7 +397,7 @@ curl http://localhost:4000/chat/completions \
   }'
 ```
 
-Vision-capable models: `openai-gpt-4o`, `anthropic-claude-sonnet-4`, `claudebox-sonnet`, `mistral-small`, `groq-llama-4-scout`, `hf-llama-4-scout`, `hf-qwen-vl-72b`. The `vision` group tries them in that order.
+Vision-capable models: `groq-llama-4-scout`, `hf-llama-4-scout`, `hf-qwen-vl-72b`, `mistral-small`, `claudebox-sonnet`, `openai-gpt-4o`, `local-ollama-moondream`.
 
 ---
 
@@ -430,14 +406,8 @@ Vision-capable models: `openai-gpt-4o`, `anthropic-claude-sonnet-4`, `claudebox-
 ```bash
 curl http://localhost:4000/audio/transcriptions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -F "model=transcription" \
-  -F "file=@audio.mp3"
-
-# target a specific transcription model
-curl http://localhost:4000/audio/transcriptions \
-  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -F "model=groq-whisper-large-v3" \
   -F "file=@audio.mp3"
 ```
 
-Transcription models: `groq-whisper-large-v3-turbo`, `groq-whisper-large-v3`, `voxtral-small`, `openai-whisper`. The `transcription` group tries them in that order.
+Transcription models: `groq-whisper-large-v3-turbo`, `groq-whisper-large-v3`, `voxtral-small`, `openai-whisper`, `local-speaches-whisper-distil-large-v3`, `local-speaches-parakeet-tdt-0.6b`.

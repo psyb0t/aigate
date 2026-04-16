@@ -35,6 +35,6 @@ Tests are designed for zero or minimal token consumption:
 - **MCP tool list** — no tokens, just tool registration check
 - **Claudebox** — hits `/status` and `/openai/v1/models` directly (no inference), plus one minimal chat completion with `claudebox-haiku` to verify the OAuth token is valid
 - **Browser, storage, nginx** — pure HTTP, no LLM calls
-- **Integration test** — one `smart` model call with a short prompt; this is the only test that burns real tokens
+- **Integration test** — one model call with a short prompt; this is the only test that burns real tokens
 
 To skip the integration test: `bash test.sh` and exclude `test_integration_*` from the run.

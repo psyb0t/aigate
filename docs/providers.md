@@ -1,6 +1,6 @@
 # Providers and Models
 
-All providers are configured in `config.yaml`. Free-tier providers are tried first in fallback chains. Add API keys in `.env` to activate providers.
+All providers are configured in `litellm/config.yaml`. Free-tier providers are tried first in fallback chains. Add API keys in `.env` to activate providers.
 
 ## Groq (free tier)
 
@@ -145,16 +145,8 @@ Sign up: [platform.openai.com](https://platform.openai.com).
 
 ---
 
-## Model Groups and Fallbacks
+## Fallbacks
 
-Model groups let you use a single alias and let the gateway pick the provider. LiteLLM tries each model in priority order and automatically falls back when a provider fails, is rate-limited, or returns an error. Free providers are always tried first.
+Every model has its own fallback chain. When a provider fails, is rate-limited, or returns an error, LiteLLM automatically tries the next model in the chain. Free providers are always tried first.
 
-| Group           | Fallback chain (priority order)                                                                                                                                                                                                                                                                                                       |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fast`          | groq-llama-3.1-8b → cerebras-llama-3.1-8b → ministral-8b → cohere-command-r7b → claudebox-haiku → claudebox-glm-4.5-air → or-gpt-oss-20b → hf-llama-3.1-8b → openai-gpt-4o-mini                                                                                                                                                       |
-| `smart`         | cerebras-qwen3-235b → claudebox-sonnet → mistral-large → mistral-small → cohere-command-a → or-hermes-3-405b → or-qwen3-80b → cerebras-gpt-oss-120b → or-nemotron-120b → or-minimax-m2.5 → claudebox-glm-4.7 → cerebras-glm-4.7 → openai-gpt-4o → anthropic-claude-sonnet-4 → claudebox-opus → claudebox-glm-5.1 → groq-llama-3.3-70b |
-| `vision`        | openai-gpt-4o → anthropic-claude-sonnet-4 → claudebox-sonnet → claudebox-glm-4.7 → mistral-small → cohere-command-a → groq-llama-4-scout → hf-llama-4-scout → hf-qwen-vl-72b                                                                                                                                                          |
-| `image-gen`     | openai-dall-e-3 → hf-flux-schnell → hf-flux-dev                                                                                                                                                                                                                                                                                       |
-| `transcription` | groq-whisper-large-v3-turbo → groq-whisper-large-v3 → voxtral-small → openai-whisper                                                                                                                                                                                                                                                  |
-
-Every individual model also has its own fallback chain. For example, `groq-llama-3.3-70b` falls back to `cerebras-qwen3-235b` → `or-llama-3.3-70b` → `hf-llama-3.3-70b` → `claudebox-sonnet`. See `config.yaml` for the full configuration.
+For example, `groq-llama-3.3-70b` falls back to `cerebras-qwen3-235b` → `or-llama-3.3-70b` → `hf-llama-3.3-70b` → `claudebox-sonnet`. See `litellm/config.yaml` for the full configuration.
