@@ -154,56 +154,7 @@ cd aigate
 cp .env.example .env
 ```
 
-Edit `.env`:
-
-```env
-# Required — gateway master key
-LITELLM_MASTER_KEY=sk-your-secret-here
-
-# Required — claudebox auth tokens
-CLAUDEBOX_API_TOKEN=       # openssl rand -hex 32
-CLAUDEBOX_ZAI_API_TOKEN=   # openssl rand -hex 32
-
-# Required — claudebox auth (OAuth token OR Anthropic API key, one is enough)
-CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...    # claude setup-token
-# CLAUDEBOX_ANTHROPIC_API_KEY=sk-ant-...   # or use a pay-per-use API key
-
-# Required — z.ai auth (powers claudebox-glm-* models)
-ZAI_AUTH_TOKEN=...    # https://z.ai
-
-# Required — free tier providers
-GROQ_API_KEY=gsk_...            # https://console.groq.com
-HF_TOKEN=hf_...                 # https://huggingface.co/settings/tokens
-CEREBRAS_API_KEY=csk-...        # https://cloud.cerebras.ai
-OPENROUTER_API_KEY=sk-or-v1-... # https://openrouter.ai
-MISTRAL_API_KEY=...             # https://console.mistral.ai
-COHERE_API_KEY=...              # https://dashboard.cohere.com
-
-# Optional — object storage keys
-HYBRIDS3_MASTER_KEY=    # openssl rand -hex 32
-HYBRIDS3_UPLOADS_KEY=   # openssl rand -hex 32
-
-# Optional — browser cluster
-STEALTHY_AUTO_BROWSE_AUTH_TOKEN=     # defaults to lulz-4-security if unset
-STEALTHY_AUTO_BROWSE_NUM_REPLICAS=5
-
-# Optional — Cloudflare Tunnel
-CLOUDFLARED=           # set to 1 to enable
-CLOUDFLARED_CONFIG=    # path to tunnel config.yml (relative or absolute)
-CLOUDFLARED_CREDS=     # path to credentials.json (relative or absolute)
-
-# Optional — LiteLLM admin UI basic auth
-LITELLM_UI_BASIC_AUTH=     # user:password format
-
-# Optional — paid providers
-# ANTHROPIC_API_KEY=sk-ant-...
-# OPENAI_API_KEY=sk-...
-
-# Infrastructure
-POSTGRES_PASSWORD=...
-REDIS_PASSWORD=...
-LITELLM_WORKERS=4
-```
+Fill in the values — every variable is documented with comments in [`.env.example`](.env.example).
 
 Profiles are auto-detected from `.env`:
 - `claudebox` profile activates when `CLAUDE_CODE_OAUTH_TOKEN` or `CLAUDEBOX_ANTHROPIC_API_KEY` is set
