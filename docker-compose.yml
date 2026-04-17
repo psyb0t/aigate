@@ -199,6 +199,13 @@ services:
     networks:
       - litellm-internal
 
+  postgres-init:
+    image: alpine:3.21
+    restart: "no"
+    command: sh -c "mkdir -p /pgmount/data && chown -R 70:70 /pgmount/data"
+    volumes:
+      - ./.data/postgres:/pgmount
+
   postgres:
     image: postgres:16.13-alpine
     restart: unless-stopped
@@ -212,6 +219,9 @@ services:
       PGDATA: /var/lib/postgresql/data
     volumes:
       - ./.data/postgres:/var/lib/postgresql
+    depends_on:
+      postgres-init:
+        condition: service_completed_successfully
     healthcheck:
       test:
         [
