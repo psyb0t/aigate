@@ -1,0 +1,8 @@
+claudebox:
+  url: "http://claudebox:8080/mcp/"
+  transport: "http"
+  auth_type: "bearer_token"
+  auth_value: os.environ/CLAUDEBOX_API_TOKEN
+  static_headers:
+    Host: "localhost:8080"
+  description: "Claude Code (OAuth/Max) — run agentic tasks, read/write workspace files. Tools: claude_run, read_file, write_file, list_files, delete_file."

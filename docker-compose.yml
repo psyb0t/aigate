@@ -43,8 +43,6 @@ services:
         condition: service_completed_successfully
       litellm:
         condition: service_healthy
-      hybrids3:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health/liveliness"]
       interval: 15s
@@ -133,7 +131,7 @@ services:
       CLAUDE_MODE_API: "1"
       CLAUDE_MODE_API_PORT: "8080"
       CLAUDE_MODE_API_TOKEN: ${CLAUDEBOX_ZAI_API_TOKEN:-lulz-4-security-zai}
-      ANTHROPIC_AUTH_TOKEN: ${ZAI_AUTH_TOKEN}
+      ANTHROPIC_AUTH_TOKEN: ${CLAUDEBOX_ZAI_AUTH_TOKEN}
       ANTHROPIC_BASE_URL: https://api.z.ai/api/anthropic
       API_TIMEOUT_MS: "3000000"
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
@@ -154,6 +152,7 @@ services:
       - litellm-public
 
   hybrids3:
+    profiles: ["hybrids3"]
     image: psyb0t/hybrids3:v0.1.0
     restart: unless-stopped
     mem_limit: ${HYBRIDS3_MEM_LIMIT:-256m}
@@ -211,7 +210,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-litellm}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - ./.data/postgres:/var/lib/postgresql
+      - ./.data/postgres:/var/lib/postgresql/data
     healthcheck:
       test:
         [
@@ -229,6 +228,7 @@ services:
   # ── Stealthy Auto Browse cluster ─────────────────────────────────────────────
 
   stealthy-auto-browse-redis:
+    profiles: ["browser"]
     image: redis:7.4.8-alpine
     restart: unless-stopped
     mem_limit: ${SAB_REDIS_MEM_LIMIT:-128m}
@@ -243,6 +243,7 @@ services:
       - stealthy-auto-browse
 
   stealthy-auto-browse:
+    profiles: ["browser"]
     image: psyb0t/stealthy-auto-browse:v0.22.5
     scale: ${STEALTHY_AUTO_BROWSE_NUM_REPLICAS:-5}
     restart: unless-stopped
@@ -261,6 +262,7 @@ services:
       - stealthy-auto-browse
 
   stealthy-auto-browse-proxy:
+    profiles: ["browser"]
     image: haproxy:3.2.15-alpine
     restart: unless-stopped
     mem_limit: ${SAB_PROXY_MEM_LIMIT:-128m}
@@ -284,6 +286,7 @@ services:
   # ── Speaches (local transcription — faster-whisper + Parakeet TDT) ──────────
 
   speaches:
+    profiles: ["speaches"]
     image: ghcr.io/speaches-ai/speaches:0.9.0-rc.3-cpu
     restart: unless-stopped
     mem_limit: ${SPEACHES_MEM_LIMIT:-4g}
@@ -307,6 +310,7 @@ services:
       - litellm-internal
 
   speaches-pull:
+    profiles: ["speaches"]
     image: ghcr.io/speaches-ai/speaches:0.9.0-rc.3-cpu
     restart: "no"
     mem_limit: ${SPEACHES_MEM_LIMIT:-4g}
@@ -326,6 +330,7 @@ services:
   # ── Ollama (local inference) ─────────────────────────────────────────────────
 
   ollama:
+    profiles: ["ollama"]
     image: ollama/ollama:0.20.7
     restart: unless-stopped
     mem_limit: ${OLLAMA_MEM_LIMIT:-6g}
@@ -338,6 +343,7 @@ services:
       - litellm-public
 
   ollama-pull:
+    profiles: ["ollama"]
     image: ollama/ollama:0.20.7
     restart: on-failure
     mem_limit: ${OLLAMA_PULL_MEM_LIMIT:-512m}

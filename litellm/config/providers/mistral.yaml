@@ -1,0 +1,44 @@
+- model_name: mistral-large
+  litellm_params:
+    model: mistral/mistral-large-2512
+    api_key: os.environ/MISTRAL_API_KEY
+
+- model_name: mistral-small
+  litellm_params:
+    model: mistral/mistral-small-2603
+    api_key: os.environ/MISTRAL_API_KEY
+
+- model_name: ministral-8b
+  litellm_params:
+    model: mistral/ministral-3-8b-2512
+    api_key: os.environ/MISTRAL_API_KEY
+
+- model_name: magistral-medium
+  litellm_params:
+    model: mistral/magistral-medium-2509
+    api_key: os.environ/MISTRAL_API_KEY
+
+- model_name: magistral-small
+  litellm_params:
+    model: mistral/magistral-small-2509
+    api_key: os.environ/MISTRAL_API_KEY
+
+- model_name: devstral
+  litellm_params:
+    model: mistral/devstral-2512
+    api_key: os.environ/MISTRAL_API_KEY
+
+- model_name: codestral
+  litellm_params:
+    model: mistral/codestral-2508
+    api_key: os.environ/MISTRAL_API_KEY
+
+- model_name: mistral-embed
+  litellm_params:
+    model: mistral/mistral-embed
+    api_key: os.environ/MISTRAL_API_KEY
+
+- model_name: voxtral-small
+  litellm_params:
+    model: mistral/voxtral-small-25-07
+    api_key: os.environ/MISTRAL_API_KEY

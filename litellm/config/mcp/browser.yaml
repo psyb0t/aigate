@@ -1,0 +1,6 @@
+stealthy_auto_browse:
+  url: "http://stealthy-auto-browse-proxy:8080/mcp/"
+  transport: "http"
+  auth_type: "bearer_token"
+  auth_value: os.environ/STEALTHY_AUTO_BROWSE_AUTH_TOKEN
+  description: "Stealth browser automation — navigate, click, type, screenshot, scrape. Passes all bot detectors."

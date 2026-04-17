@@ -156,10 +156,27 @@ cp .env.example .env
 
 Fill in the values — every variable is documented with comments in [`.env.example`](.env.example).
 
-Profiles are auto-detected from `.env`:
-- `claudebox` profile activates when `CLAUDE_CODE_OAUTH_TOKEN` or `CLAUDEBOX_ANTHROPIC_API_KEY` is set
-- `claudebox-zai` profile activates when `ZAI_AUTH_TOKEN` is set
-- `cloudflared` profile activates when `CLOUDFLARED=1` is set
+Everything is opt-in via flags in `.env`. API keys are stored separately and never activate anything on their own — set the flag to `1` to enable:
+
+| Flag | What it enables |
+| ---- | --------------- |
+| `OPENAI=1` | OpenAI models (gpt-4o, o3, DALL-E, Whisper, TTS) |
+| `ANTHROPIC=1` | Direct Anthropic API models |
+| `CLAUDEBOX=1` | claudebox service + models + MCP server (Claude Code via OAuth or API key) |
+| `CLAUDEBOX_ZAI=1` | claudebox-zai service + GLM models + MCP server (via z.ai) |
+| `CEREBRAS=1` | Cerebras models (free tier) |
+| `OPENROUTER=1` | OpenRouter models (free tier) |
+| `HUGGINGFACE=1` | HuggingFace models (free tier) |
+| `MISTRAL=1` | Mistral AI models |
+| `COHERE=1` | Cohere models |
+| `GROQ=1` | Groq models (free tier) |
+| `OLLAMA=1` | Local Ollama inference (~6GB+ RAM) |
+| `SPEACHES=1` | Local Speaches transcription/TTS (~4GB RAM) |
+| `HYBRIDS3=1` | Object storage service + MCP server (S3-compatible, plain HTTP, auto-expiry) |
+| `BROWSER=1` | Stealth browser cluster + MCP server (5 replicas, ~1.3GB RAM) |
+| `CLOUDFLARED=1` | Cloudflare Tunnel |
+
+`make run` regenerates `litellm/config.yaml` before starting — only enabled providers are included, fallback chains are filtered to match.
 
 If `CLOUDFLARED_CONFIG` or `CLOUDFLARED_CREDS` are set, `make run`/`make run-bg` will verify those files exist before starting. A missing file causes an immediate error — better than Docker silently mounting a directory instead.
 
@@ -249,14 +266,15 @@ All endpoints, auth requirements, request/response formats, and config options.
 ## Makefile
 
 ```bash
-make run      # start stack in foreground (validates file paths first)
-make run-bg   # start stack in background (validates file paths first)
-make down     # stop everything
-make restart  # full restart
-make logs     # follow logs
-make limits          # generate .env.limits with recommended resource limits for this machine
-MAXUSE=80 make limits  # same but cap the stack at 80% of total RAM/swap/CPU
-make test     # run test suite (stack must be running)
+make run           # start stack in foreground (validates file paths, rebuilds litellm config)
+make run-bg        # start stack in background (validates file paths, rebuilds litellm config)
+make down          # stop everything
+make restart       # full restart
+make logs          # follow logs
+make build-config  # regenerate litellm/config.yaml from fragments (runs automatically on make run)
+make limits              # generate .env.limits with recommended resource limits for this machine
+MAXUSE=80 make limits    # same but cap the stack at 80% of total RAM/swap/CPU
+make test          # run test suite (stack must be running)
 ```
 
 ## Testing

@@ -5,6 +5,7 @@
 .research_files
 CLAUDE.md
 git-update.sh
+litellm/config.yaml
 
 # data dirs — ignore everything, except the .gitkeep placeholders we know about
 .data/**

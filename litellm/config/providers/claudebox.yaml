@@ -1,0 +1,17 @@
+- model_name: claudebox-opus
+  litellm_params:
+    model: openai/opus
+    api_base: http://claudebox:8080/openai/v1
+    api_key: os.environ/CLAUDEBOX_API_TOKEN
+
+- model_name: claudebox-sonnet
+  litellm_params:
+    model: openai/sonnet
+    api_base: http://claudebox:8080/openai/v1
+    api_key: os.environ/CLAUDEBOX_API_TOKEN
+
+- model_name: claudebox-haiku
+  litellm_params:
+    model: openai/haiku
+    api_base: http://claudebox:8080/openai/v1
+    api_key: os.environ/CLAUDEBOX_API_TOKEN

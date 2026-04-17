@@ -2,7 +2,7 @@
 -include .env.limits
 export
 
-.PHONY: run run-bg down restart test logs limits help
+.PHONY: run run-bg down restart test logs limits build-config help
 
 # ── Profile detection ─────────────────────────────────────────────────────────
 
@@ -12,19 +12,39 @@ space := $(empty) $(empty)
 
 _PROFILES :=
 
-# claudebox: OAuth token or Anthropic API key
-ifneq ($(strip $(CLAUDE_CODE_OAUTH_TOKEN))$(strip $(CLAUDEBOX_ANTHROPIC_API_KEY)),)
+# claudebox: opt-in with CLAUDEBOX=1
+ifeq ($(strip $(CLAUDEBOX)),1)
   _PROFILES += claudebox
 endif
 
-# claudebox-zai: z.ai auth token
-ifneq ($(strip $(ZAI_AUTH_TOKEN)),)
+# claudebox-zai: opt-in with CLAUDEBOX_ZAI=1
+ifeq ($(strip $(CLAUDEBOX_ZAI)),1)
   _PROFILES += claudebox-zai
 endif
 
 # cloudflared: opt-in with CLOUDFLARED=1
 ifeq ($(strip $(CLOUDFLARED)),1)
   _PROFILES += cloudflared
+endif
+
+# hybrids3: opt-in with HYBRIDS3=1
+ifeq ($(strip $(HYBRIDS3)),1)
+  _PROFILES += hybrids3
+endif
+
+# browser: opt-in with BROWSER=1
+ifeq ($(strip $(BROWSER)),1)
+  _PROFILES += browser
+endif
+
+# ollama: opt-in with OLLAMA=1
+ifeq ($(strip $(OLLAMA)),1)
+  _PROFILES += ollama
+endif
+
+# speaches: opt-in with SPEACHES=1
+ifeq ($(strip $(SPEACHES)),1)
+  _PROFILES += speaches
 endif
 
 override COMPOSE_PROFILES := $(subst $(space),$(comma),$(strip $(_PROFILES)))
@@ -48,13 +68,22 @@ endef
 
 # ── Targets ───────────────────────────────────────────────────────────────────
 
+build-config:
+	@docker run --rm \
+		-v "$(CURDIR):/workspace" \
+		-w /workspace \
+		python:3.12-alpine \
+		python3 litellm/build-config.py
+
 run:
 	$(check_file_vars)
+	$(MAKE) build-config
 	@echo "Active profiles: $(if $(COMPOSE_PROFILES),$(COMPOSE_PROFILES),(none))"
 	docker compose up --build
 
 run-bg:
 	$(check_file_vars)
+	$(MAKE) build-config
 	@echo "Active profiles: $(if $(COMPOSE_PROFILES),$(COMPOSE_PROFILES),(none))"
 	docker compose up -d --build
 
@@ -77,17 +106,22 @@ help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "Targets:"
-	@echo "  run      Start the stack (profiles auto-detected from .env)"
-	@echo "  down     Stop everything"
-	@echo "  restart  Full restart"
-	@echo "  test     Run test suite (stack must be running)"
-	@echo "  logs     Follow logs"
-	@echo "  help     Show this help"
+	@echo "  run           Start the stack (profiles auto-detected from .env)"
+	@echo "  down          Stop everything"
+	@echo "  restart       Full restart"
+	@echo "  build-config  Regenerate litellm/config.yaml from fragments"
+	@echo "  test          Run test suite (stack must be running)"
+	@echo "  logs          Follow logs"
+	@echo "  help          Show this help"
 	@echo ""
 	@echo "Profiles (auto-enabled when credentials are set in .env):"
-	@echo "  claudebox     set CLAUDE_CODE_OAUTH_TOKEN or CLAUDEBOX_ANTHROPIC_API_KEY"
-	@echo "  claudebox-zai set ZAI_AUTH_TOKEN"
+	@echo "  claudebox     set CLAUDEBOX=1"
+	@echo "  claudebox-zai set CLAUDEBOX_ZAI=1"
 	@echo "  cloudflared   set CLOUDFLARED=1"
+	@echo "  hybrids3      set HYBRIDS3=1"
+	@echo "  browser       set BROWSER=1"
+	@echo "  ollama        set OLLAMA=1"
+	@echo "  speaches      set SPEACHES=1"
 	@echo ""
 	@echo "Active profiles: $(if $(COMPOSE_PROFILES),$(COMPOSE_PROFILES),(none))"
 	@echo ""

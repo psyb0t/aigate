@@ -1,0 +1,34 @@
+- model_name: cohere-command-a
+  litellm_params:
+    model: cohere_chat/command-a-03-2025
+    api_key: os.environ/COHERE_API_KEY
+
+- model_name: cohere-command-r-plus
+  litellm_params:
+    model: cohere_chat/command-r-plus-08-2024
+    api_key: os.environ/COHERE_API_KEY
+
+- model_name: cohere-command-r
+  litellm_params:
+    model: cohere_chat/command-r-08-2024
+    api_key: os.environ/COHERE_API_KEY
+
+- model_name: cohere-command-r7b
+  litellm_params:
+    model: cohere_chat/command-r7b-12-2024
+    api_key: os.environ/COHERE_API_KEY
+
+- model_name: cohere-aya-32b
+  litellm_params:
+    model: cohere_chat/c4ai-aya-expanse-32b
+    api_key: os.environ/COHERE_API_KEY
+
+- model_name: cohere-embed
+  litellm_params:
+    model: cohere/embed-v4.0
+    api_key: os.environ/COHERE_API_KEY
+
+- model_name: cohere-rerank
+  litellm_params:
+    model: cohere/rerank-v3.5
+    api_key: os.environ/COHERE_API_KEY

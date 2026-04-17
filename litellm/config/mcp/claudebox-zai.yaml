@@ -1,0 +1,8 @@
+claudebox_zai:
+  url: "http://claudebox-zai:8080/mcp/"
+  transport: "http"
+  auth_type: "bearer_token"
+  auth_value: os.environ/CLAUDEBOX_ZAI_API_TOKEN
+  static_headers:
+    Host: "localhost:8080"
+  description: "Claude Code (z.ai GLM) — run agentic tasks, read/write workspace files. Tools: claude_run, read_file, write_file, list_files, delete_file."

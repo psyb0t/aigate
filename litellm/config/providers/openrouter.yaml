@@ -1,0 +1,39 @@
+- model_name: or-hermes-3-405b
+  litellm_params:
+    model: openrouter/nousresearch/hermes-3-llama-3.1-405b:free
+    api_key: os.environ/OPENROUTER_API_KEY
+
+- model_name: or-qwen3-coder
+  litellm_params:
+    model: openrouter/qwen/qwen3-coder:free
+    api_key: os.environ/OPENROUTER_API_KEY
+
+- model_name: or-qwen3-80b
+  litellm_params:
+    model: openrouter/qwen/qwen3-next-80b-a3b-instruct:free
+    api_key: os.environ/OPENROUTER_API_KEY
+
+- model_name: or-nemotron-120b
+  litellm_params:
+    model: openrouter/nvidia/nemotron-3-super-120b-a12b:free
+    api_key: os.environ/OPENROUTER_API_KEY
+
+- model_name: or-minimax-m2.5
+  litellm_params:
+    model: openrouter/minimax/minimax-m2.5:free
+    api_key: os.environ/OPENROUTER_API_KEY
+
+- model_name: or-llama-3.3-70b
+  litellm_params:
+    model: openrouter/meta-llama/llama-3.3-70b-instruct:free
+    api_key: os.environ/OPENROUTER_API_KEY
+
+- model_name: or-gpt-oss-120b
+  litellm_params:
+    model: openrouter/openai/gpt-oss-120b:free
+    api_key: os.environ/OPENROUTER_API_KEY
+
+- model_name: or-gpt-oss-20b
+  litellm_params:
+    model: openrouter/openai/gpt-oss-20b:free
+    api_key: os.environ/OPENROUTER_API_KEY

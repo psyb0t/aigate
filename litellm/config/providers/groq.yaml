@@ -1,0 +1,54 @@
+- model_name: groq-llama-3.1-8b
+  litellm_params:
+    model: groq/llama-3.1-8b-instant
+    api_key: os.environ/GROQ_API_KEY
+
+- model_name: groq-llama-3.3-70b
+  litellm_params:
+    model: groq/llama-3.3-70b-versatile
+    api_key: os.environ/GROQ_API_KEY
+
+- model_name: groq-llama-4-scout
+  litellm_params:
+    model: groq/meta-llama/llama-4-scout-17b-16e-instruct
+    api_key: os.environ/GROQ_API_KEY
+
+- model_name: groq-kimi-k2
+  litellm_params:
+    model: groq/moonshotai/kimi-k2-instruct
+    api_key: os.environ/GROQ_API_KEY
+
+- model_name: groq-qwen3-32b
+  litellm_params:
+    model: groq/qwen/qwen3-32b
+    api_key: os.environ/GROQ_API_KEY
+
+- model_name: groq-gpt-oss-20b
+  litellm_params:
+    model: groq/openai/gpt-oss-20b
+    api_key: os.environ/GROQ_API_KEY
+
+- model_name: groq-gpt-oss-120b
+  litellm_params:
+    model: groq/openai/gpt-oss-120b
+    api_key: os.environ/GROQ_API_KEY
+
+- model_name: groq-compound
+  litellm_params:
+    model: groq/compound-beta
+    api_key: os.environ/GROQ_API_KEY
+
+- model_name: groq-compound-mini
+  litellm_params:
+    model: groq/compound-beta-mini
+    api_key: os.environ/GROQ_API_KEY
+
+- model_name: groq-whisper-large-v3
+  litellm_params:
+    model: groq/whisper-large-v3
+    api_key: os.environ/GROQ_API_KEY
+
+- model_name: groq-whisper-large-v3-turbo
+  litellm_params:
+    model: groq/whisper-large-v3-turbo
+    api_key: os.environ/GROQ_API_KEY
