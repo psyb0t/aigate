@@ -202,7 +202,7 @@ services:
   postgres-init:
     image: alpine:3.21
     restart: "no"
-    command: sh -c "mkdir -p /pgmount/data && chown -R 70:70 /pgmount/data"
+    command: sh -c "mkdir -p /pgmount/data && chown -R 70:70 /pgmount && chmod 755 /pgmount"
     volumes:
       - ./.data/postgres:/pgmount
 
