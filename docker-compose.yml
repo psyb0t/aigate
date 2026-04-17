@@ -98,7 +98,7 @@ services:
 
   claudebox:
     profiles: ["claudebox"]
-    image: psyb0t/claudebox:v1.3.0-minimal
+    image: psyb0t/claudebox:v1.4.0-minimal
     restart: unless-stopped
     mem_limit: ${CLAUDEBOX_MEM_LIMIT:-1g}
     memswap_limit: ${CLAUDEBOX_MEMSWAP_LIMIT:-2g}
@@ -124,7 +124,7 @@ services:
 
   claudebox-zai:
     profiles: ["claudebox-zai"]
-    image: psyb0t/claudebox:v1.3.0-minimal
+    image: psyb0t/claudebox:v1.4.0-minimal
     restart: unless-stopped
     mem_limit: ${CLAUDEBOX_ZAI_MEM_LIMIT:-1g}
     memswap_limit: ${CLAUDEBOX_ZAI_MEMSWAP_LIMIT:-2g}
@@ -243,7 +243,7 @@ services:
       - stealthy-auto-browse
 
   stealthy-auto-browse:
-    image: psyb0t/stealthy-auto-browse:v0.21.0
+    image: psyb0t/stealthy-auto-browse:v0.22.5
     scale: ${STEALTHY_AUTO_BROWSE_NUM_REPLICAS:-5}
     restart: unless-stopped
     environment:
