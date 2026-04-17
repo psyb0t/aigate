@@ -64,7 +64,7 @@ Notable writable locations:
 | Service | Description |
 | ------- | ----------- |
 | **Nginx** | Single entry point on port 4000. Routes by URL path, enforces per-endpoint rate limits, restores real client IP behind Cloudflare, and optionally adds HTTP basic auth on the admin UI. All config is embedded inline. |
-| **LiteLLM** | OpenAI-compatible API proxy. Latency-based routing, Redis response caching (10-minute TTL), automatic retries, and per-model fallback chains. Manages API keys and usage via PostgreSQL. |
+| **LiteLLM** | OpenAI-compatible API proxy. Latency-based routing, Redis response caching (10-minute TTL), automatic retries, per-model fallback chains, and client-side JSON schema validation. Manages API keys and usage via PostgreSQL. |
 | **PostgreSQL** | Key management, budget tracking, usage analytics for LiteLLM. |
 | **Redis** | LiteLLM response cache and rate limiting. |
 | **[claudebox](https://github.com/psyb0t/docker-claudebox) ×2** | Claude Code CLI in API mode. Full agentic loop — shell access, file I/O, tool use, persistent workspaces. One instance uses your OAuth token or Anthropic API key; the other points at z.ai for GLM models. Both expose REST API, OpenAI-compatible endpoint, and MCP server. |
