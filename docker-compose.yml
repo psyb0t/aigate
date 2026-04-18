@@ -385,7 +385,7 @@ services:
   # ── proxq (async job queue proxy for LiteLLM) ──────────────────────────────
 
   proxq:
-    image: psyb0t/proxq:v0.5.1
+    image: psyb0t/proxq:v0.6.0
     restart: unless-stopped
     mem_limit: ${PROXQ_MEM_LIMIT:-256m}
     memswap_limit: ${PROXQ_MEMSWAP_LIMIT:-512m}
