@@ -385,7 +385,7 @@ services:
   # ── proxq (async job queue proxy for LiteLLM) ──────────────────────────────
 
   proxq:
-    image: psyb0t/proxq:v0.4.1
+    image: psyb0t/proxq:v0.5.1
     restart: unless-stopped
     mem_limit: ${PROXQ_MEM_LIMIT:-256m}
     memswap_limit: ${PROXQ_MEMSWAP_LIMIT:-512m}
@@ -432,25 +432,25 @@ configs:
           listen 4000;
           absolute_redirect off;
 
-          client_max_body_size 50m;
+          client_max_body_size ${NGINX_MAX_BODY_SIZE:-50m};
 
           # litellm admin UI + login — rate limited, optional basic auth
           location /ui {
-              limit_req zone=admin burst=20 nodelay;
+              limit_req zone=admin burst=${RATELIMIT_ADMIN_BURST:-20} nodelay;
               include /etc/nginx/auth/auth.conf;
               proxy_pass http://litellm:4000/ui;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
               proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
               proxy_set_header X-Forwarded-Proto $$scheme;
-              proxy_read_timeout 60s;
-              proxy_send_timeout 60s;
+              proxy_read_timeout ${TIMEOUT_ADMIN:-60s};
+              proxy_send_timeout ${TIMEOUT_ADMIN:-60s};
               proxy_buffering off;
               proxy_cache off;
           }
 
           location /login {
-              limit_req zone=admin burst=20 nodelay;
+              limit_req zone=admin burst=${RATELIMIT_ADMIN_BURST:-20} nodelay;
               include /etc/nginx/auth/auth.conf;
               proxy_pass http://litellm:4000/login;
               proxy_set_header Host $$http_host;
@@ -461,49 +461,49 @@ configs:
 
           # claudebox (OAuth) — full API access
           location /claudebox/ {
-              limit_req zone=claudebox burst=10 nodelay;
+              limit_req zone=claudebox burst=${RATELIMIT_CLAUDEBOX_BURST:-10} nodelay;
               proxy_pass http://claudebox:8080/;
               proxy_set_header Host localhost:8080;
               proxy_set_header X-Real-IP $$remote_addr;
               proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
               proxy_set_header X-Forwarded-Proto $$scheme;
-              proxy_read_timeout 600s;
-              proxy_send_timeout 600s;
+              proxy_read_timeout ${TIMEOUT_CLAUDEBOX:-600s};
+              proxy_send_timeout ${TIMEOUT_CLAUDEBOX:-600s};
               proxy_buffering off;
               proxy_cache off;
           }
 
           # claudebox-zai (GLM models) — full API access
           location /claudebox-zai/ {
-              limit_req zone=claudebox burst=10 nodelay;
+              limit_req zone=claudebox burst=${RATELIMIT_CLAUDEBOX_BURST:-10} nodelay;
               proxy_pass http://claudebox-zai:8080/;
               proxy_set_header Host localhost:8080;
               proxy_set_header X-Real-IP $$remote_addr;
               proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
               proxy_set_header X-Forwarded-Proto $$scheme;
-              proxy_read_timeout 600s;
-              proxy_send_timeout 600s;
+              proxy_read_timeout ${TIMEOUT_CLAUDEBOX:-600s};
+              proxy_send_timeout ${TIMEOUT_CLAUDEBOX:-600s};
               proxy_buffering off;
               proxy_cache off;
           }
 
           # stealthy-auto-browse cluster — HAProxy → browser replicas
           location /stealthy-auto-browse/ {
-              limit_req zone=browser burst=10 nodelay;
+              limit_req zone=browser burst=${RATELIMIT_BROWSER_BURST:-10} nodelay;
               proxy_pass http://stealthy-auto-browse-proxy:8080/;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
               proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
               proxy_set_header X-Forwarded-Proto $$scheme;
-              proxy_read_timeout 600s;
-              proxy_send_timeout 600s;
+              proxy_read_timeout ${TIMEOUT_BROWSER:-600s};
+              proxy_send_timeout ${TIMEOUT_BROWSER:-600s};
               proxy_buffering off;
               proxy_cache off;
           }
 
           # hybrids3 — S3-compatible + plain HTTP + MCP
           location /storage {
-              limit_req zone=storage burst=20 nodelay;
+              limit_req zone=storage burst=${RATELIMIT_STORAGE_BURST:-20} nodelay;
               proxy_pass http://hybrids3:8080;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
@@ -515,14 +515,14 @@ configs:
 
           # proxq — async job queue (returns job ID, poll for result)
           location /q/ {
-              limit_req zone=proxq burst=30 nodelay;
+              limit_req zone=proxq burst=${RATELIMIT_PROXQ_BURST:-30} nodelay;
               proxy_pass http://proxq:8080/;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
               proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
               proxy_set_header X-Forwarded-Proto $$scheme;
-              proxy_read_timeout 30s;
-              proxy_send_timeout 30s;
+              proxy_read_timeout ${TIMEOUT_PROXQ:-30s};
+              proxy_send_timeout ${TIMEOUT_PROXQ:-30s};
               proxy_buffering off;
               proxy_cache off;
           }
@@ -534,14 +534,14 @@ configs:
 
           # everything else — LiteLLM API
           location / {
-              limit_req zone=api burst=30 nodelay;
+              limit_req zone=api burst=${RATELIMIT_API_BURST:-30} nodelay;
               proxy_pass http://litellm:4000;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
               proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
               proxy_set_header X-Forwarded-Proto $$scheme;
-              proxy_read_timeout 600s;
-              proxy_send_timeout 600s;
+              proxy_read_timeout ${TIMEOUT_API:-600s};
+              proxy_send_timeout ${TIMEOUT_API:-600s};
               proxy_buffering off;
               proxy_cache off;
           }
@@ -612,12 +612,12 @@ configs:
       real_ip_header CF-Connecting-IP;
       real_ip_recursive on;
 
-      limit_req_zone $$binary_remote_addr zone=admin:10m rate=30r/m;
-      limit_req_zone $$binary_remote_addr zone=api:10m rate=120r/m;
-      limit_req_zone $$binary_remote_addr zone=storage:10m rate=60r/m;
-      limit_req_zone $$binary_remote_addr zone=claudebox:10m rate=30r/m;
-      limit_req_zone $$binary_remote_addr zone=browser:10m rate=30r/m;
-      limit_req_zone $$binary_remote_addr zone=proxq:10m rate=120r/m;
+      limit_req_zone $$binary_remote_addr zone=admin:10m rate=${RATELIMIT_ADMIN:-30r/m};
+      limit_req_zone $$binary_remote_addr zone=api:10m rate=${RATELIMIT_API:-120r/m};
+      limit_req_zone $$binary_remote_addr zone=storage:10m rate=${RATELIMIT_STORAGE:-60r/m};
+      limit_req_zone $$binary_remote_addr zone=claudebox:10m rate=${RATELIMIT_CLAUDEBOX:-30r/m};
+      limit_req_zone $$binary_remote_addr zone=browser:10m rate=${RATELIMIT_BROWSER:-30r/m};
+      limit_req_zone $$binary_remote_addr zone=proxq:10m rate=${RATELIMIT_PROXQ:-120r/m};
 
   proxq_config:
     content: |

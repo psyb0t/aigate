@@ -64,11 +64,11 @@ Notable writable locations:
 
 | Service | Description |
 | ------- | ----------- |
-| **Nginx** | Single entry point on port 4000. Routes by URL path, enforces per-endpoint rate limits, restores real client IP behind Cloudflare, and optionally adds HTTP basic auth on the admin UI. All config is embedded inline. |
+| **Nginx** | Single entry point on port 4000. Routes by URL path, enforces per-endpoint rate limits (configurable via `RATELIMIT_*` env vars), configurable proxy timeouts (`TIMEOUT_*`), restores real client IP behind Cloudflare, and optionally adds HTTP basic auth on the admin UI. All config is embedded inline. |
 | **LiteLLM** | OpenAI-compatible API proxy. Latency-based routing, Redis response caching (10-minute TTL), automatic retries, per-model fallback chains, and client-side JSON schema validation. Manages API keys and usage via PostgreSQL. |
 | **[proxq](https://github.com/psyb0t/docker-proxq)** | Async HTTP job queue proxy. Sits in front of LiteLLM at `/q/` — queues inference requests in Redis, returns a job ID instantly, forwards to upstream in the background. Poll `/__jobs/{id}` for status, `/__jobs/{id}/content` for the raw response. Only OpenAI API paths are queued (chat/completions, embeddings, audio, images); everything else passes through directly. |
 | **PostgreSQL** | Key management, budget tracking, usage analytics for LiteLLM. |
-| **Redis** | LiteLLM response cache and rate limiting. |
+| **Redis** | LiteLLM response cache and rate limiting. Also used by proxq (DB 1) for job queue storage. |
 | **[claudebox](https://github.com/psyb0t/docker-claudebox) ×2** | Claude Code CLI in API mode. Full agentic loop — shell access, file I/O, tool use, persistent workspaces. One instance uses your OAuth token or Anthropic API key; the other points at z.ai for GLM models. Both expose REST API, OpenAI-compatible endpoint, and MCP server. |
 | **[hybrids3](https://github.com/psyb0t/docker-hybrids3)** | S3-compatible object storage. Plain HTTP upload/download, boto3-compatible, bearer token auth, auto-expiry, MCP server. The `uploads` bucket is public-read — files are accessible by direct URL without signing. |
 | **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** | 5 Camoufox (hardened Firefox) replicas behind HAProxy. Real OS-level mouse and keyboard input via PyAutoGUI — no CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan. Redis cookie sync across replicas. REST API and MCP server. |
@@ -169,8 +169,8 @@ Everything is opt-in via flags in `.env`. API keys are stored separately and nev
 | `CEREBRAS=1` | Cerebras models (free tier) |
 | `OPENROUTER=1` | OpenRouter models (free tier) |
 | `HUGGINGFACE=1` | HuggingFace models (free tier) |
-| `MISTRAL=1` | Mistral AI models |
-| `COHERE=1` | Cohere models |
+| `MISTRAL=1` | Mistral AI models (free: 1B tokens/month) |
+| `COHERE=1` | Cohere models (free: 1K req/day) |
 | `GROQ=1` | Groq models (free tier) |
 | `OLLAMA=1` | Local Ollama inference (~6GB+ RAM) |
 | `SPEACHES=1` | Local Speaches transcription/TTS (~4GB RAM) |
