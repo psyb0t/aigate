@@ -286,6 +286,21 @@ curl -X DELETE http://localhost:4000/q/__jobs/550e8400-e29b-41d4-a716-4466554400
 
 Only OpenAI API paths (`/v1/chat/completions`, `/v1/embeddings`, `/v1/audio/*`, `/v1/images/*`, `/v1/responses`) are queued. Health checks, model lists, key management, and admin UI requests pass through to LiteLLM directly.
 
+Configurable via `.env`:
+
+| Variable | Default | What it does |
+| -------- | ------- | ------------ |
+| `PROXQ_CONCURRENCY` | `10` | How many workers process jobs simultaneously |
+| `PROXQ_TASK_RETENTION` | `1h` | How long completed jobs stay in Redis |
+| `PROXQ_UPSTREAM_TIMEOUT` | `10m` | Max time to wait for LiteLLM to respond |
+| `PROXQ_MAX_RETRIES` | `0` | Retry failed upstream calls (0 = no retries) |
+| `PROXQ_RETRY_DELAY` | `30s` | Delay between retries (0 = exponential backoff) |
+| `PROXQ_MAX_BODY_SIZE` | `10MB` | Max request body size for queued requests |
+| `PROXQ_DIRECT_PROXY_THRESHOLD` | `10MB` | Bodies larger than this bypass the queue |
+| `PROXQ_CACHE_MODE` | `none` | `none`, `memory` (LRU), or `redis` — cache upstream responses |
+| `PROXQ_CACHE_TTL` | `5m` | How long cached responses stay fresh |
+| `PROXQ_CACHE_MAX_ENTRIES` | `10000` | Max entries for in-memory LRU cache |
+
 → [Full usage guide](docs/usage.md) — browser automation, object storage, agentic claudebox tasks, vision, streaming, Python SDK examples
 
 ## Services Reference

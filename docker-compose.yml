@@ -630,10 +630,19 @@ configs:
       concurrency: ${PROXQ_CONCURRENCY:-10}
       jobsPath: "/__jobs"
       taskRetention: "${PROXQ_TASK_RETENTION:-1h}"
+      cache:
+        mode: "${PROXQ_CACHE_MODE:-none}"
+        ttl: "${PROXQ_CACHE_TTL:-5m}"
+        maxEntries: ${PROXQ_CACHE_MAX_ENTRIES:-10000}
+        redisKeyPrefix: "proxq:"
       upstreams:
         - prefix: "/"
           url: "http://litellm:4000"
           timeout: "${PROXQ_UPSTREAM_TIMEOUT:-10m}"
+          maxRetries: ${PROXQ_MAX_RETRIES:-0}
+          retryDelay: "${PROXQ_RETRY_DELAY:-30s}"
+          maxBodySize: ${PROXQ_MAX_BODY_SIZE:-10485760}
+          directProxyThreshold: ${PROXQ_DIRECT_PROXY_THRESHOLD:-10485760}
           directProxyMode: "proxy"
           pathFilter:
             mode: "whitelist"
