@@ -43,6 +43,8 @@ services:
         condition: service_completed_successfully
       litellm:
         condition: service_healthy
+      proxq:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health/liveliness"]
       interval: 15s
@@ -380,6 +382,34 @@ services:
     depends_on:
       - ollama
 
+  # ── proxq (async job queue proxy for LiteLLM) ──────────────────────────────
+
+  proxq:
+    image: psyb0t/proxq:v0.4.1
+    restart: unless-stopped
+    mem_limit: ${PROXQ_MEM_LIMIT:-256m}
+    memswap_limit: ${PROXQ_MEMSWAP_LIMIT:-512m}
+    cpus: ${PROXQ_CPUS:-1.0}
+    configs:
+      - source: proxq_config
+        target: /etc/proxq/config.yaml
+    command: ["--config", "/etc/proxq/config.yaml"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      litellm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health/liveliness"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - litellm-internal
+
   cloudflared:
     profiles: ["cloudflared"]
     build: ./cloudflared
@@ -483,6 +513,20 @@ configs:
               proxy_request_buffering off;
           }
 
+          # proxq — async job queue (returns job ID, poll for result)
+          location /q/ {
+              limit_req zone=proxq burst=30 nodelay;
+              proxy_pass http://proxq:8080/;
+              proxy_set_header Host $$http_host;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_read_timeout 30s;
+              proxy_send_timeout 30s;
+              proxy_buffering off;
+              proxy_cache off;
+          }
+
           # block root — don't expose LiteLLM swagger
           location = / {
               return 404;
@@ -573,6 +617,36 @@ configs:
       limit_req_zone $$binary_remote_addr zone=storage:10m rate=60r/m;
       limit_req_zone $$binary_remote_addr zone=claudebox:10m rate=30r/m;
       limit_req_zone $$binary_remote_addr zone=browser:10m rate=30r/m;
+      limit_req_zone $$binary_remote_addr zone=proxq:10m rate=120r/m;
+
+  proxq_config:
+    content: |
+      listenAddress: "0.0.0.0:8080"
+      redis:
+        addr: "redis:6379"
+        password: "${REDIS_PASSWORD}"
+        db: 1
+      queue: "default"
+      concurrency: ${PROXQ_CONCURRENCY:-10}
+      jobsPath: "/__jobs"
+      taskRetention: "${PROXQ_TASK_RETENTION:-1h}"
+      upstreams:
+        - prefix: "/"
+          url: "http://litellm:4000"
+          timeout: "${PROXQ_UPSTREAM_TIMEOUT:-10m}"
+          directProxyMode: "proxy"
+          pathFilter:
+            mode: "whitelist"
+            patterns:
+              - "^/v1/chat/completions"
+              - "^/v1/completions"
+              - "^/v1/embeddings"
+              - "^/v1/images"
+              - "^/v1/audio"
+              - "^/v1/responses"
+              - "^/chat/completions"
+              - "^/completions"
+              - "^/embeddings"
 
   hybrids3_config:
     content: |

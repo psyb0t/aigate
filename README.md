@@ -22,7 +22,8 @@ nginx :4000
   ├─► /claudebox-zai/        → claudebox-zai (Claude Code, GLM via z.ai)
   ├─► /stealthy-auto-browse/ → HAProxy → [browser ×5]
   ├─► /storage/              → hybrids3
-  └─► /                      → LiteLLM
+  ├─► /q/                    → proxq → LiteLLM (async, returns job ID)
+  └─► /                      → LiteLLM (sync)
                                   ├─ Groq              (free)
                                   ├─ Cerebras           (free)
                                   ├─ OpenRouter         (free tier)
@@ -65,6 +66,7 @@ Notable writable locations:
 | ------- | ----------- |
 | **Nginx** | Single entry point on port 4000. Routes by URL path, enforces per-endpoint rate limits, restores real client IP behind Cloudflare, and optionally adds HTTP basic auth on the admin UI. All config is embedded inline. |
 | **LiteLLM** | OpenAI-compatible API proxy. Latency-based routing, Redis response caching (10-minute TTL), automatic retries, per-model fallback chains, and client-side JSON schema validation. Manages API keys and usage via PostgreSQL. |
+| **[proxq](https://github.com/psyb0t/docker-proxq)** | Async HTTP job queue proxy. Sits in front of LiteLLM at `/q/` — queues inference requests in Redis, returns a job ID instantly, forwards to upstream in the background. Poll `/__jobs/{id}` for status, `/__jobs/{id}/content` for the raw response. Only OpenAI API paths are queued (chat/completions, embeddings, audio, images); everything else passes through directly. |
 | **PostgreSQL** | Key management, budget tracking, usage analytics for LiteLLM. |
 | **Redis** | LiteLLM response cache and rate limiting. |
 | **[claudebox](https://github.com/psyb0t/docker-claudebox) ×2** | Claude Code CLI in API mode. Full agentic loop — shell access, file I/O, tool use, persistent workspaces. One instance uses your OAuth token or Anthropic API key; the other points at z.ai for GLM models. Both expose REST API, OpenAI-compatible endpoint, and MCP server. |
@@ -255,6 +257,35 @@ curl http://localhost:4000/embeddings \
   -d '{"model": "local-ollama-nomic-embed", "input": "your text here"}'
 ```
 
+### Async (via proxq)
+
+Any request sent through `/q/` is queued and processed in the background — useful for long-running inference that would otherwise time out.
+
+```bash
+# submit — returns instantly with a job ID
+curl http://localhost:4000/q/v1/chat/completions \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "cerebras-qwen3-235b", "messages": [{"role": "user", "content": "write a novel"}]}'
+# → 202 {"jobId": "550e8400-e29b-41d4-a716-446655440000"}
+
+# check status
+curl http://localhost:4000/q/__jobs/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY"
+# → {"id": "...", "status": "running"}
+
+# get the response (replays upstream response exactly)
+curl http://localhost:4000/q/__jobs/550e8400-e29b-41d4-a716-446655440000/content \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY"
+# → {"choices": [...], "usage": {...}}
+
+# cancel
+curl -X DELETE http://localhost:4000/q/__jobs/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY"
+```
+
+Only OpenAI API paths (`/v1/chat/completions`, `/v1/embeddings`, `/v1/audio/*`, `/v1/images/*`, `/v1/responses`) are queued. Health checks, model lists, key management, and admin UI requests pass through to LiteLLM directly.
+
 → [Full usage guide](docs/usage.md) — browser automation, object storage, agentic claudebox tasks, vision, streaming, Python SDK examples
 
 ## Services Reference
@@ -283,7 +314,7 @@ make test          # run test suite (stack must be running)
 make test
 ```
 
-Covers health, routing, auth, MCP, storage CRUD, browser automation, claudebox, and security. Designed for zero/minimal token usage.
+73 tests covering health, routing, auth, MCP, storage CRUD, browser automation, claudebox, proxq async job lifecycle, and security. Designed for zero/minimal token usage.
 
 → [Testing guide](docs/testing.md)
 

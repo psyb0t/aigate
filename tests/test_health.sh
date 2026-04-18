@@ -31,6 +31,7 @@ REQUIRED_SERVICES=(
     "litellm"
     "nginx"
     "postgres"
+    "proxq"
     "redis"
     "stealthy-auto-browse-proxy"
     "stealthy-auto-browse-redis"
@@ -60,7 +61,7 @@ test_health_compose_services() {
     echo "OK: compose_services (${#REQUIRED_SERVICES[@]} services + $sab_count browser replicas)"
 }
 
-# ── cloudflared quick tunnel (optional, skipped if not in COMPOSE_PROFILES) ──
+# ── cloudflared tunnel (optional, skipped if not running) ──────────────────
 
 test_health_cloudflared_tunnel() {
     if ! docker compose ps cloudflared 2>/dev/null | grep -q "Up"; then
@@ -68,15 +69,24 @@ test_health_cloudflared_tunnel() {
         return 0
     fi
 
-    # extract tunnel URL from container logs
-    local tunnel_url
-    tunnel_url=$(docker compose logs cloudflared 2>/dev/null \
-        | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' | tail -1)
+    local logs
+    logs=$(docker compose logs cloudflared 2>/dev/null)
 
+    # try quick tunnel URL first
+    local tunnel_url
+    tunnel_url=$(echo "$logs" | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' | tail -1)
+
+    # if not quick tunnel, check for named tunnel (registered connections)
     if [ -z "$tunnel_url" ]; then
-        echo "  FAIL: cloudflared running but no trycloudflare.com URL in logs"
+        if echo "$logs" | grep -q "Registered tunnel connection"; then
+            echo "  OK: named tunnel registered (connections established)"
+            echo "OK: cloudflared_tunnel (named)"
+            return 0
+        fi
+        echo "  FAIL: cloudflared running but no tunnel URL or registered connections in logs"
         return 1
     fi
+
     echo "  OK: tunnel URL found: $tunnel_url"
 
     # wait up to 30s for tunnel to become reachable
