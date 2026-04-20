@@ -499,6 +499,13 @@ configs:
               proxy_cache off;
           }
 
+          # litellm UI static assets — no rate limit, same auth as /ui
+          location /litellm-asset-prefix/ {
+              include /etc/nginx/auth/auth.conf;
+              proxy_pass http://litellm:4000/litellm-asset-prefix/;
+              proxy_set_header Host $$http_host;
+          }
+
           location /login {
               limit_req zone=admin burst=${RATELIMIT_ADMIN_BURST:-20} nodelay;
               include /etc/nginx/auth/auth.conf;
@@ -663,7 +670,7 @@ configs:
       real_ip_recursive on;
 
       limit_req_zone $$binary_remote_addr zone=admin:10m rate=${RATELIMIT_ADMIN:-30r/m};
-      limit_req_zone $$binary_remote_addr zone=api:10m rate=${RATELIMIT_API:-120r/m};
+      limit_req_zone $$binary_remote_addr zone=api:10m rate=${RATELIMIT_API:-500r/m};
       limit_req_zone $$binary_remote_addr zone=storage:10m rate=${RATELIMIT_STORAGE:-60r/m};
       limit_req_zone $$binary_remote_addr zone=claudebox:10m rate=${RATELIMIT_CLAUDEBOX:-30r/m};
       limit_req_zone $$binary_remote_addr zone=browser:10m rate=${RATELIMIT_BROWSER:-30r/m};
