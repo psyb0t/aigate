@@ -90,6 +90,22 @@ EXPECTED_MODELS=(
     "cohere-rerank"
 )
 
+# ollama models — only expected when OLLAMA=1
+if [ "${OLLAMA:-}" = "1" ]; then
+    EXPECTED_MODELS+=(
+        "local-ollama-llama3.2-3b"
+        "local-ollama-qwen3-4b"
+        "local-ollama-smollm2-1.7b"
+        "local-ollama-qwen2.5-coder-1.5b"
+        "local-ollama-qwen2.5-coder-3b"
+        "local-ollama-phi3.5"
+        "local-ollama-gemma3-4b"
+        "local-ollama-nomic-embed"
+        "local-ollama-bge-m3"
+        "local-ollama-qwen3-embed-0.6b"
+    )
+fi
+
 test_litellm_models_registered() {
     local models
     models=$(get "$BASE_URL/models")

@@ -72,7 +72,7 @@ Notable writable locations:
 | **[claudebox](https://github.com/psyb0t/docker-claudebox) ×2** | Claude Code CLI in API mode. Full agentic loop — shell access, file I/O, tool use, persistent workspaces. One instance uses your OAuth token or Anthropic API key; the other points at z.ai for GLM models. Both expose REST API, OpenAI-compatible endpoint, and MCP server. |
 | **[hybrids3](https://github.com/psyb0t/docker-hybrids3)** | S3-compatible object storage. Plain HTTP upload/download, boto3-compatible, bearer token auth, auto-expiry, MCP server. The `uploads` bucket is public-read — files are accessible by direct URL without signing. |
 | **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** | 5 Camoufox (hardened Firefox) replicas behind HAProxy. Real OS-level mouse and keyboard input via PyAutoGUI — no CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan. Redis cookie sync across replicas. REST API and MCP server. |
-| **Ollama** | Local CPU inference. Runs llama3.2:3b, qwen3:4b, smollm2:1.7b, qwen2.5-coder:1.5b, qwen2.5-coder:3b, phi3.5, moondream (vision), nomic-embed-text, bge-m3, and qwen3-embedding:0.6b (embeddings). Models are downloaded automatically on first start and cached in `.data/ollama/`. No GPU required — sized for CPU with reasonable RAM. |
+| **Ollama** | Local CPU inference. Runs llama3.2:3b, qwen3:4b, smollm2:1.7b, qwen2.5-coder:1.5b, qwen2.5-coder:3b, phi3.5, gemma3:4b (general + vision), nomic-embed-text, bge-m3, and qwen3-embedding:0.6b (embeddings). Models are downloaded automatically on first start and cached in `.data/ollama/`. No GPU required — sized for CPU with reasonable RAM. |
 | **Speaches** | Local CPU audio via [speaches-ai/speaches](https://github.com/speaches-ai/speaches). Transcription: `faster-distil-whisper-large-v3` (multilingual) and `parakeet-tdt-0.6b-v2` (English, ~3400× real-time on CPU). Text-to-speech: `Kokoro-82M` int8 (high-quality, multiple voices). All models are pre-downloaded on first start and cached in `.data/speaches/`. |
 | **cloudflared** _(optional)_ | Cloudflare Tunnel. Disabled by default — enable with `CLOUDFLARED=1` in `.env`. Runs a quick tunnel (random `*.trycloudflare.com` URL, no account) or a named tunnel (fixed domain, requires config file and credentials). |
 
@@ -121,7 +121,7 @@ All local models are last in fallback chains — used when cloud providers are r
 | `local-ollama-qwen2.5-coder-1.5b` | Code — smallest | ~1GB |
 | `local-ollama-qwen2.5-coder-3b` | Code — better quality | ~2GB |
 | `local-ollama-phi3.5` | General chat (Microsoft) | ~2.2GB |
-| `local-ollama-moondream` | Vision / image captioning | ~1.7GB |
+| `local-ollama-gemma3-4b` | General chat + vision (Google Gemma 3) | ~2.6GB |
 | `local-ollama-nomic-embed` | Text embeddings — fastest, smallest (270MB, 512 token context) | ~270MB |
 | `local-ollama-bge-m3` | Text embeddings — long docs, multilingual (8192 token context) | ~570MB |
 | `local-ollama-qwen3-embed-0.6b` | Text embeddings — modern, efficient | ~500MB |

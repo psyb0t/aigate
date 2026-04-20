@@ -375,7 +375,7 @@ services:
         pull qwen2.5-coder:1.5b &&
         pull qwen2.5-coder:3b &&
         pull phi3.5 &&
-        pull moondream
+        pull gemma3:4b
       '
     environment:
       - OLLAMA_HOST=http://localhost:11434

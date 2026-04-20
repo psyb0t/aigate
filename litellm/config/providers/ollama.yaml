@@ -28,9 +28,9 @@
     model: ollama/phi3.5
     api_base: http://ollama:11434
 
-- model_name: local-ollama-moondream
+- model_name: local-ollama-gemma3-4b
   litellm_params:
-    model: ollama/moondream
+    model: ollama/gemma3:4b
     api_base: http://ollama:11434
 
 - model_name: local-ollama-nomic-embed
