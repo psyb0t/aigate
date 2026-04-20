@@ -93,16 +93,27 @@ EXPECTED_MODELS=(
 # ollama models — only expected when OLLAMA=1
 if [ "${OLLAMA:-}" = "1" ]; then
     EXPECTED_MODELS+=(
-        "local-ollama-llama3.2-3b"
-        "local-ollama-qwen3-4b"
-        "local-ollama-smollm2-1.7b"
-        "local-ollama-qwen2.5-coder-1.5b"
-        "local-ollama-qwen2.5-coder-3b"
-        "local-ollama-phi3.5"
-        "local-ollama-gemma3-4b"
-        "local-ollama-nomic-embed"
-        "local-ollama-bge-m3"
-        "local-ollama-qwen3-embed-0.6b"
+        "ollama-cpu-llama3.2-3b"
+        "ollama-cpu-qwen3-4b"
+        "ollama-cpu-smollm2-1.7b"
+        "ollama-cpu-qwen2.5-coder-1.5b"
+        "ollama-cpu-qwen2.5-coder-3b"
+        "ollama-cpu-phi3.5"
+        "ollama-cpu-gemma3-4b"
+        "ollama-cpu-nomic-embed"
+        "ollama-cpu-bge-m3"
+        "ollama-cpu-qwen3-embed-0.6b"
+    )
+fi
+
+# ollama-gpu models — only expected when GPU_NVIDIA=1
+if [ "${GPU_NVIDIA:-}" = "1" ]; then
+    EXPECTED_MODELS+=(
+        "ollama-gpu-dolphin-mistral-7b"
+        "ollama-gpu-qwen3-8b"
+        "ollama-gpu-gemma3-12b"
+        "ollama-gpu-qwen2.5-coder-7b"
+        "ollama-gpu-llama3.1-8b"
     )
 fi
 

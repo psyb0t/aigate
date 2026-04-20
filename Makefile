@@ -42,6 +42,11 @@ ifeq ($(strip $(OLLAMA)),1)
   _PROFILES += ollama
 endif
 
+# ollama-gpu: opt-in with GPU_NVIDIA=1
+ifeq ($(strip $(GPU_NVIDIA)),1)
+  _PROFILES += ollama-gpu
+endif
+
 # speaches: opt-in with SPEACHES=1
 ifeq ($(strip $(SPEACHES)),1)
   _PROFILES += speaches
@@ -121,6 +126,7 @@ help:
 	@echo "  hybrids3      set HYBRIDS3=1"
 	@echo "  browser       set BROWSER=1"
 	@echo "  ollama        set OLLAMA=1"
+	@echo "  ollama-gpu    set GPU_NVIDIA=1 (requires NVIDIA GPU + docker nvidia runtime)"
 	@echo "  speaches      set SPEACHES=1"
 	@echo ""
 	@echo "Active profiles: $(if $(COMPOSE_PROFILES),$(COMPOSE_PROFILES),(none))"

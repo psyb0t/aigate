@@ -37,9 +37,9 @@
       "or-gpt-oss-20b",
       "hf-llama-3.1-8b",
       "openai-gpt-4o-mini",
-      "local-ollama-llama3.2-3b",
-      "local-ollama-smollm2-1.7b",
-      "local-ollama-phi3.5"
+      "ollama-cpu-llama3.2-3b",
+      "ollama-cpu-smollm2-1.7b",
+      "ollama-cpu-phi3.5"
     ]
   },
   {
@@ -81,9 +81,9 @@
       "hf-llama-3.1-8b",
       "anthropic-claude-haiku-4",
       "openai-gpt-4o-mini",
-      "local-ollama-llama3.2-3b",
-      "local-ollama-smollm2-1.7b",
-      "local-ollama-phi3.5"
+      "ollama-cpu-llama3.2-3b",
+      "ollama-cpu-smollm2-1.7b",
+      "ollama-cpu-phi3.5"
     ]
   },
   {
@@ -179,9 +179,9 @@
       "hf-llama-3.1-8b",
       "claudebox-haiku",
       "openai-gpt-4o-mini",
-      "local-ollama-llama3.2-3b",
-      "local-ollama-smollm2-1.7b",
-      "local-ollama-phi3.5"
+      "ollama-cpu-llama3.2-3b",
+      "ollama-cpu-smollm2-1.7b",
+      "ollama-cpu-phi3.5"
     ]
   },
   {
@@ -194,9 +194,9 @@
       "hf-llama-3.1-8b",
       "claudebox-haiku",
       "openai-gpt-4o-mini",
-      "local-ollama-llama3.2-3b",
-      "local-ollama-smollm2-1.7b",
-      "local-ollama-phi3.5"
+      "ollama-cpu-llama3.2-3b",
+      "ollama-cpu-smollm2-1.7b",
+      "ollama-cpu-phi3.5"
     ]
   },
   {
@@ -218,7 +218,7 @@
       "or-hermes-3-405b",
       "claudebox-sonnet",
       "openai-gpt-4o",
-      "local-ollama-moondream"
+      "ollama-cpu-gemma3-4b"
     ]
   },
   {
@@ -312,7 +312,7 @@
       "hf-qwen-vl-72b",
       "claudebox-sonnet",
       "openai-gpt-4o",
-      "local-ollama-moondream"
+      "ollama-cpu-gemma3-4b"
     ]
   },
   {
@@ -483,7 +483,7 @@
       "claudebox-sonnet",
       "claudebox-glm-4.7",
       "openai-gpt-4o",
-      "local-ollama-qwen2.5-coder-1.5b"
+      "ollama-cpu-qwen2.5-coder-1.5b"
     ]
   },
   {
@@ -540,7 +540,7 @@
       "claudebox-sonnet",
       "or-qwen3-coder",
       "openai-gpt-4o",
-      "local-ollama-qwen2.5-coder-1.5b"
+      "ollama-cpu-qwen2.5-coder-1.5b"
     ]
   },
   {
@@ -550,7 +550,7 @@
       "claudebox-sonnet",
       "or-qwen3-coder",
       "openai-gpt-4o",
-      "local-ollama-qwen2.5-coder-1.5b"
+      "ollama-cpu-qwen2.5-coder-1.5b"
     ]
   },
   {
@@ -602,6 +602,40 @@
       "mistral-small",
       "cerebras-qwen3-235b",
       "openai-gpt-4o"
+    ]
+  },
+  {
+    "ollama-gpu-dolphin-mistral-7b": [
+      "ollama-gpu-llama3.1-8b",
+      "ollama-gpu-qwen3-8b",
+      "ollama-cpu-llama3.2-3b"
+    ]
+  },
+  {
+    "ollama-gpu-qwen3-8b": [
+      "ollama-gpu-llama3.1-8b",
+      "ollama-gpu-dolphin-mistral-7b",
+      "ollama-cpu-qwen3-4b"
+    ]
+  },
+  {
+    "ollama-gpu-gemma3-12b": [
+      "ollama-gpu-qwen3-8b",
+      "ollama-gpu-llama3.1-8b",
+      "ollama-cpu-gemma3-4b"
+    ]
+  },
+  {
+    "ollama-gpu-qwen2.5-coder-7b": [
+      "ollama-gpu-qwen3-8b",
+      "ollama-cpu-qwen2.5-coder-3b"
+    ]
+  },
+  {
+    "ollama-gpu-llama3.1-8b": [
+      "ollama-gpu-qwen3-8b",
+      "ollama-gpu-dolphin-mistral-7b",
+      "ollama-cpu-llama3.2-3b"
     ]
   }
 ]

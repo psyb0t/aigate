@@ -1,53 +1,53 @@
-- model_name: local-ollama-llama3.2-3b
+- model_name: ollama-cpu-llama3.2-3b
   litellm_params:
     model: ollama/llama3.2:3b
     api_base: http://ollama:11434
 
-- model_name: local-ollama-qwen3-4b
+- model_name: ollama-cpu-qwen3-4b
   litellm_params:
     model: ollama/qwen3:4b
     api_base: http://ollama:11434
 
-- model_name: local-ollama-smollm2-1.7b
+- model_name: ollama-cpu-smollm2-1.7b
   litellm_params:
     model: ollama/smollm2:1.7b
     api_base: http://ollama:11434
 
-- model_name: local-ollama-qwen2.5-coder-1.5b
+- model_name: ollama-cpu-qwen2.5-coder-1.5b
   litellm_params:
     model: ollama/qwen2.5-coder:1.5b
     api_base: http://ollama:11434
 
-- model_name: local-ollama-qwen2.5-coder-3b
+- model_name: ollama-cpu-qwen2.5-coder-3b
   litellm_params:
     model: ollama/qwen2.5-coder:3b
     api_base: http://ollama:11434
 
-- model_name: local-ollama-phi3.5
+- model_name: ollama-cpu-phi3.5
   litellm_params:
     model: ollama/phi3.5
     api_base: http://ollama:11434
 
-- model_name: local-ollama-gemma3-4b
+- model_name: ollama-cpu-gemma3-4b
   litellm_params:
     model: ollama/gemma3:4b
     api_base: http://ollama:11434
 
-- model_name: local-ollama-nomic-embed
+- model_name: ollama-cpu-nomic-embed
   litellm_params:
     model: ollama/nomic-embed-text
     api_base: http://ollama:11434
   model_info:
     mode: embedding
 
-- model_name: local-ollama-bge-m3
+- model_name: ollama-cpu-bge-m3
   litellm_params:
     model: ollama/bge-m3
     api_base: http://ollama:11434
   model_info:
     mode: embedding
 
-- model_name: local-ollama-qwen3-embed-0.6b
+- model_name: ollama-cpu-qwen3-embed-0.6b
   litellm_params:
     model: ollama/qwen3-embedding:0.6b
     api_base: http://ollama:11434

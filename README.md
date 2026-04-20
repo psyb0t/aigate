@@ -115,16 +115,16 @@ All local models are last in fallback chains — used when cloud providers are r
 
 | Model name | Description | RAM |
 | ---------- | ----------- | --- |
-| `local-ollama-llama3.2-3b` | General chat — smallest/fastest | ~2GB |
-| `local-ollama-qwen3-4b` | General chat — better quality, thinking mode | ~2.6GB |
-| `local-ollama-smollm2-1.7b` | General chat — absolute tiniest | ~1GB |
-| `local-ollama-qwen2.5-coder-1.5b` | Code — smallest | ~1GB |
-| `local-ollama-qwen2.5-coder-3b` | Code — better quality | ~2GB |
-| `local-ollama-phi3.5` | General chat (Microsoft) | ~2.2GB |
-| `local-ollama-gemma3-4b` | General chat + vision (Google Gemma 3) | ~2.6GB |
-| `local-ollama-nomic-embed` | Text embeddings — fastest, smallest (270MB, 512 token context) | ~270MB |
-| `local-ollama-bge-m3` | Text embeddings — long docs, multilingual (8192 token context) | ~570MB |
-| `local-ollama-qwen3-embed-0.6b` | Text embeddings — modern, efficient | ~500MB |
+| `ollama-cpu-llama3.2-3b` | General chat — smallest/fastest | ~2GB |
+| `ollama-cpu-qwen3-4b` | General chat — better quality, thinking mode | ~2.6GB |
+| `ollama-cpu-smollm2-1.7b` | General chat — absolute tiniest | ~1GB |
+| `ollama-cpu-qwen2.5-coder-1.5b` | Code — smallest | ~1GB |
+| `ollama-cpu-qwen2.5-coder-3b` | Code — better quality | ~2GB |
+| `ollama-cpu-phi3.5` | General chat (Microsoft) | ~2.2GB |
+| `ollama-cpu-gemma3-4b` | General chat + vision (Google Gemma 3) | ~2.6GB |
+| `ollama-cpu-nomic-embed` | Text embeddings — fastest, smallest (270MB, 512 token context) | ~270MB |
+| `ollama-cpu-bge-m3` | Text embeddings — long docs, multilingual (8192 token context) | ~570MB |
+| `ollama-cpu-qwen3-embed-0.6b` | Text embeddings — modern, efficient | ~500MB |
 
 ### Local transcription (Speaches, CPU)
 
@@ -225,7 +225,7 @@ curl http://localhost:4000/chat/completions \
 curl http://localhost:4000/chat/completions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model": "local-ollama-llama3.2-3b", "messages": [{"role": "user", "content": "hello"}]}'
+  -d '{"model": "ollama-cpu-llama3.2-3b", "messages": [{"role": "user", "content": "hello"}]}'
 
 # image generation
 curl http://localhost:4000/images/generations \
@@ -254,7 +254,7 @@ curl http://localhost:4000/audio/speech \
 curl http://localhost:4000/embeddings \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model": "local-ollama-nomic-embed", "input": "your text here"}'
+  -d '{"model": "ollama-cpu-nomic-embed", "input": "your text here"}'
 ```
 
 ### Async (via proxq)

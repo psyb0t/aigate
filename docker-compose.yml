@@ -21,7 +21,7 @@ services:
     environment:
       LITELLM_UI_BASIC_AUTH: ${LITELLM_UI_BASIC_AUTH:-}
     volumes:
-      - ./.data/nginx:/htpasswd
+      - ${DATA_DIR_NGINX:-${DATA_DIR:-.data}/nginx}:/htpasswd
 
   nginx:
     image: nginx:1.27.5-alpine
@@ -32,7 +32,7 @@ services:
     ports:
       - "4000:4000"
     volumes:
-      - ./.data/nginx:/etc/nginx/auth:ro
+      - ${DATA_DIR_NGINX:-${DATA_DIR:-.data}/nginx}:/etc/nginx/auth:ro
     configs:
       - source: nginx_conf
         target: /etc/nginx/conf.d/default.conf
@@ -110,8 +110,8 @@ services:
       CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
       ANTHROPIC_API_KEY: ${CLAUDEBOX_ANTHROPIC_API_KEY:-}
     volumes:
-      - ./.data/claudebox/config:/home/claude/.claude
-      - ./.data/claudebox/workspaces:/workspaces
+      - ${DATA_DIR_CLAUDEBOX:-${DATA_DIR:-.data}/claudebox}/config:/home/claude/.claude
+      - ${DATA_DIR_CLAUDEBOX:-${DATA_DIR:-.data}/claudebox}/workspaces:/workspaces
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
       interval: 15s
@@ -141,8 +141,8 @@ services:
       ANTHROPIC_DEFAULT_SONNET_MODEL: ${ZAI_SONNET_MODEL:-glm-4.7}
       ANTHROPIC_DEFAULT_HAIKU_MODEL: ${ZAI_HAIKU_MODEL:-glm-4.5-air}
     volumes:
-      - ./.data/claudebox-zai/config:/home/claude/.claude
-      - ./.data/claudebox-zai/workspaces:/workspaces
+      - ${DATA_DIR_CLAUDEBOX_ZAI:-${DATA_DIR:-.data}/claudebox-zai}/config:/home/claude/.claude
+      - ${DATA_DIR_CLAUDEBOX_ZAI:-${DATA_DIR:-.data}/claudebox-zai}/workspaces:/workspaces
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
       interval: 15s
@@ -161,7 +161,7 @@ services:
     memswap_limit: ${HYBRIDS3_MEMSWAP_LIMIT:-512m}
     cpus: ${HYBRIDS3_CPUS:-0.5}
     volumes:
-      - ./.data/hybrids3:/data
+      - ${DATA_DIR_HYBRIDS3:-${DATA_DIR:-.data}/hybrids3}:/data
     configs:
       - source: hybrids3_config
         target: /config/config.yaml
@@ -190,7 +190,7 @@ services:
     cpus: ${REDIS_CPUS:-0.3}
     command: redis-server --save 60 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
     volumes:
-      - ./.data/redis:/data
+      - ${DATA_DIR_REDIS:-${DATA_DIR:-.data}/redis}:/data
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
@@ -206,7 +206,7 @@ services:
     restart: "no"
     command: sh -c "mkdir -p /pgmount/data && chown -R 70:70 /pgmount && chmod 755 /pgmount"
     volumes:
-      - ./.data/postgres:/pgmount
+      - ${DATA_DIR_POSTGRES:-${DATA_DIR:-.data}/postgres}:/pgmount
 
   postgres:
     image: postgres:16.13-alpine
@@ -219,7 +219,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-litellm}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - ./.data/postgres/data:/var/lib/postgresql/data
+      - ${DATA_DIR_POSTGRES:-${DATA_DIR:-.data}/postgres}/data:/var/lib/postgresql/data
     depends_on:
       postgres-init:
         condition: service_completed_successfully
@@ -248,7 +248,7 @@ services:
     cpus: ${SAB_REDIS_CPUS:-0.2}
     command: redis-server --appendonly yes --requirepass ${STEALTHY_AUTO_BROWSE_REDIS_PASSWORD}
     volumes:
-      - ./.data/stealthy-auto-browse-redis:/data
+      - ${DATA_DIR_BROWSER_REDIS:-${DATA_DIR:-.data}/stealthy-auto-browse-redis}:/data
     security_opt:
       - no-new-privileges:true
     networks:
@@ -309,7 +309,7 @@ services:
       WHISPER__INFERENCE_DEVICE: cpu
       WHISPER__COMPUTE_TYPE: int8
     volumes:
-      - ./.data/speaches:/home/ubuntu/.cache/huggingface/hub
+      - ${DATA_DIR_SPEACHES:-${DATA_DIR:-.data}/speaches}:/home/ubuntu/.cache/huggingface/hub
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
@@ -335,7 +335,7 @@ services:
         huggingface-cli download speaches-ai/Kokoro-82M-v1.0-ONNX-int8
       '
     volumes:
-      - ./.data/speaches:/home/ubuntu/.cache/huggingface/hub
+      - ${DATA_DIR_SPEACHES:-${DATA_DIR:-.data}/speaches}:/home/ubuntu/.cache/huggingface/hub
     networks:
       - litellm-public
 
@@ -349,7 +349,7 @@ services:
     memswap_limit: ${OLLAMA_MEMSWAP_LIMIT:-12g}
     cpus: ${OLLAMA_CPUS:-4.0}
     volumes:
-      - ./.data/ollama:/root/.ollama
+      - ${DATA_DIR_OLLAMA:-${DATA_DIR:-.data}/ollama}:/root/.ollama
     networks:
       - litellm-internal
       - litellm-public
@@ -381,6 +381,56 @@ services:
       - OLLAMA_HOST=http://localhost:11434
     depends_on:
       - ollama
+
+  # ── Ollama GPU (NVIDIA, local inference) ────────────────────────────────────
+
+  ollama-gpu:
+    profiles: ["ollama-gpu"]
+    image: ollama/ollama:0.20.7
+    restart: unless-stopped
+    mem_limit: ${OLLAMA_GPU_MEM_LIMIT:-12g}
+    memswap_limit: ${OLLAMA_GPU_MEMSWAP_LIMIT:-24g}
+    cpus: ${OLLAMA_GPU_CPUS:-4.0}
+    environment:
+      - OLLAMA_FLASH_ATTENTION=1
+      - OLLAMA_KV_CACHE_TYPE=${OLLAMA_GPU_KV_CACHE:-q8_0}
+      - OLLAMA_MAX_LOADED_MODELS=${OLLAMA_GPU_MAX_LOADED:-1}
+      - OLLAMA_NUM_PARALLEL=${OLLAMA_GPU_NUM_PARALLEL:-1}
+    volumes:
+      - ${DATA_DIR_OLLAMA_GPU:-${DATA_DIR:-.data}/ollama-gpu}:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - litellm-internal
+      - litellm-public
+
+  ollama-gpu-pull:
+    profiles: ["ollama-gpu"]
+    image: ollama/ollama:0.20.7
+    restart: on-failure
+    mem_limit: ${OLLAMA_GPU_PULL_MEM_LIMIT:-512m}
+    memswap_limit: ${OLLAMA_GPU_PULL_MEMSWAP_LIMIT:-1g}
+    cpus: ${OLLAMA_GPU_PULL_CPUS:-0.5}
+    network_mode: "service:ollama-gpu"
+    entrypoint: >
+      sh -c '
+        until ollama list > /dev/null 2>&1; do sleep 2; done;
+        pull() { for i in 1 2 3 4 5; do ollama pull "$$1" && return 0; sleep 5; done; return 1; };
+        pull dolphin-mistral:7b &&
+        pull qwen3:8b &&
+        pull gemma3:12b &&
+        pull qwen2.5-coder:7b &&
+        pull llama3.1:8b
+      '
+    environment:
+      - OLLAMA_HOST=http://localhost:11434
+    depends_on:
+      - ollama-gpu
 
   # ── proxq (async job queue proxy for LiteLLM) ──────────────────────────────
 
