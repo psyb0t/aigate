@@ -33,6 +33,11 @@
     model: ollama/gemma3:4b
     api_base: http://ollama:11434
 
+- model_name: ollama-cpu-dolphin-phi
+  litellm_params:
+    model: ollama/dolphin-phi:latest
+    api_base: http://ollama:11434
+
 - model_name: ollama-cpu-nomic-embed
   litellm_params:
     model: ollama/nomic-embed-text

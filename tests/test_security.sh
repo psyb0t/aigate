@@ -340,7 +340,7 @@ test_sec_hybrids3_path_traversal() {
 
 test_sec_no_docker_socket() {
     local has_socket
-    has_socket=$(docker inspect docker-litellm-claudebox-1 --format '{{json .Mounts}}' 2>/dev/null | \
+    has_socket=$(docker inspect aigate-claudebox-1 --format '{{json .Mounts}}' 2>/dev/null | \
         python3 -c "
 import sys, json
 mounts = json.load(sys.stdin)

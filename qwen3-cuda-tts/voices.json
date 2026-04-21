@@ -1,0 +1,17 @@
+{
+  "alloy": {
+    "ref_audio": "/app/ref_audio.wav",
+    "ref_text": "I'm confused why some people have super short timelines, yet at the same time are bullish on scaling up reinforcement learning atop LLMs. If we're actually close to a human-like learner, then this whole approach of training on verifiable outcomes is doomed.",
+    "language": "English"
+  },
+  "echo": {
+    "ref_audio": "/app/ref_audio_2.wav",
+    "ref_text": "",
+    "language": "English"
+  },
+  "fable": {
+    "ref_audio": "/app/ref_audio_3.wav",
+    "ref_text": "",
+    "language": "English"
+  }
+}

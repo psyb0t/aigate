@@ -61,12 +61,22 @@ services:
     build: ./litellm
     restart: unless-stopped
     cpus: ${LITELLM_CPUS:-4.0}
-    command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "${LITELLM_WORKERS:-4}"]
+    command:
+      [
+        "--config",
+        "/app/config.yaml",
+        "--port",
+        "4000",
+        "--num_workers",
+        "${LITELLM_WORKERS:-4}",
+      ]
     volumes:
       - ./litellm/config.yaml:/app/config.yaml:ro
+      - ./litellm/callbacks:/app/callbacks:ro
     env_file:
       - .env
     environment:
+      PYTHONPATH: /app/callbacks
       # Disable telemetry
       LITELLM_TELEMETRY: "False"
       MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
@@ -256,12 +266,13 @@ services:
 
   stealthy-auto-browse:
     profiles: ["browser"]
-    image: psyb0t/stealthy-auto-browse:v0.22.5
+    image: psyb0t/stealthy-auto-browse:v1.0.0
     scale: ${STEALTHY_AUTO_BROWSE_NUM_REPLICAS:-5}
     restart: unless-stopped
     environment:
       REDIS_URL: redis://:${STEALTHY_AUTO_BROWSE_REDIS_PASSWORD}@stealthy-auto-browse-redis:6379
       AUTH_TOKEN: ${STEALTHY_AUTO_BROWSE_AUTH_TOKEN:-lulz-4-security}
+      NUM_REPLICAS: ${STEALTHY_AUTO_BROWSE_NUM_REPLICAS:-5}
     mem_limit: ${SAB_MEM_LIMIT:-256m}
     memswap_limit: ${SAB_MEMSWAP_LIMIT:-512m}
     cpus: ${SAB_CPUS:-1.0}
@@ -311,7 +322,13 @@ services:
     volumes:
       - ${DATA_DIR_SPEACHES:-${DATA_DIR:-.data}/speaches}:/home/ubuntu/.cache/huggingface/hub
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -339,6 +356,45 @@ services:
     networks:
       - litellm-public
 
+  # ── Speaches CUDA (CUDA Whisper STT) ────────────────────────────────────────
+
+  speaches-cuda:
+    profiles: ["cuda"]
+    image: ghcr.io/speaches-ai/speaches:0.9.0-rc.3-cuda
+    restart: unless-stopped
+    mem_limit: ${SPEACHES_CUDA_MEM_LIMIT:-4g}
+    memswap_limit: ${SPEACHES_CUDA_MEMSWAP_LIMIT:-8g}
+    cpus: ${SPEACHES_CUDA_CPUS:-2.0}
+    environment:
+      WHISPER__MODEL: Systran/faster-distil-whisper-large-v3
+      WHISPER__INFERENCE_DEVICE: cuda
+      WHISPER__COMPUTE_TYPE: float16
+    volumes:
+      - ${DATA_DIR_SPEACHES:-${DATA_DIR:-.data}/speaches}:/home/ubuntu/.cache/huggingface/hub
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 900s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - litellm-internal
+
   # ── Ollama (local inference) ─────────────────────────────────────────────────
 
   ollama:
@@ -348,6 +404,8 @@ services:
     mem_limit: ${OLLAMA_MEM_LIMIT:-6g}
     memswap_limit: ${OLLAMA_MEMSWAP_LIMIT:-12g}
     cpus: ${OLLAMA_CPUS:-4.0}
+    environment:
+      - OLLAMA_NUM_GPU=0
     volumes:
       - ${DATA_DIR_OLLAMA:-${DATA_DIR:-.data}/ollama}:/root/.ollama
     networks:
@@ -375,29 +433,30 @@ services:
         pull qwen2.5-coder:1.5b &&
         pull qwen2.5-coder:3b &&
         pull phi3.5 &&
-        pull gemma3:4b
+        pull gemma3:4b &&
+        pull dolphin-phi:latest
       '
     environment:
       - OLLAMA_HOST=http://localhost:11434
     depends_on:
       - ollama
 
-  # ── Ollama GPU (NVIDIA, local inference) ────────────────────────────────────
+  # ── Ollama CUDA (NVIDIA, local inference) ────────────────────────────────────
 
-  ollama-gpu:
-    profiles: ["ollama-gpu"]
+  ollama-cuda:
+    profiles: ["cuda"]
     image: ollama/ollama:0.20.7
     restart: unless-stopped
-    mem_limit: ${OLLAMA_GPU_MEM_LIMIT:-12g}
-    memswap_limit: ${OLLAMA_GPU_MEMSWAP_LIMIT:-24g}
-    cpus: ${OLLAMA_GPU_CPUS:-4.0}
+    mem_limit: ${OLLAMA_CUDA_MEM_LIMIT:-12g}
+    memswap_limit: ${OLLAMA_CUDA_MEMSWAP_LIMIT:-24g}
+    cpus: ${OLLAMA_CUDA_CPUS:-4.0}
     environment:
       - OLLAMA_FLASH_ATTENTION=1
-      - OLLAMA_KV_CACHE_TYPE=${OLLAMA_GPU_KV_CACHE:-q8_0}
-      - OLLAMA_MAX_LOADED_MODELS=${OLLAMA_GPU_MAX_LOADED:-1}
-      - OLLAMA_NUM_PARALLEL=${OLLAMA_GPU_NUM_PARALLEL:-1}
+      - OLLAMA_KV_CACHE_TYPE=${OLLAMA_CUDA_KV_CACHE:-q8_0}
+      - OLLAMA_MAX_LOADED_MODELS=${OLLAMA_CUDA_MAX_LOADED:-1}
+      - OLLAMA_NUM_PARALLEL=${OLLAMA_CUDA_NUM_PARALLEL:-1}
     volumes:
-      - ${DATA_DIR_OLLAMA_GPU:-${DATA_DIR:-.data}/ollama-gpu}:/root/.ollama
+      - ${DATA_DIR_OLLAMA:-${DATA_DIR:-.data}/ollama}:/root/.ollama
     deploy:
       resources:
         reservations:
@@ -409,28 +468,63 @@ services:
       - litellm-internal
       - litellm-public
 
-  ollama-gpu-pull:
-    profiles: ["ollama-gpu"]
+  ollama-cuda-pull:
+    profiles: ["cuda"]
     image: ollama/ollama:0.20.7
     restart: on-failure
-    mem_limit: ${OLLAMA_GPU_PULL_MEM_LIMIT:-512m}
-    memswap_limit: ${OLLAMA_GPU_PULL_MEMSWAP_LIMIT:-1g}
-    cpus: ${OLLAMA_GPU_PULL_CPUS:-0.5}
-    network_mode: "service:ollama-gpu"
+    mem_limit: ${OLLAMA_CUDA_PULL_MEM_LIMIT:-512m}
+    memswap_limit: ${OLLAMA_CUDA_PULL_MEMSWAP_LIMIT:-1g}
+    cpus: ${OLLAMA_CUDA_PULL_CPUS:-0.5}
+    network_mode: "service:ollama-cuda"
     entrypoint: >
       sh -c '
         until ollama list > /dev/null 2>&1; do sleep 2; done;
         pull() { for i in 1 2 3 4 5; do ollama pull "$$1" && return 0; sleep 5; done; return 1; };
+        pull llama3.1:8b &&
         pull dolphin-mistral:7b &&
         pull qwen3:8b &&
         pull gemma3:12b &&
         pull qwen2.5-coder:7b &&
-        pull llama3.1:8b
+        pull dolphin3:latest
       '
     environment:
       - OLLAMA_HOST=http://localhost:11434
     depends_on:
-      - ollama-gpu
+      - ollama-cuda
+
+  # ── Qwen3 CUDA TTS (CUDA-accelerated TTS, voice cloning) ────────────────────
+
+  qwen3-cuda-tts:
+    profiles: ["cuda"]
+    build:
+      context: ./qwen3-cuda-tts
+    restart: unless-stopped
+    mem_limit: ${QWEN3_CUDA_TTS_MEM_LIMIT:-4g}
+    memswap_limit: ${QWEN3_CUDA_TTS_MEMSWAP_LIMIT:-8g}
+    cpus: ${QWEN3_CUDA_TTS_CPUS:-2.0}
+    environment:
+      QWEN_TTS_MODEL: ${QWEN3_CUDA_TTS_MODEL:-Qwen/Qwen3-TTS-12Hz-0.6B-Base}
+      HF_HOME: /data
+    volumes:
+      - ${DATA_DIR_QWEN3_TTS:-${DATA_DIR:-.data}/qwen3-tts}:/data
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - litellm-internal
+      - litellm-public
 
   # ── proxq (async job queue proxy for LiteLLM) ──────────────────────────────
 

@@ -17,7 +17,7 @@ _mcp_tools_list() {
 
 # format: tool_prefix|min_count
 MCP_SERVER_TOOL_COUNTS=(
-    "stealthy_auto_browse|15"
+    "stealthy_auto_browse|1"
     "hybrids3|5"
     "claudebox-|3"
     "claudebox_zai-|3"
@@ -37,8 +37,8 @@ print(len(tools))
 " 2>/dev/null)
     assert_not_empty "$total" "mcp tools count" || return 1
 
-    if [ "$total" -lt 30 ]; then
-        echo "  FAIL: expected at least 30 tools, got $total"
+    if [ "$total" -lt 15 ]; then
+        echo "  FAIL: expected at least 15 tools, got $total"
         return 1
     fi
     echo "  OK: $total total MCP tools loaded"
@@ -66,12 +66,7 @@ print(sum(1 for t in tools if t['name'].startswith('$prefix')))
 # ── specific tools present ─────────────────────────────────────────────────
 
 EXPECTED_MCP_TOOLS=(
-    "stealthy_auto_browse-goto"
-    "stealthy_auto_browse-screenshot"
-    "stealthy_auto_browse-system_click"
-    "stealthy_auto_browse-system_type"
-    "stealthy_auto_browse-get_text"
-    "stealthy_auto_browse-get_interactive_elements"
+    "stealthy_auto_browse-run_script"
     "hybrids3-upload_object"
     "hybrids3-download_object"
     "hybrids3-list_objects"

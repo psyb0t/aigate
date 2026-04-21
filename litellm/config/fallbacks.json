@@ -605,37 +605,60 @@
     ]
   },
   {
-    "ollama-gpu-dolphin-mistral-7b": [
-      "ollama-gpu-llama3.1-8b",
-      "ollama-gpu-qwen3-8b",
+    "ollama-cuda-dolphin-mistral-7b": [
+      "ollama-cuda-llama3.1-8b",
+      "ollama-cuda-qwen3-8b",
       "ollama-cpu-llama3.2-3b"
     ]
   },
   {
-    "ollama-gpu-qwen3-8b": [
-      "ollama-gpu-llama3.1-8b",
-      "ollama-gpu-dolphin-mistral-7b",
+    "ollama-cuda-qwen3-8b": [
+      "ollama-cuda-llama3.1-8b",
+      "ollama-cuda-dolphin-mistral-7b",
       "ollama-cpu-qwen3-4b"
     ]
   },
   {
-    "ollama-gpu-gemma3-12b": [
-      "ollama-gpu-qwen3-8b",
-      "ollama-gpu-llama3.1-8b",
+    "ollama-cuda-gemma3-12b": [
+      "ollama-cuda-qwen3-8b",
+      "ollama-cuda-llama3.1-8b",
       "ollama-cpu-gemma3-4b"
     ]
   },
   {
-    "ollama-gpu-qwen2.5-coder-7b": [
-      "ollama-gpu-qwen3-8b",
+    "ollama-cuda-qwen2.5-coder-7b": [
+      "ollama-cuda-qwen3-8b",
       "ollama-cpu-qwen2.5-coder-3b"
     ]
   },
   {
-    "ollama-gpu-llama3.1-8b": [
-      "ollama-gpu-qwen3-8b",
-      "ollama-gpu-dolphin-mistral-7b",
+    "ollama-cuda-llama3.1-8b": [
+      "ollama-cuda-qwen3-8b",
+      "ollama-cuda-dolphin-mistral-7b",
       "ollama-cpu-llama3.2-3b"
+    ]
+  },
+  {
+    "ollama-cuda-gemma3-4b": [
+      "ollama-cuda-gemma3-12b",
+      "ollama-cpu-gemma3-4b"
+    ]
+  },
+  {
+    "ollama-cuda-dolphin3": [
+      "ollama-cuda-dolphin-mistral-7b",
+      "ollama-cpu-dolphin-phi"
+    ]
+  },
+  {
+    "ollama-cpu-dolphin-phi": [
+      "ollama-cpu-llama3.2-3b"
+    ]
+  },
+  {
+    "ollama-cuda-dolphin-phi": [
+      "ollama-cuda-dolphin3",
+      "ollama-cpu-dolphin-phi"
     ]
   }
 ]

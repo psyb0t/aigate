@@ -1,0 +1,7 @@
+- model_name: local-qwen3-cuda-tts
+  litellm_params:
+    model: openai/tts-1
+    api_base: http://qwen3-cuda-tts:8000/v1
+    api_key: none
+  model_info:
+    mode: audio_speech

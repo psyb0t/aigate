@@ -2,6 +2,10 @@
 # Using nightly until v1.83.x-stable is tagged; pin digest for reproducibility
 FROM ghcr.io/berriai/litellm:v1.83.5-nightly AS base
 
+# ── Custom callbacks ─────────────────────────────────────────────────────────
+COPY callbacks/ /app/callbacks/
+ENV PYTHONPATH=/app/callbacks
+
 # ── Runtime hardening ────────────────────────────────────────────────────────
 # Expose the proxy port
 EXPOSE 4000

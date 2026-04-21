@@ -12,22 +12,14 @@ test_integration_browser_upload_llm() {
         sab_auth_args=(-H "Authorization: Bearer $sab_auth")
     fi
 
-    # 1. navigate
+    # 1. navigate and get page text atomically (v1.0.0: get_text requires run_script in cluster mode)
     local out
     out=$(curl -sf -X POST "$sab/" \
         -H "Content-Type: application/json" \
         "${sab_auth_args[@]}" \
         -b /tmp/int_cookies.txt -c /tmp/int_cookies.txt \
-        -d '{"action":"goto","url":"https://example.com"}')
+        -d '{"action":"run_script","steps":[{"action":"goto","url":"https://example.com"},{"action":"get_text","output_id":"text"}]}')
     assert_contains "$out" "success" "navigate to example.com" || return 1
-    sleep 1
-
-    # 2. get page text
-    out=$(curl -sf -X POST "$sab/" \
-        -H "Content-Type: application/json" \
-        "${sab_auth_args[@]}" \
-        -b /tmp/int_cookies.txt -c /tmp/int_cookies.txt \
-        -d '{"action":"get_text"}')
     assert_contains "$out" "Example Domain" "got page text" || return 1
 
     # 3. screenshot

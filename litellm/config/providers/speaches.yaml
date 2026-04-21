@@ -1,6 +1,6 @@
 - model_name: local-speaches-whisper-distil-large-v3
   litellm_params:
-    model: hosted_vllm/Systran/faster-distil-whisper-large-v3
+    model: openai/Systran/faster-distil-whisper-large-v3
     api_base: http://speaches:8000/v1
     api_key: none
   model_info:
@@ -8,7 +8,7 @@
 
 - model_name: local-speaches-parakeet-tdt-0.6b
   litellm_params:
-    model: hosted_vllm/istupakov/parakeet-tdt-0.6b-v2-onnx
+    model: openai/istupakov/parakeet-tdt-0.6b-v2-onnx
     api_base: http://speaches:8000/v1
     api_key: none
   model_info:
@@ -16,7 +16,7 @@
 
 - model_name: local-speaches-kokoro-tts
   litellm_params:
-    model: hosted_vllm/speaches-ai/Kokoro-82M-v1.0-ONNX-int8
+    model: openai/speaches-ai/Kokoro-82M-v1.0-ONNX-int8
     api_base: http://speaches:8000/v1
     api_key: none
   model_info:

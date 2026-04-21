@@ -145,6 +145,68 @@ Sign up: [platform.openai.com](https://platform.openai.com).
 
 ---
 
+## Ollama (local CPU — `OLLAMA=1`)
+
+Models are downloaded on first start and cached in `.data/ollama/`. No GPU required.
+
+| Alias | Model | Notes |
+| ----- | ----- | ----- |
+| `ollama-cpu-llama3.2-3b` | llama3.2:3b | general chat, ~2GB RAM |
+| `ollama-cpu-qwen3-4b` | qwen3:4b | general chat, thinking mode, ~2.6GB RAM |
+| `ollama-cpu-smollm2-1.7b` | smollm2:1.7b | general chat, smallest, ~1GB RAM |
+| `ollama-cpu-qwen2.5-coder-1.5b` | qwen2.5-coder:1.5b | code, ~1GB RAM |
+| `ollama-cpu-qwen2.5-coder-3b` | qwen2.5-coder:3b | code, ~2GB RAM |
+| `ollama-cpu-phi3.5` | phi3.5 | general chat, ~2.2GB RAM |
+| `ollama-cpu-gemma3-4b` | gemma3:4b | general chat + vision, ~2.6GB RAM |
+| `ollama-cpu-dolphin-phi` | dolphin-phi:latest | uncensored, ~1.6GB RAM |
+| `ollama-cpu-nomic-embed` | nomic-embed-text | embeddings, 512 ctx, ~270MB RAM |
+| `ollama-cpu-bge-m3` | bge-m3 | embeddings, multilingual, 8192 ctx, ~570MB RAM |
+| `ollama-cpu-qwen3-embed-0.6b` | qwen3-embedding:0.6b | embeddings, ~500MB RAM |
+
+## Ollama CUDA (local NVIDIA — `CUDA=1`)
+
+Requires `nvidia-container-toolkit`. Flash attention + quantized KV cache enabled. Resource manager unloads the CUDA LLM before any CUDA TTS/STT request.
+
+| Alias | Model | Notes |
+| ----- | ----- | ----- |
+| `ollama-cuda-qwen3-8b` | qwen3:8b | general chat, thinking mode, ~5GB VRAM |
+| `ollama-cuda-llama3.1-8b` | llama3.1:8b | general chat, ~5GB VRAM |
+| `ollama-cuda-gemma3-4b` | gemma3:4b | general chat + vision, ~3GB VRAM |
+| `ollama-cuda-gemma3-12b` | gemma3:12b | general chat + vision, ~8GB VRAM |
+| `ollama-cuda-qwen2.5-coder-7b` | qwen2.5-coder:7b | code, ~5GB VRAM |
+| `ollama-cuda-dolphin-mistral-7b` | dolphin-mistral:7b | uncensored, ~5GB VRAM |
+| `ollama-cuda-dolphin3` | dolphin3:latest | uncensored (latest Dolphin), ~5GB VRAM |
+| `ollama-cuda-dolphin-phi` | dolphin-phi:latest | uncensored, tiny, ~1.6GB VRAM |
+
+## Speaches CPU (local — `SPEACHES=1`)
+
+Transcription and TTS on CPU. Models auto-downloaded and cached in `.data/speaches/`.
+
+| Alias | Model | Mode |
+| ----- | ----- | ---- |
+| `local-speaches-whisper-distil-large-v3` | Systran/faster-distil-whisper-large-v3 | transcription (multilingual) |
+| `local-speaches-parakeet-tdt-0.6b` | istupakov/parakeet-tdt-0.6b-v2-onnx | transcription (English, ~3400× real-time) |
+| `local-speaches-kokoro-tts` | speaches-ai/Kokoro-82M-v1.0-ONNX-int8 | TTS — voices: af_heart, af_alloy, am_echo, bm_fable, and many more |
+
+## Speaches CUDA (local NVIDIA — `CUDA=1`)
+
+CUDA-accelerated STT. Shares model cache with CPU speaches (`.data/speaches/`) — no extra download.
+
+| Alias | Model | Mode |
+| ----- | ----- | ---- |
+| `local-speaches-cuda-whisper-distil-large-v3` | Systran/faster-distil-whisper-large-v3 | transcription (CUDA, float16) |
+| `local-speaches-cuda-parakeet-tdt-0.6b` | istupakov/parakeet-tdt-0.6b-v2-onnx | transcription (CUDA) |
+
+## Qwen3 CUDA TTS (local NVIDIA — `CUDA=1`)
+
+CUDA-accelerated TTS with voice cloning via [faster-qwen3-tts](https://github.com/andimarafioti/faster-qwen3-tts). Model cached in `.data/qwen3-tts/`.
+
+| Alias | Model | Mode |
+| ----- | ----- | ---- |
+| `local-qwen3-cuda-tts` | Qwen/Qwen3-TTS-12Hz-0.6B-Base | TTS — voices: alloy, echo, fable |
+
+---
+
 ## Fallbacks
 
 Every model has its own fallback chain. When a provider fails, is rate-limited, or returns an error, LiteLLM automatically tries the next model in the chain. Free providers are always tried first.

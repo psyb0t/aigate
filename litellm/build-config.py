@@ -86,8 +86,10 @@ def active_providers(env):
         ("cohere",        lambda e: is_flag(e, "COHERE")),
         ("groq",          lambda e: is_flag(e, "GROQ")),
         ("ollama",        lambda e: is_flag(e, "OLLAMA")),
-        ("ollama-gpu",    lambda e: is_flag(e, "GPU_NVIDIA")),
-        ("speaches",      lambda e: is_flag(e, "SPEACHES")),
+        ("ollama-cuda",     lambda e: is_flag(e, "CUDA")),
+        ("qwen3-cuda-tts", lambda e: is_flag(e, "CUDA")),
+        ("speaches",       lambda e: is_flag(e, "SPEACHES")),
+        ("speaches-cuda",  lambda e: is_flag(e, "CUDA")),
     ]
     return [name for name, check in checks if check(env)]
 

@@ -45,13 +45,10 @@ test_browser_setup() {
 test_browser_navigate() {
     test_browser_setup
 
+    # v1.0.0: get_text requires run_script in cluster mode (multi-step must be atomic)
     local out
-    out=$(_browser_call "goto" "\"url\":\"https://example.com\"")
+    out=$(_browser_call "run_script" '"steps":[{"action":"goto","url":"https://example.com"},{"action":"get_text","output_id":"text"}]')
     assert_contains "$out" "success" "goto example.com" || return 1
-
-    sleep 1
-
-    out=$(_browser_call "get_text")
     assert_contains "$out" "Example Domain" "page has expected text" || return 1
 
     echo "OK: browser_navigate"

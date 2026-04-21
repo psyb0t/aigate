@@ -397,7 +397,7 @@ curl http://localhost:4000/chat/completions \
   }'
 ```
 
-Vision-capable models: `groq-llama-4-scout`, `hf-llama-4-scout`, `hf-qwen-vl-72b`, `mistral-small`, `claudebox-sonnet`, `openai-gpt-4o`, `local-ollama-moondream`.
+Vision-capable models: `groq-llama-4-scout`, `hf-llama-4-scout`, `hf-qwen-vl-72b`, `mistral-small`, `claudebox-sonnet`, `openai-gpt-4o`, `ollama-cpu-gemma3-4b`, `ollama-cuda-gemma3-4b`, `ollama-cuda-gemma3-12b`.
 
 ---
 
@@ -410,4 +410,26 @@ curl http://localhost:4000/audio/transcriptions \
   -F "file=@audio.mp3"
 ```
 
-Transcription models: `groq-whisper-large-v3-turbo`, `groq-whisper-large-v3`, `voxtral-small`, `openai-whisper`, `local-speaches-whisper-distil-large-v3`, `local-speaches-parakeet-tdt-0.6b`.
+Transcription models: `groq-whisper-large-v3-turbo`, `groq-whisper-large-v3`, `voxtral-small`, `openai-whisper`, `local-speaches-whisper-distil-large-v3`, `local-speaches-parakeet-tdt-0.6b`, `local-speaches-cuda-whisper-distil-large-v3` (CUDA), `local-speaches-cuda-parakeet-tdt-0.6b` (CUDA).
+
+---
+
+## Text-to-Speech
+
+```bash
+# CPU — Kokoro (multiple voices)
+curl http://localhost:4000/audio/speech \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "local-speaches-kokoro-tts", "input": "Hello world", "voice": "af_heart"}' \
+  -o speech.mp3
+
+# CUDA — Qwen3-TTS (voice cloning)
+curl http://localhost:4000/audio/speech \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "local-qwen3-cuda-tts", "input": "Hello world", "voice": "alloy"}' \
+  -o speech.mp3
+```
+
+TTS models: `local-speaches-kokoro-tts` (CPU, many voices), `local-qwen3-cuda-tts` (CUDA, voices: alloy/echo/fable), `openai-tts-1`, `openai-tts-1-hd`.

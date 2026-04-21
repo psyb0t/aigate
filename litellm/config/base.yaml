@@ -19,6 +19,7 @@ litellm_settings:
   num_retries: 3
   request_timeout: 600
   enable_json_schema_validation: true
+  callbacks: ["callbacks.resource_manager.proxy_handler_instance"]
 
 router_settings:
   routing_strategy: latency-based-routing

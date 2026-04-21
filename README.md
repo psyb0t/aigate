@@ -30,8 +30,17 @@ nginx :4000
                                   ├─ HuggingFace        (free)
                                   ├─ Mistral            (free: 1B tokens/month)
                                   ├─ Cohere             (free: 1K req/day)
-                                  ├─ Ollama             (local, CPU, no limits)
-                                  ├─ Speaches           (local, CPU, transcription + TTS)
+                                  ├─ Groq              (free)
+                                  ├─ Cerebras           (free)
+                                  ├─ OpenRouter         (free tier)
+                                  ├─ HuggingFace        (free)
+                                  ├─ Mistral            (free: 1B tokens/month)
+                                  ├─ Cohere             (free: 1K req/day)
+                                  ├─ Ollama CPU         (local, no limits)
+                                  ├─ Ollama CUDA        (local, NVIDIA, no limits)
+                                  ├─ Speaches CPU       (local, transcription + TTS)
+                                  ├─ Speaches CUDA      (local, NVIDIA, CUDA Whisper STT)
+                                  ├─ Qwen3 CUDA TTS     (local, NVIDIA, voice-cloning TTS)
                                   ├─ claudebox          (flat-rate, Max sub or API key)
                                   ├─ claudebox-zai      (flat-rate, z.ai)
                                   ├─ Anthropic          (optional, pay-per-token)
@@ -56,8 +65,9 @@ Notable writable locations:
 | `.data/claudebox-zai/workspaces/` | claudebox-zai | Persistent task workspaces |
 | `.data/hybrids3/` | hybrids3 | Object storage data |
 | `.data/nginx/` | nginx-auth-init | Generated htpasswd (from `LITELLM_UI_BASIC_AUTH`) |
-| `.data/ollama/` | ollama | Downloaded model weights |
-| `.data/speaches/` | speaches | Downloaded Whisper and Parakeet model weights (HuggingFace cache) |
+| `.data/ollama/` | ollama, ollama-cuda | Downloaded model weights (shared — CPU and CUDA instances read the same blobs) |
+| `.data/speaches/` | speaches, speaches-cuda | Downloaded Whisper and Parakeet model weights (HuggingFace cache, shared between CPU/CUDA) |
+| `.data/qwen3-tts/` | qwen3-cuda-tts | Downloaded Qwen3-TTS model weights (HuggingFace cache) |
 | `.data/cloudflared/` | cloudflared | Tunnel config and credentials (if using named tunnel) |
 
 ## Services
@@ -72,8 +82,11 @@ Notable writable locations:
 | **[claudebox](https://github.com/psyb0t/docker-claudebox) ×2** | Claude Code CLI in API mode. Full agentic loop — shell access, file I/O, tool use, persistent workspaces. One instance uses your OAuth token or Anthropic API key; the other points at z.ai for GLM models. Both expose REST API, OpenAI-compatible endpoint, and MCP server. |
 | **[hybrids3](https://github.com/psyb0t/docker-hybrids3)** | S3-compatible object storage. Plain HTTP upload/download, boto3-compatible, bearer token auth, auto-expiry, MCP server. The `uploads` bucket is public-read — files are accessible by direct URL without signing. |
 | **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** | 5 Camoufox (hardened Firefox) replicas behind HAProxy. Real OS-level mouse and keyboard input via PyAutoGUI — no CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan. Redis cookie sync across replicas. REST API and MCP server. |
-| **Ollama** | Local CPU inference. Runs llama3.2:3b, qwen3:4b, smollm2:1.7b, qwen2.5-coder:1.5b, qwen2.5-coder:3b, phi3.5, gemma3:4b (general + vision), nomic-embed-text, bge-m3, and qwen3-embedding:0.6b (embeddings). Models are downloaded automatically on first start and cached in `.data/ollama/`. No GPU required — sized for CPU with reasonable RAM. |
-| **Speaches** | Local CPU audio via [speaches-ai/speaches](https://github.com/speaches-ai/speaches). Transcription: `faster-distil-whisper-large-v3` (multilingual) and `parakeet-tdt-0.6b-v2` (English, ~3400× real-time on CPU). Text-to-speech: `Kokoro-82M` int8 (high-quality, multiple voices). All models are pre-downloaded on first start and cached in `.data/speaches/`. |
+| **Ollama** | Local CPU inference. Runs llama3.2:3b, qwen3:4b, smollm2:1.7b, qwen2.5-coder:1.5b, qwen2.5-coder:3b, phi3.5, gemma3:4b (general + vision), nomic-embed-text, bge-m3, qwen3-embedding:0.6b (embeddings), dolphin-phi. Models are downloaded automatically on first start and cached in `.data/ollama/`. No GPU required. |
+| **Ollama CUDA** _(optional, `CUDA=1`)_ | Local NVIDIA GPU inference. Runs dolphin-mistral:7b, qwen3:8b, gemma3:12b, qwen2.5-coder:7b, llama3.1:8b, gemma3:4b, dolphin3:latest, dolphin-phi. Flash attention and KV cache enabled. Shares model storage with CPU ollama — no duplicate downloads. Requires `nvidia-container-toolkit`. |
+| **Speaches** | Local CPU audio via [speaches-ai/speaches](https://github.com/speaches-ai/speaches). Transcription: `faster-distil-whisper-large-v3` (multilingual) and `parakeet-tdt-0.6b-v2` (English, ~3400× real-time on CPU). Text-to-speech: `Kokoro-82M` int8 (high-quality, multiple voices). Models cached in `.data/speaches/`. |
+| **Speaches CUDA** _(optional, `CUDA=1`)_ | CUDA-accelerated Whisper STT via speaches. Uses the same model cache as CPU speaches. Shares `.data/speaches/` — no separate download. Requires `nvidia-container-toolkit`. |
+| **Qwen3 CUDA TTS** _(optional, `CUDA=1`)_ | CUDA-accelerated TTS via [faster-qwen3-tts](https://github.com/andimarafioti/faster-qwen3-tts). Runs `Qwen3-TTS-12Hz-0.6B-Base` with CUDA graphs. Voice cloning via reference audio. Models cached in `.data/qwen3-tts/`. Requires `nvidia-container-toolkit`. |
 | **cloudflared** _(optional)_ | Cloudflare Tunnel. Disabled by default — enable with `CLOUDFLARED=1` in `.env`. Runs a quick tunnel (random `*.trycloudflare.com` URL, no account) or a named tunnel (fixed domain, requires config file and credentials). |
 
 ## Security and Exposure
@@ -111,7 +124,7 @@ Notable writable locations:
 
 ### Local models (Ollama, CPU)
 
-All local models are last in fallback chains — used when cloud providers are rate-limited or unavailable. Ollama unloads models after 5 minutes of inactivity, so RAM is only consumed when a model is in use.
+All local CPU models are last in fallback chains — used when cloud providers are rate-limited or unavailable. Ollama unloads models after 5 minutes of inactivity.
 
 | Model name | Description | RAM |
 | ---------- | ----------- | --- |
@@ -122,22 +135,51 @@ All local models are last in fallback chains — used when cloud providers are r
 | `ollama-cpu-qwen2.5-coder-3b` | Code — better quality | ~2GB |
 | `ollama-cpu-phi3.5` | General chat (Microsoft) | ~2.2GB |
 | `ollama-cpu-gemma3-4b` | General chat + vision (Google Gemma 3) | ~2.6GB |
+| `ollama-cpu-dolphin-phi` | Uncensored assistant (Microsoft Phi) | ~1.6GB |
 | `ollama-cpu-nomic-embed` | Text embeddings — fastest, smallest (270MB, 512 token context) | ~270MB |
 | `ollama-cpu-bge-m3` | Text embeddings — long docs, multilingual (8192 token context) | ~570MB |
 | `ollama-cpu-qwen3-embed-0.6b` | Text embeddings — modern, efficient | ~500MB |
 
-### Local transcription (Speaches, CPU)
+### Local models (Ollama, CUDA — `CUDA=1`)
+
+CUDA models run with flash attention and quantized KV cache. A resource manager callback runs before each request and unloads competing services on the same hardware — Ollama CUDA, Speaches CUDA (STT), and Qwen3 CUDA TTS each occupy significant VRAM, so only one loads at a time. The same logic applies on CPU: Speaches Kokoro (TTS) and Speaches Whisper/Parakeet (STT) are unloaded before the other needs to load.
+
+| Model name | Description | VRAM |
+| ---------- | ----------- | ---- |
+| `ollama-cuda-qwen3-8b` | General chat — thinking mode | ~5GB |
+| `ollama-cuda-llama3.1-8b` | General chat | ~5GB |
+| `ollama-cuda-gemma3-4b` | General chat + vision | ~3GB |
+| `ollama-cuda-gemma3-12b` | General chat + vision — higher quality | ~8GB |
+| `ollama-cuda-qwen2.5-coder-7b` | Code | ~5GB |
+| `ollama-cuda-dolphin-mistral-7b` | Uncensored assistant | ~5GB |
+| `ollama-cuda-dolphin3` | Uncensored assistant (latest Dolphin) | ~5GB |
+| `ollama-cuda-dolphin-phi` | Uncensored assistant (tiny) | ~1.6GB |
+
+### Local transcription (Speaches, CPU — `SPEACHES=1`)
 
 | Model name | Description |
 | ---------- | ----------- |
 | `local-speaches-whisper-distil-large-v3` | Multilingual, high accuracy |
 | `local-speaches-parakeet-tdt-0.6b` | English-only, ~3400× real-time on CPU |
 
-### Local text-to-speech (Speaches, CPU)
+### Local text-to-speech (Speaches, CPU — `SPEACHES=1`)
 
 | Model name | Description |
 | ---------- | ----------- |
 | `local-speaches-kokoro-tts` | Kokoro 82M int8 — high-quality, multiple voices (af_heart, af_alloy, af_bella, etc.) |
+
+### Local transcription (CUDA — `CUDA=1`)
+
+| Model name | Description |
+| ---------- | ----------- |
+| `local-speaches-cuda-whisper-distil-large-v3` | CUDA-accelerated Whisper — same model as CPU, faster inference |
+| `local-speaches-cuda-parakeet-tdt-0.6b` | CUDA-accelerated Parakeet TDT |
+
+### Local text-to-speech (CUDA — `CUDA=1`)
+
+| Model name | Description |
+| ---------- | ----------- |
+| `local-qwen3-cuda-tts` | Qwen3-TTS 0.6B via faster-qwen3-tts — CUDA graphs, voice cloning (voices: alloy, echo, fable) |
 
 → [Full provider and model list](docs/providers.md)
 
@@ -172,8 +214,9 @@ Everything is opt-in via flags in `.env`. API keys are stored separately and nev
 | `MISTRAL=1` | Mistral AI models (free: 1B tokens/month) |
 | `COHERE=1` | Cohere models (free: 1K req/day) |
 | `GROQ=1` | Groq models (free tier) |
-| `OLLAMA=1` | Local Ollama inference (~6GB+ RAM) |
-| `SPEACHES=1` | Local Speaches transcription/TTS (~4GB RAM) |
+| `OLLAMA=1` | Local Ollama CPU inference (~6GB+ RAM) |
+| `CUDA=1` | Local NVIDIA GPU inference — Ollama CUDA + Speaches CUDA (CUDA Whisper) + Qwen3 CUDA TTS (requires `nvidia-container-toolkit`) |
+| `SPEACHES=1` | Local Speaches CPU transcription/TTS (~4GB RAM) |
 | `HYBRIDS3=1` | Object storage service + MCP server (S3-compatible, plain HTTP, auto-expiry) |
 | `BROWSER=1` | Stealth browser cluster + MCP server (5 replicas, ~1.3GB RAM) |
 | `CLOUDFLARED=1` | Cloudflare Tunnel |
@@ -188,7 +231,11 @@ If `CLOUDFLARED_CONFIG` or `CLOUDFLARED_CREDS` are set, `make run`/`make run-bg`
 make limits
 ```
 
-Reads your system's RAM, swap, and CPU core count and writes a `.env.limits` file with recommended `mem_limit`, `memswap_limit`, and `cpus` for every service. The Makefile picks this up automatically — no other steps needed. Re-run it any time you move to a different server or change your hardware.
+Reads your system's RAM, swap, and CPU core count and writes a `.env.limits` file with recommended `mem_limit`, `memswap_limit`, and `cpus` for every service. The Makefile picks this up automatically — no other steps needed.
+
+Allocations are **proportional to your enabled services** — enabling more services means each gets a smaller slice. The script reads your `.env` flags (`CUDA`, `SPEACHES`, `OLLAMA`, `BROWSER`, etc.) and only counts active services toward the RAM budget. Re-run it any time you enable or disable a service, move to a different server, or change your hardware.
+
+CUDA services (`ollama-cuda`, `speaches-cuda`, `qwen3-cuda-tts`) are **resource-manager-aware**: only one has models loaded at a time, so the budget counts the largest of the three plus small idle overhead for the others — not all three at full allocation.
 
 Set `MAXUSE` to cap the entire stack to a percentage of your machine's resources — useful when you're sharing the server with other workloads:
 
@@ -243,11 +290,18 @@ curl http://localhost:4000/audio/transcriptions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -F "model=local-speaches-parakeet-tdt-0.6b" -F "file=@audio.mp3"
 
-# text-to-speech (local — Kokoro, multiple voices)
+# text-to-speech (local CPU — Kokoro, many voices)
 curl http://localhost:4000/audio/speech \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model": "local-speaches-kokoro-tts", "input": "Hello world", "voice": "af_heart"}' \
+  -o speech.mp3
+
+# text-to-speech (local CUDA — Qwen3-TTS, voice cloning)
+curl http://localhost:4000/audio/speech \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "local-qwen3-cuda-tts", "input": "Hello world", "voice": "alloy"}' \
   -o speech.mp3
 
 # text embeddings (local)
@@ -329,7 +383,7 @@ make test          # run test suite (stack must be running)
 make test
 ```
 
-73 tests covering health, routing, auth, MCP, storage CRUD, browser automation, claudebox, proxq async job lifecycle, and security. Designed for zero/minimal token usage.
+94 tests covering health, routing, auth, MCP, storage CRUD, browser automation, claudebox, proxq async job lifecycle, local TTS/STT round-trips, GPU audio, resource manager unload verification, and security. Designed for zero/minimal token usage.
 
 → [Testing guide](docs/testing.md)
 
