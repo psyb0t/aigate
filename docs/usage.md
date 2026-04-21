@@ -56,35 +56,43 @@ The browser cluster can be used directly via the REST API, or indirectly by lett
 ```bash
 # navigate to a page
 curl -X POST http://localhost:4000/stealthy-auto-browse/ \
+  -H "Authorization: Bearer $STEALTHY_AUTO_BROWSE_AUTH_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"action": "goto", "url": "https://example.com"}'
 
 # get all visible text
 curl -X POST http://localhost:4000/stealthy-auto-browse/ \
+  -H "Authorization: Bearer $STEALTHY_AUTO_BROWSE_AUTH_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"action": "get_text"}'
 
 # find all interactive elements with their coordinates
 curl -X POST http://localhost:4000/stealthy-auto-browse/ \
+  -H "Authorization: Bearer $STEALTHY_AUTO_BROWSE_AUTH_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"action": "get_interactive_elements", "visible_only": true}'
 
 # click at coordinates (OS-level, undetectable)
 curl -X POST http://localhost:4000/stealthy-auto-browse/ \
+  -H "Authorization: Bearer $STEALTHY_AUTO_BROWSE_AUTH_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"action": "system_click", "x": 640, "y": 400}'
 
 # type text (OS-level keyboard input)
 curl -X POST http://localhost:4000/stealthy-auto-browse/ \
+  -H "Authorization: Bearer $STEALTHY_AUTO_BROWSE_AUTH_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"action": "system_type", "text": "hello world"}'
 
 # screenshot — returns raw PNG (1920x1080 by default, always resize)
-curl "http://localhost:4000/stealthy-auto-browse/screenshot/browser?whLargest=512" -o screenshot.png
-curl "http://localhost:4000/stealthy-auto-browse/screenshot/browser?width=800" -o screenshot.png
+curl -H "Authorization: Bearer $STEALTHY_AUTO_BROWSE_AUTH_TOKEN" \
+  "http://localhost:4000/stealthy-auto-browse/screenshot/browser?whLargest=512" -o screenshot.png
+curl -H "Authorization: Bearer $STEALTHY_AUTO_BROWSE_AUTH_TOKEN" \
+  "http://localhost:4000/stealthy-auto-browse/screenshot/browser?width=800" -o screenshot.png
 
 # run a multi-step script atomically (all steps on the same replica, single request)
 curl -X POST http://localhost:4000/stealthy-auto-browse/ \
+  -H "Authorization: Bearer $STEALTHY_AUTO_BROWSE_AUTH_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "action": "run_script",
@@ -108,9 +116,10 @@ import requests
 
 session = requests.Session()  # sticky via INSTANCEID cookie
 BASE = "http://localhost:4000"
+SAB_AUTH = {"Authorization": f"Bearer {STEALTHY_AUTO_BROWSE_AUTH_TOKEN}"}
 
 def browser(action, **kwargs):
-    r = session.post(f"{BASE}/stealthy-auto-browse/", json={"action": action, **kwargs})
+    r = session.post(f"{BASE}/stealthy-auto-browse/", headers=SAB_AUTH, json={"action": action, **kwargs})
     r.raise_for_status()
     return r.json()["data"]
 
@@ -123,7 +132,7 @@ browser("wait_for_element", selector="[data-testid='result']", timeout=10000)
 text = browser("get_text")["text"]
 
 # screenshot and upload
-screenshot = session.get(f"{BASE}/stealthy-auto-browse/screenshot/browser").content
+screenshot = session.get(f"{BASE}/stealthy-auto-browse/screenshot/browser", headers=SAB_AUTH).content
 requests.put(
     f"{BASE}/storage/uploads/search.png",
     headers={"Authorization": f"Bearer {HYBRIDS3_UPLOADS_KEY}", "Content-Type": "image/png"},
@@ -397,7 +406,7 @@ curl http://localhost:4000/chat/completions \
   }'
 ```
 
-Vision-capable models: `groq-llama-4-scout`, `hf-llama-4-scout`, `hf-qwen-vl-72b`, `mistral-small`, `claudebox-sonnet`, `openai-gpt-4o`, `ollama-cpu-gemma3-4b`, `ollama-cuda-gemma3-4b`, `ollama-cuda-gemma3-12b`.
+Vision-capable models: `groq-llama-4-scout`, `hf-llama-4-scout`, `hf-qwen-vl-72b`, `hf-qwen3-vl-8b`, `hf-gemma-3-12b`, `mistral-small`, `anthropic-claude-opus-4`, `anthropic-claude-sonnet-4`, `anthropic-claude-haiku-4`, `openai-gpt-4o`, `openai-gpt-4o-mini`, `claudebox-opus`, `claudebox-sonnet`, `claudebox-haiku`, `ollama-cpu-gemma3-4b`, `ollama-cuda-gemma3-4b`, `ollama-cuda-gemma3-12b`.
 
 ---
 

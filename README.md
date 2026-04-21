@@ -2,9 +2,11 @@
 
 Your own AI infrastructure. One endpoint. Everything.
 
-82 models across 12 providers behind a single OpenAI-compatible API — point any existing client at `http://localhost:4000` and it just works. Six of those providers are completely free. Two more run entirely on your own hardware with no network calls, no rate limits, and no usage costs. The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
+94 models across 13 providers behind a single OpenAI-compatible API — point any existing client at `http://localhost:4000` and it just works. Six of those providers are completely free. Three more run on your own hardware — CPU or NVIDIA GPU — with no network calls, no rate limits, and no usage costs. The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
 
-That's the routing. The real part is what the models can *do*. Four MCP servers are wired directly into the gateway — 34 tools any model with function calling can invoke autonomously. A stealth browser cluster (5 Camoufox replicas, real OS-level mouse and keyboard, zero CDP exposure) that passes Cloudflare, CreepJS, and every other bot detector we've thrown at it. S3-compatible object storage with public-read URLs, presigned links, and auto-expiry. Two agentic Claude Code instances — one on your Claude subscription or API key, one running GLM models through z.ai — each with a full shell, persistent workspaces, and file I/O. Ask a Groq model to research something and it opens a browser, reads pages, saves files, and comes back with an answer. The model orchestrates. You just prompt.
+Everything is opt-in. Enable what you want in `.env`, ignore what you don't. The core stack is nginx, LiteLLM, PostgreSQL, Redis, and an async job queue — that's always on. Every provider, every local model, every MCP server, every extra service is a flag flip away.
+
+That's the routing. The real part is what the models can *do*. Up to four MCP servers can be wired into the gateway — 18 tools any model with function calling can invoke autonomously. A stealth browser cluster (5 Camoufox replicas, real OS-level mouse and keyboard, zero CDP exposure) that passes Cloudflare, CreepJS, and every other bot detector we've thrown at it. S3-compatible object storage with public-read URLs, presigned links, and auto-expiry. Two agentic Claude Code instances — one on your Claude subscription or API key, one running GLM models through z.ai — each with a full shell, persistent workspaces, and file I/O. Ask a Groq model to research something and it opens a browser, reads pages, saves files, and comes back with an answer. The model orchestrates. You just prompt.
 
 Security is not an afterthought. Internal services are network-isolated — PostgreSQL, Redis, hybrids3, and the browser cluster have no host ports, period. Every endpoint requires auth. When you want to expose the gateway publicly, Cloudflare Tunnel handles it: one env var, no open ports, Cloudflare's DDoS protection and TLS in front of everything.
 
@@ -15,42 +17,36 @@ Security is not an afterthought. Internal services are network-isolated — Post
 ```
 client
   ▼
-cloudflared (optional)
+cloudflared (CLOUDFLARED=1)
   ▼
-nginx :4000
-  ├─► /claudebox/            → claudebox (Claude Code, OAuth or API key)
-  ├─► /claudebox-zai/        → claudebox-zai (Claude Code, GLM via z.ai)
-  ├─► /stealthy-auto-browse/ → HAProxy → [browser ×5]
+nginx :4000                                          ┌──────────── always on ────────────┐
+  ├─► /claudebox/            → claudebox             │ nginx, LiteLLM, PostgreSQL, Redis │
+  ├─► /claudebox-zai/        → claudebox-zai         │ proxq — everything else is opt-in │
+  ├─► /stealthy-auto-browse/ → HAProxy → [browser ×5]└─────────────────────────────────────┘
   ├─► /storage/              → hybrids3
   ├─► /q/                    → proxq → LiteLLM (async, returns job ID)
   └─► /                      → LiteLLM (sync)
-                                  ├─ Groq              (free)
-                                  ├─ Cerebras           (free)
-                                  ├─ OpenRouter         (free tier)
-                                  ├─ HuggingFace        (free)
-                                  ├─ Mistral            (free: 1B tokens/month)
-                                  ├─ Cohere             (free: 1K req/day)
-                                  ├─ Groq              (free)
-                                  ├─ Cerebras           (free)
-                                  ├─ OpenRouter         (free tier)
-                                  ├─ HuggingFace        (free)
-                                  ├─ Mistral            (free: 1B tokens/month)
-                                  ├─ Cohere             (free: 1K req/day)
-                                  ├─ Ollama CPU         (local, no limits)
-                                  ├─ Ollama CUDA        (local, NVIDIA, no limits)
-                                  ├─ Speaches CPU       (local, transcription + TTS)
-                                  ├─ Speaches CUDA      (local, NVIDIA, CUDA Whisper STT)
-                                  ├─ Qwen3 CUDA TTS     (local, NVIDIA, voice-cloning TTS)
-                                  ├─ claudebox          (flat-rate, Max sub or API key)
-                                  ├─ claudebox-zai      (flat-rate, z.ai)
-                                  ├─ Anthropic          (optional, pay-per-token)
-                                  └─ OpenAI             (optional, pay-per-token)
+                                  ├─ Groq              (free, GROQ=1)
+                                  ├─ Cerebras           (free, CEREBRAS=1)
+                                  ├─ OpenRouter         (free tier, OPENROUTER=1)
+                                  ├─ HuggingFace        (free, HUGGINGFACE=1)
+                                  ├─ Mistral            (free: 1B tokens/month, MISTRAL=1)
+                                  ├─ Cohere             (free: 1K req/day, COHERE=1)
+                                  ├─ Ollama CPU         (local, OLLAMA=1)
+                                  ├─ Ollama CUDA        (local, NVIDIA, CUDA=1)
+                                  ├─ Speaches CPU       (local, transcription + TTS, SPEACHES=1)
+                                  ├─ Speaches CUDA      (local, CUDA STT, CUDA=1)
+                                  ├─ Qwen3 CUDA TTS     (local, CUDA voice-cloning, CUDA=1)
+                                  ├─ claudebox          (flat-rate, CLAUDEBOX=1)
+                                  ├─ claudebox-zai      (flat-rate, CLAUDEBOX_ZAI=1)
+                                  ├─ Anthropic          (pay-per-token, ANTHROPIC=1)
+                                  └─ OpenAI             (pay-per-token, OPENAI=1)
 
-MCP servers (34 tools, available to all models):
-  ├─ stealthy_auto_browse  (17 tools) — browser navigation, clicks, typing, screenshots
-  ├─ hybrids3              (7 tools)  — file upload, download, list, delete, presign
-  ├─ claudebox             (5 tools)  — agentic Claude Code via OAuth or API key
-  └─ claudebox_zai         (5 tools)  — agentic Claude Code via z.ai/GLM
+MCP servers (up to 18 tools, all optional):
+  ├─ stealthy_auto_browse  (1 tool)   — run_script: multi-step browser automation (BROWSER=1)
+  ├─ hybrids3              (7 tools)  — file upload, download, list, delete, presign (HYBRIDS3=1)
+  ├─ claudebox             (5 tools)  — agentic Claude Code via OAuth or API key (CLAUDEBOX=1)
+  └─ claudebox_zai         (5 tools)  — agentic Claude Code via z.ai/GLM (CLAUDEBOX_ZAI=1)
 ```
 
 All persistent data lives under `.data/` (bind mounts). The directory structure is tracked in git via `.gitkeep` files so the right directories exist on a fresh clone — contents are gitignored.
@@ -79,19 +75,19 @@ Notable writable locations:
 | **[proxq](https://github.com/psyb0t/docker-proxq)** | Async HTTP job queue proxy. Sits in front of LiteLLM at `/q/` — queues inference requests in Redis, returns a job ID instantly, forwards to upstream in the background. Poll `/__jobs/{id}` for status, `/__jobs/{id}/content` for the raw response. Only OpenAI API paths are queued (chat/completions, embeddings, audio, images); everything else passes through directly. |
 | **PostgreSQL** | Key management, budget tracking, usage analytics for LiteLLM. |
 | **Redis** | LiteLLM response cache and rate limiting. Also used by proxq (DB 1) for job queue storage. |
-| **[claudebox](https://github.com/psyb0t/docker-claudebox) ×2** | Claude Code CLI in API mode. Full agentic loop — shell access, file I/O, tool use, persistent workspaces. One instance uses your OAuth token or Anthropic API key; the other points at z.ai for GLM models. Both expose REST API, OpenAI-compatible endpoint, and MCP server. |
-| **[hybrids3](https://github.com/psyb0t/docker-hybrids3)** | S3-compatible object storage. Plain HTTP upload/download, boto3-compatible, bearer token auth, auto-expiry, MCP server. The `uploads` bucket is public-read — files are accessible by direct URL without signing. |
-| **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** | 5 Camoufox (hardened Firefox) replicas behind HAProxy. Real OS-level mouse and keyboard input via PyAutoGUI — no CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan. Redis cookie sync across replicas. REST API and MCP server. |
-| **Ollama** | Local CPU inference. Runs llama3.2:3b, qwen3:4b, smollm2:1.7b, qwen2.5-coder:1.5b, qwen2.5-coder:3b, phi3.5, gemma3:4b (general + vision), nomic-embed-text, bge-m3, qwen3-embedding:0.6b (embeddings), dolphin-phi. Models are downloaded automatically on first start and cached in `.data/ollama/`. No GPU required. |
+| **[claudebox](https://github.com/psyb0t/docker-claudebox) ×2** _(optional, `CLAUDEBOX=1` / `CLAUDEBOX_ZAI=1`)_ | Claude Code CLI in API mode. Full agentic loop — shell access, file I/O, tool use, persistent workspaces. One instance uses your OAuth token or Anthropic API key; the other points at z.ai for GLM models. Both expose REST API, OpenAI-compatible endpoint, and MCP server. |
+| **[hybrids3](https://github.com/psyb0t/docker-hybrids3)** _(optional, `HYBRIDS3=1`)_ | S3-compatible object storage. Plain HTTP upload/download, boto3-compatible, bearer token auth, auto-expiry, MCP server. The `uploads` bucket is public-read — files are accessible by direct URL without signing. |
+| **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** _(optional, `BROWSER=1`)_ | 5 Camoufox (hardened Firefox) replicas behind HAProxy. Real OS-level mouse and keyboard input via PyAutoGUI — no CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan. Redis cookie sync across replicas. REST API and MCP server. |
+| **Ollama** _(optional, `OLLAMA=1`)_ | Local CPU inference. Runs llama3.2:3b, qwen3:4b, smollm2:1.7b, qwen2.5-coder:1.5b, qwen2.5-coder:3b, phi3.5, gemma3:4b (general + vision), nomic-embed-text, bge-m3, qwen3-embedding:0.6b (embeddings), dolphin-phi. Models are downloaded automatically on first start and cached in `.data/ollama/`. No GPU required. |
 | **Ollama CUDA** _(optional, `CUDA=1`)_ | Local NVIDIA GPU inference. Runs dolphin-mistral:7b, qwen3:8b, gemma3:12b, qwen2.5-coder:7b, llama3.1:8b, gemma3:4b, dolphin3:latest, dolphin-phi. Flash attention and KV cache enabled. Shares model storage with CPU ollama — no duplicate downloads. Requires `nvidia-container-toolkit`. |
-| **Speaches** | Local CPU audio via [speaches-ai/speaches](https://github.com/speaches-ai/speaches). Transcription: `faster-distil-whisper-large-v3` (multilingual) and `parakeet-tdt-0.6b-v2` (English, ~3400× real-time on CPU). Text-to-speech: `Kokoro-82M` int8 (high-quality, multiple voices). Models cached in `.data/speaches/`. |
+| **Speaches** _(optional, `SPEACHES=1`)_ | Local CPU audio via [speaches-ai/speaches](https://github.com/speaches-ai/speaches). Transcription: `faster-distil-whisper-large-v3` (multilingual) and `parakeet-tdt-0.6b-v2` (English, ~3400× real-time on CPU). Text-to-speech: `Kokoro-82M` int8 (high-quality, multiple voices). Models cached in `.data/speaches/`. |
 | **Speaches CUDA** _(optional, `CUDA=1`)_ | CUDA-accelerated Whisper STT via speaches. Uses the same model cache as CPU speaches. Shares `.data/speaches/` — no separate download. Requires `nvidia-container-toolkit`. |
 | **Qwen3 CUDA TTS** _(optional, `CUDA=1`)_ | CUDA-accelerated TTS via [faster-qwen3-tts](https://github.com/andimarafioti/faster-qwen3-tts). Runs `Qwen3-TTS-12Hz-0.6B-Base` with CUDA graphs. Voice cloning via reference audio. Models cached in `.data/qwen3-tts/`. Requires `nvidia-container-toolkit`. |
-| **cloudflared** _(optional)_ | Cloudflare Tunnel. Disabled by default — enable with `CLOUDFLARED=1` in `.env`. Runs a quick tunnel (random `*.trycloudflare.com` URL, no account) or a named tunnel (fixed domain, requires config file and credentials). |
+| **cloudflared** _(optional, `CLOUDFLARED=1`)_ | Cloudflare Tunnel. Disabled by default — enable with `CLOUDFLARED=1` in `.env`. Runs a quick tunnel (random `*.trycloudflare.com` URL, no account) or a named tunnel (fixed domain, requires config file and credentials). |
 
 ## Security and Exposure
 
-**Network isolation** — internal services (PostgreSQL, Redis, hybrids3, HAProxy, Ollama, Speaches) are on a private Docker network with no host port bindings. They're unreachable from outside the stack. Only nginx is exposed.
+**Network isolation** — all internal services are on a private Docker network with no host port bindings. PostgreSQL, Redis, and LiteLLM are always internal. Optional services (hybrids3, HAProxy, Ollama, Speaches, etc.) join the same private network when enabled. Only nginx is exposed.
 
 **Auth on everything** — every service requires a bearer token. LiteLLM needs `LITELLM_MASTER_KEY`. Claudebox instances each have their own token. Hybrids3 uses per-bucket keys. The stealthy browser cluster has an `AUTH_TOKEN` (defaults to `lulz-4-security` if unset). The admin UI supports HTTP basic auth with rate limiting.
 
@@ -105,13 +101,13 @@ Notable writable locations:
 
 ## MCP Tools
 
-34 tools across 4 servers. Any model that supports function calling can invoke them — the model decides when and how to use them based on the prompt.
+Up to 18 tools across 4 optional servers. Any model that supports function calling can invoke them — the model decides when and how to use them based on the prompt.
 
 → [Full MCP tool reference with parameters](docs/mcp-tools.md)
 
 ## Providers and Models
 
-82 models across 12 providers. Six are free tier with no credit card required. Two run locally on CPU with no rate limits. Per-model fallback chains route automatically through alternative providers when one fails or rate-limits.
+94 models across 13 providers. Six are free tier with no credit card required. Three run locally on your own hardware — CPU or NVIDIA GPU — with no rate limits. Per-model fallback chains route automatically through alternative providers when one fails or rate-limits.
 
 ### Routing philosophy
 
@@ -120,7 +116,7 @@ Notable writable locations:
 | 1st | Free cloud | Groq, Cerebras, OpenRouter, HuggingFace, Mistral, Cohere |
 | 2nd | Flat-rate | claudebox (Max sub), claudebox-zai (z.ai) |
 | 3rd | Pay-per-token | Anthropic, OpenAI |
-| Last resort | Local CPU | Ollama, Speaches |
+| Last resort | Local (CPU/CUDA) | Ollama, Speaches, Qwen3 CUDA TTS |
 
 ### Local models (Ollama, CPU)
 
@@ -383,7 +379,7 @@ make test          # run test suite (stack must be running)
 make test
 ```
 
-94 tests covering health, routing, auth, MCP, storage CRUD, browser automation, claudebox, proxq async job lifecycle, local TTS/STT round-trips, GPU audio, resource manager unload verification, and security. Designed for zero/minimal token usage.
+91 tests covering health, routing, auth, MCP, storage CRUD, browser automation, claudebox, proxq async job lifecycle, local TTS/STT round-trips, CUDA audio, resource manager unload verification, and security. Designed for zero/minimal token usage.
 
 → [Testing guide](docs/testing.md)
 

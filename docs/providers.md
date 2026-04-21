@@ -1,6 +1,6 @@
 # Providers and Models
 
-All providers are configured in `litellm/config.yaml`. Free-tier providers are tried first in fallback chains. Add API keys in `.env` to activate providers.
+All providers are configured in `litellm/config.yaml`. Free-tier providers are tried first in fallback chains. Each provider is opt-in: set its flag to `1` in `.env` (e.g. `GROQ=1`) and fill in the API key. The flag activates the provider — the key alone does nothing.
 
 ## Groq (free tier)
 

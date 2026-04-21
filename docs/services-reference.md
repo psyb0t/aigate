@@ -13,7 +13,7 @@
 | MCP server (all tools) | `POST /mcp/`                                  | `Bearer $LITELLM_MASTER_KEY` |
 | Admin UI               | `GET /ui/`                                    | optional basic auth     |
 
-The admin UI at `/ui/` is rate-limited to 5 requests/minute. Set `LITELLM_UI_BASIC_AUTH=user:password` in `.env` to enable HTTP basic auth on top of that.
+The admin UI at `/ui/` is rate-limited to 30 requests/minute by default (configurable via `RATELIMIT_ADMIN` in `.env`). Set `LITELLM_UI_BASIC_AUTH=user:password` in `.env` to enable HTTP basic auth on top of that.
 
 ---
 
@@ -253,7 +253,7 @@ The `uploads` bucket has TTL configured (default: `HYBRIDS3_UPLOADS_TTL`, typica
 | Queue health         | `GET /stealthy-auto-browse/__queue/health`                          | none                         |
 | Cluster status       | `GET /stealthy-auto-browse/__queue/status`                          | none                         |
 
-Set `STEALTHY_AUTO_BROWSE_AUTH_TOKEN` in `.env` to require bearer auth. Leave empty to disable auth.
+Set `STEALTHY_AUTO_BROWSE_AUTH_TOKEN` in `.env` to set the bearer auth token. Defaults to `lulz-4-security` if unset — always change this in production.
 
 ### Cluster configuration
 
@@ -272,9 +272,9 @@ Set `STEALTHY_AUTO_BROWSE_AUTH_TOKEN` in `.env` to require bearer auth. Leave em
 }
 ```
 
-All actions: `goto`, `get_text`, `get_html`, `get_interactive_elements`, `screenshot`, `system_click`, `system_type`, `send_key`, `click`, `fill`, `scroll`, `mouse_move`, `wait_for_element`, `wait_for_text`, `eval_js`, `browser_action`, `run_script`.
+Atomic actions: `goto`, `get_text`, `get_html`, `get_interactive_elements`, `screenshot`, `system_click`, `system_type`, `send_key`, `click`, `fill`, `scroll`, `mouse_move`, `wait_for_element`, `wait_for_text`, `eval_js`, `browser_action`.
 
-`run_script` accepts a `steps` array of action objects — executes them sequentially on the same replica in a single HTTP round-trip:
+`run_script` composes multiple actions into a single request — executes them sequentially on the same replica in a single HTTP round-trip:
 
 ```json
 {
@@ -289,14 +289,14 @@ All actions: `goto`, `get_text`, `get_html`, `get_interactive_elements`, `screen
 
 ---
 
-## Cloudflared (optional)
+## Cloudflared (optional, `CLOUDFLARED=1`)
 
-Disabled by default. Enable via `COMPOSE_PROFILES=cloudflared` in `.env`.
+Disabled by default. Enable by setting `CLOUDFLARED=1` in `.env`.
 
 ### Quick tunnel (no account needed)
 
 ```env
-COMPOSE_PROFILES=cloudflared
+CLOUDFLARED=1
 ```
 
 Cloudflare assigns a random `*.trycloudflare.com` URL and logs it on startup:
@@ -309,7 +309,7 @@ docker compose logs cloudflared | grep trycloudflare
 ### Named tunnel (fixed domain, requires Cloudflare account)
 
 ```env
-COMPOSE_PROFILES=cloudflared
+CLOUDFLARED=1
 CLOUDFLARED_CONFIG=/absolute/path/to/config.yml
 CLOUDFLARED_CREDS=/absolute/path/to/credentials.json
 ```

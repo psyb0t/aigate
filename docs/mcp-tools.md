@@ -1,8 +1,8 @@
 # MCP Tool Ecosystem
 
-The [Model Context Protocol](https://modelcontextprotocol.io/) is what makes this gateway more than just an LLM router. Four MCP servers are registered in LiteLLM, exposing a total of 34 tools. Any model that supports tool use (function calling) can invoke these tools during a conversation — the model decides when and how to use them based on the user's request.
+The [Model Context Protocol](https://modelcontextprotocol.io/) is what makes this gateway more than just an LLM router. Up to four MCP servers can be registered in LiteLLM (all optional, enabled via `.env` flags), exposing a total of 18 tools. Any model that supports tool use (function calling) can invoke these tools during a conversation — the model decides when and how to use them based on the user's request.
 
-This means you can ask a Groq model to browse a website, take a screenshot, upload it to object storage, and return the public URL — and it will orchestrate all of that autonomously through MCP tool calls.
+This means you can ask a Groq model to browse a website, take a screenshot, upload it to object storage, and return the public URL ��� and it will orchestrate all of that autonomously through MCP tool calls.
 
 ## Connecting
 
@@ -34,11 +34,17 @@ curl -X POST http://localhost:4000/mcp/ \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 ```
 
-## stealthy_auto_browse — 17 tools
+## stealthy_auto_browse — 1 tool (`BROWSER=1`)
 
-Stealth browser automation. Navigate pages, interact with elements using real mouse/keyboard input, extract content, and take screenshots. All interactions are undetectable by bot detection systems (passes Cloudflare, CreepJS, BrowserScan, Pixelscan).
+Stealth browser automation. All interactions are undetectable by bot detection systems (passes Cloudflare, CreepJS, BrowserScan, Pixelscan).
 
-| Tool                       | Description                                                              |
+### run_script
+
+Execute a multi-step browser automation script. Takes a `steps` array where each step is a browser action. All steps execute sequentially on the same replica in a single round-trip — no LiteLLM overhead between steps.
+
+Available actions (each is one step within `run_script`):
+
+| Action                     | Description                                                              |
 | -------------------------- | ------------------------------------------------------------------------ |
 | `goto`                     | Navigate to a URL                                                        |
 | `get_text`                 | Extract all visible text from the current page (up to 10,000 chars)      |
@@ -56,16 +62,15 @@ Stealth browser automation. Navigate pages, interact with elements using real mo
 | `wait_for_text`            | Wait for specific text to appear on the page                             |
 | `eval_js`                  | Execute JavaScript in the browser context                                |
 | `browser_action`           | Perform browser-level actions (`back`, `forward`, `refresh`)             |
-| `run_script`               | Execute a multi-step automation script atomically                        |
 
 ### Usage notes
 
 - Browser sessions are sticky — each MCP session is pinned to one replica by `Mcp-Session-Id` header. Maintain session continuity across tool calls within a conversation.
-- `run_script` is the preferred tool for multi-step flows — it executes a sequence of actions atomically on the same replica without round-tripping through LiteLLM between steps.
 - `system_click` / `system_type` use OS-level input simulation (PyAutoGUI) — completely undetectable, as they bypass CDP entirely.
 - For page parsing, `get_interactive_elements` returns coordinates alongside element metadata, so you can click by coordinates instead of guessing CSS selectors.
+- The same actions are also available individually via the browser REST API at `/stealthy-auto-browse/` — see [usage.md](usage.md) for REST API examples.
 
-## hybrids3 — 7 tools
+## hybrids3 — 7 tools (`HYBRIDS3=1`)
 
 Object storage operations. Upload, download, list, and manage files in storage buckets. The `uploads` bucket is public-read (downloads need no auth), but all writes require the bucket key via `auth_key`.
 
@@ -94,7 +99,7 @@ download_object(bucket="uploads", key="images/photo.png")
 presign_url(bucket="private-data", key="report.pdf", auth_key="$HYBRIDS3_MASTER_KEY", expires=3600)
 ```
 
-## claudebox — 5 tools (OAuth or API key)
+## claudebox — 5 tools (`CLAUDEBOX=1`)
 
 Agentic Claude Code backed by your Claude subscription or Anthropic API key. Each tool call runs through Claude Code's full agentic loop — it can read/write files, run shell commands, install packages, browse the web, and use tools within an isolated workspace. This is not a text generation call; it is a full agentic execution.
 
@@ -134,7 +139,7 @@ claude_run(prompt="task A", workspace="shared")
 claude_run(prompt="task B", workspace="shared")  # 409 if first is still running
 ```
 
-## claudebox_zai — 5 tools (GLM via z.ai)
+## claudebox_zai — 5 tools (`CLAUDEBOX_ZAI=1`)
 
 Same 5 tools as above, but backed by GLM models through [z.ai](https://z.ai)'s Anthropic-compatible API. Same workspace capabilities, same file operations, different underlying model. Use this when you want agentic execution without touching your Claude subscription or API key budget.
 
