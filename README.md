@@ -49,9 +49,9 @@ MCP servers (up to 18 tools, all optional):
   └─ claudebox_zai         (5 tools)  — agentic Claude Code via z.ai/GLM (CLAUDEBOX_ZAI=1)
 ```
 
-All persistent data lives under `.data/` (bind mounts). The directory structure is tracked in git via `.gitkeep` files so the right directories exist on a fresh clone — contents are gitignored.
+All persistent data lives under `.data/` by default (bind mounts). Override the base with `DATA_DIR` or per-service with `DATA_DIR_*` env vars (e.g. `DATA_DIR_OLLAMA=/mnt/nas/ollama`) — see [`.env.example`](.env.example) for the full list. The default directory structure is tracked in git via `.gitkeep` files so the right directories exist on a fresh clone — contents are gitignored.
 
-Notable writable locations:
+Default writable locations:
 
 | Path | Used by | Notes |
 | ---- | ------- | ----- |
