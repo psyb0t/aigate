@@ -119,7 +119,7 @@ down:
 	COMPOSE_PROFILES=claudebox,claudebox-zai,cloudflared,hybrids3,browser,ollama,cuda,speaches,mcp,librechat \
 		docker compose down --remove-orphans
 
-restart: down run
+restart: down run-bg
 
 test:
 	bash test.sh

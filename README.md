@@ -1,14 +1,41 @@
 # aigate
 
-Your own AI infrastructure. One endpoint. Everything.
+A self-hosted AI platform. 25 services, 92 models, 20 tools, one `docker-compose up`.
 
-92 models across 13 providers behind a single OpenAI-compatible API — point any existing client at `http://localhost:4000` and it just works. Six of those providers are completely free. Three more run on your own hardware — CPU or NVIDIA GPU — with no network calls, no rate limits, and no usage costs. The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
+Everything an AI-powered workflow needs — inference, tool use, browser automation, image generation, speech synthesis, transcription, object storage, agentic code execution, an async job queue, and a web UI — behind a single OpenAI-compatible endpoint at `http://localhost:4000`. Point any existing client at it and it works.
 
-Everything is opt-in. Enable what you want in `.env`, ignore what you don't. The core stack is nginx, LiteLLM, PostgreSQL, Redis, and an async job queue — that's always on. Every provider, every local model, every MCP server, every extra service is a flag flip away.
+### Models and routing
 
-That's the routing. The real part is what the models can *do*. Up to five MCP servers can be wired into the gateway — 20 tools any model with function calling can invoke autonomously. A stealth browser cluster (5 Camoufox replicas, real OS-level mouse and keyboard, zero CDP exposure) that passes Cloudflare, CreepJS, and every other bot detector we've thrown at it. S3-compatible object storage with public-read URLs, presigned links, and auto-expiry. Two agentic Claude Code instances — one on your Claude subscription or API key, one running GLM models through z.ai — each with a full shell, persistent workspaces, and file I/O. Image generation (FLUX, DALL-E, Stable Diffusion) and text-to-speech (Kokoro, Qwen3, OpenAI) via MCP tools that return persistent URLs — no base64 blobs. A LibreChat web UI at `/librechat/` with all models and MCP tools pre-configured. Ask a Groq model to research something and it opens a browser, reads pages, saves files, and comes back with an answer. The model orchestrates. You just prompt.
+92 models across 13 providers. Six providers are completely free (Groq, Cerebras, OpenRouter, HuggingFace, Mistral, Cohere). Three run locally on your own hardware — CPU or NVIDIA GPU — with no network calls, no rate limits, and no usage costs (Ollama, Speaches, Qwen3 TTS). The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
 
-Security is not an afterthought. Internal services are network-isolated — PostgreSQL, Redis, hybrids3, and the browser cluster have no host ports, period. Every endpoint requires auth. When you want to expose the gateway publicly, Cloudflare Tunnel handles it: one env var, no open ports, Cloudflare's DDoS protection and TLS in front of everything.
+### Tools and capabilities
+
+20 MCP tools across 5 servers. Any model with function calling can invoke them autonomously — the model orchestrates, you just prompt.
+
+- **Stealth browser cluster** — 5 Camoufox replicas behind HAProxy, real OS-level mouse and keyboard input, zero CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, and every other bot detector we've thrown at it.
+- **Agentic Claude Code ×2** — full shell access, persistent workspaces, file I/O, tool use. One instance on your Claude subscription or API key, one running GLM models through z.ai.
+- **Object storage** — S3-compatible, public-read uploads, presigned URLs, auto-expiry. Plain HTTP and boto3.
+- **Image generation** — FLUX, DALL-E, Stable Diffusion via MCP tools that return persistent URLs, not base64 blobs.
+- **Text-to-speech** — Kokoro (CPU), Qwen3-TTS with voice cloning (CUDA), OpenAI TTS.
+- **Transcription** — Whisper (cloud + local CPU/CUDA), Parakeet (~3400× real-time on CPU).
+
+Ask a Groq model to research something and it opens a browser, reads pages, screenshots them, uploads to storage, and comes back with a summary and links. The model decides what tools to use and in what order.
+
+### Web UI
+
+LibreChat at `/librechat/` — pre-configured with all models and MCP tools, conversation history, file uploads, WebSocket streaming. Email/password auth, first user becomes admin.
+
+### Infrastructure
+
+25 containers. Nginx reverse proxy with per-endpoint rate limiting. PostgreSQL + MongoDB for persistence. Two Redis instances (cache + browser session sync). Async job queue for long-running inference. Cloudflare Tunnel for public exposure with zero open ports.
+
+### Security
+
+Network-isolated by default — internal services have no host ports. Every endpoint requires auth. All containers run with `no-new-privileges`. File path pre-flight validation on startup.
+
+### Everything is opt-in
+
+Enable what you want in `.env`, ignore what you don't. The core stack (nginx, LiteLLM, PostgreSQL, Redis, proxq) is always on. Every provider, local model, MCP server, and extra service is a flag flip away.
 
 `make run-bg`. That's the whole install.
 
