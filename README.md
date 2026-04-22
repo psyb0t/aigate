@@ -2,11 +2,11 @@
 
 Your own AI infrastructure. One endpoint. Everything.
 
-94 models across 13 providers behind a single OpenAI-compatible API — point any existing client at `http://localhost:4000` and it just works. Six of those providers are completely free. Three more run on your own hardware — CPU or NVIDIA GPU — with no network calls, no rate limits, and no usage costs. The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
+92 models across 13 providers behind a single OpenAI-compatible API — point any existing client at `http://localhost:4000` and it just works. Six of those providers are completely free. Three more run on your own hardware — CPU or NVIDIA GPU — with no network calls, no rate limits, and no usage costs. The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
 
 Everything is opt-in. Enable what you want in `.env`, ignore what you don't. The core stack is nginx, LiteLLM, PostgreSQL, Redis, and an async job queue — that's always on. Every provider, every local model, every MCP server, every extra service is a flag flip away.
 
-That's the routing. The real part is what the models can *do*. Up to four MCP servers can be wired into the gateway — 18 tools any model with function calling can invoke autonomously. A stealth browser cluster (5 Camoufox replicas, real OS-level mouse and keyboard, zero CDP exposure) that passes Cloudflare, CreepJS, and every other bot detector we've thrown at it. S3-compatible object storage with public-read URLs, presigned links, and auto-expiry. Two agentic Claude Code instances — one on your Claude subscription or API key, one running GLM models through z.ai — each with a full shell, persistent workspaces, and file I/O. Ask a Groq model to research something and it opens a browser, reads pages, saves files, and comes back with an answer. The model orchestrates. You just prompt.
+That's the routing. The real part is what the models can *do*. Up to five MCP servers can be wired into the gateway — 20 tools any model with function calling can invoke autonomously. A stealth browser cluster (5 Camoufox replicas, real OS-level mouse and keyboard, zero CDP exposure) that passes Cloudflare, CreepJS, and every other bot detector we've thrown at it. S3-compatible object storage with public-read URLs, presigned links, and auto-expiry. Two agentic Claude Code instances — one on your Claude subscription or API key, one running GLM models through z.ai — each with a full shell, persistent workspaces, and file I/O. Image generation (FLUX, DALL-E, Stable Diffusion) and text-to-speech (Kokoro, Qwen3, OpenAI) via MCP tools that return persistent URLs — no base64 blobs. A LibreChat web UI at `/librechat/` with all models and MCP tools pre-configured. Ask a Groq model to research something and it opens a browser, reads pages, saves files, and comes back with an answer. The model orchestrates. You just prompt.
 
 Security is not an afterthought. Internal services are network-isolated — PostgreSQL, Redis, hybrids3, and the browser cluster have no host ports, period. Every endpoint requires auth. When you want to expose the gateway publicly, Cloudflare Tunnel handles it: one env var, no open ports, Cloudflare's DDoS protection and TLS in front of everything.
 
@@ -25,6 +25,7 @@ nginx :4000                                          ┌────────
   ├─► /stealthy-auto-browse/ → HAProxy → [browser ×5]└─────────────────────────────────────┘
   ├─► /storage/              → hybrids3
   ├─► /q/                    → proxq → LiteLLM (async, returns job ID)
+  ├─► /librechat/            → LibreChat (web UI, LIBRECHAT=1)
   └─► /                      → LiteLLM (sync)
                                   ├─ Groq              (free, GROQ=1)
                                   ├─ Cerebras           (free, CEREBRAS=1)
@@ -42,11 +43,12 @@ nginx :4000                                          ┌────────
                                   ├─ Anthropic          (pay-per-token, ANTHROPIC=1)
                                   └─ OpenAI             (pay-per-token, OPENAI=1)
 
-MCP servers (up to 18 tools, all optional):
+MCP servers (up to 20 tools, all optional):
   ├─ stealthy_auto_browse  (1 tool)   — run_script: multi-step browser automation (BROWSER=1)
   ├─ hybrids3              (7 tools)  — file upload, download, list, delete, presign (HYBRIDS3=1)
   ├─ claudebox             (5 tools)  — agentic Claude Code via OAuth or API key (CLAUDEBOX=1)
-  └─ claudebox_zai         (5 tools)  — agentic Claude Code via z.ai/GLM (CLAUDEBOX_ZAI=1)
+  ├─ claudebox_zai         (5 tools)  — agentic Claude Code via z.ai/GLM (CLAUDEBOX_ZAI=1)
+  └─ mcp_tools             (2 tools)  — generate_image + generate_tts (auto-enabled with image/TTS providers)
 ```
 
 All persistent data lives under `.data/` by default (bind mounts). Override the base with `DATA_DIR` or per-service with `DATA_DIR_*` env vars (e.g. `DATA_DIR_OLLAMA=/mnt/nas/ollama`) — see [`.env.example`](.env.example) for the full list. The default directory structure is tracked in git via `.gitkeep` files so the right directories exist on a fresh clone — contents are gitignored.
@@ -64,6 +66,7 @@ Default writable locations:
 | `.data/ollama/` | ollama, ollama-cuda | Downloaded model weights (shared — CPU and CUDA instances read the same blobs) |
 | `.data/speaches/` | speaches, speaches-cuda | Downloaded Whisper and Parakeet model weights (HuggingFace cache, shared between CPU/CUDA) |
 | `.data/qwen3-tts/` | qwen3-cuda-tts | Downloaded Qwen3-TTS model weights (HuggingFace cache) |
+| `.data/librechat/` | librechat, librechat-mongodb | Conversation data (MongoDB), file uploads |
 | `.data/cloudflared/` | cloudflared | Tunnel config and credentials (if using named tunnel) |
 
 ## Services
@@ -83,13 +86,15 @@ Default writable locations:
 | **Speaches** _(optional, `SPEACHES=1`)_ | Local CPU audio via [speaches-ai/speaches](https://github.com/speaches-ai/speaches). Transcription: `faster-distil-whisper-large-v3` (multilingual) and `parakeet-tdt-0.6b-v2` (English, ~3400× real-time on CPU). Text-to-speech: `Kokoro-82M` int8 (high-quality, multiple voices). Models cached in `.data/speaches/`. |
 | **Speaches CUDA** _(optional, `CUDA=1`)_ | CUDA-accelerated Whisper STT via speaches. Uses the same model cache as CPU speaches. Shares `.data/speaches/` — no separate download. Requires `nvidia-container-toolkit`. |
 | **Qwen3 CUDA TTS** _(optional, `CUDA=1`)_ | CUDA-accelerated TTS via [faster-qwen3-tts](https://github.com/andimarafioti/faster-qwen3-tts). Runs `Qwen3-TTS-12Hz-0.6B-Base` with CUDA graphs. Voice cloning via reference audio. Models cached in `.data/qwen3-tts/`. Requires `nvidia-container-toolkit`. |
+| **MCP tools** _(auto-enabled)_ | Media generation MCP server. Exposes `generate_image` and `generate_tts` tools to any model with function calling. Discovers available models dynamically from LiteLLM. Returns structured JSON with persistent URLs (uploaded to HybridS3) — no base64 blobs. Auto-enabled when any image or TTS provider is active (HuggingFace, OpenAI, Speaches, CUDA). |
+| **[LibreChat](https://github.com/danny-avila/LibreChat)** _(optional, `LIBRECHAT=1`)_ | Web UI for LLM interaction at `/librechat/`. Pre-configured with all LiteLLM models and MCP tools. MongoDB-backed conversation storage. Email/password auth — first registered user becomes admin, then set `LIBRECHAT_ALLOW_REGISTRATION=false` and restart. WebSocket streaming. Configurable via `.env` (registration, rate limits, debug logging, JWT secrets). |
 | **cloudflared** _(optional, `CLOUDFLARED=1`)_ | Cloudflare Tunnel. Disabled by default — enable with `CLOUDFLARED=1` in `.env`. Runs a quick tunnel (random `*.trycloudflare.com` URL, no account) or a named tunnel (fixed domain, requires config file and credentials). |
 
 ## Security and Exposure
 
 **Network isolation** — all internal services are on a private Docker network with no host port bindings. PostgreSQL, Redis, and LiteLLM are always internal. Optional services (hybrids3, HAProxy, Ollama, Speaches, etc.) join the same private network when enabled. Only nginx is exposed.
 
-**Auth on everything** — every service requires a bearer token. LiteLLM needs `LITELLM_MASTER_KEY`. Claudebox instances each have their own token. Hybrids3 uses per-bucket keys. The stealthy browser cluster has an `AUTH_TOKEN` (defaults to `lulz-4-security` if unset). The admin UI supports HTTP basic auth with rate limiting.
+**Auth on everything** — every service requires a bearer token. LiteLLM needs `LITELLM_MASTER_KEY`. Claudebox instances each have their own token. Hybrids3 uses per-bucket keys. The stealthy browser cluster has an `AUTH_TOKEN` (defaults to `lulz-4-security` if unset). The MCP tools server validates `MCP_TOOLS_AUTH_TOKEN`. LibreChat has its own email/password auth — first registered user becomes admin; set `LIBRECHAT_ALLOW_REGISTRATION=false` in `.env` and restart after creating your account. The admin UI supports HTTP basic auth with rate limiting.
 
 **No new privileges** — all containers run with `no-new-privileges:true`.
 
@@ -101,13 +106,13 @@ Default writable locations:
 
 ## MCP Tools
 
-Up to 18 tools across 4 optional servers. Any model that supports function calling can invoke them — the model decides when and how to use them based on the prompt.
+Up to 20 tools across 5 optional servers. Any model that supports function calling can invoke them — the model decides when and how to use them based on the prompt.
 
 → [Full MCP tool reference with parameters](docs/mcp-tools.md)
 
 ## Providers and Models
 
-94 models across 13 providers. Six are free tier with no credit card required. Three run locally on your own hardware — CPU or NVIDIA GPU — with no rate limits. Per-model fallback chains route automatically through alternative providers when one fails or rate-limits.
+92 models across 13 providers. Six are free tier with no credit card required. Three run locally on your own hardware — CPU or NVIDIA GPU — with no rate limits. Per-model fallback chains route automatically through alternative providers when one fails or rate-limits.
 
 ### Routing philosophy
 
@@ -215,6 +220,7 @@ Everything is opt-in via flags in `.env`. API keys are stored separately and nev
 | `SPEACHES=1` | Local Speaches CPU transcription/TTS (~4GB RAM) |
 | `HYBRIDS3=1` | Object storage service + MCP server (S3-compatible, plain HTTP, auto-expiry) |
 | `BROWSER=1` | Stealth browser cluster + MCP server (5 replicas, ~1.3GB RAM) |
+| `LIBRECHAT=1` | LibreChat web UI at `/librechat/` with all models and MCP tools |
 | `CLOUDFLARED=1` | Cloudflare Tunnel |
 
 `make run` regenerates `litellm/config.yaml` before starting — only enabled providers are included, fallback chains are filtered to match.
@@ -251,7 +257,7 @@ make run-bg   # detached (background)
 make run      # foreground with logs
 ```
 
-Gateway is at `http://localhost:4000`. Admin UI at `http://localhost:4000/ui/`.
+Gateway is at `http://localhost:4000`. Admin UI at `http://localhost:4000/ui/`. LibreChat web UI at `http://localhost:4000/librechat/` (if `LIBRECHAT=1`).
 
 On first start, Ollama will pull all local models in the background. Speaches models (whisper, parakeet, kokoro) are pre-downloaded automatically. Both cache to `.data/` and won't re-download on restart.
 
@@ -379,7 +385,7 @@ make test          # run test suite (stack must be running)
 make test
 ```
 
-91 tests covering health, routing, auth, MCP, storage CRUD, browser automation, claudebox, proxq async job lifecycle, local TTS/STT round-trips, CUDA audio, resource manager unload verification, and security. Designed for zero/minimal token usage.
+97 tests covering health, routing, auth, MCP, MCP media tools, storage CRUD, browser automation, claudebox, proxq async job lifecycle, local TTS/STT round-trips, CUDA audio, resource manager unload verification, and security. Designed for zero/minimal token usage.
 
 → [Testing guide](docs/testing.md)
 

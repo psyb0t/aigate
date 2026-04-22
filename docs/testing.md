@@ -20,7 +20,8 @@ bash test.sh --help
 - **Health** — all service health endpoints, docker compose service status, browser replica count, cloudflared tunnel reachability (skipped if not running)
 - **LiteLLM** — API endpoints, model registration (base models always, plus optional Ollama/CUDA/Speaches models when enabled), authentication (valid/invalid/missing keys), chat completions, SSE streaming
 - **Nginx** — routing to all 5 backends, root path blocked (404), admin UI basic auth (no creds → 401, bad creds → 401, correct creds → 200, no-auth mode → 200), admin rate limiting (503/429 under rapid fire)
-- **MCP** — all 18 tools loaded across 4 servers, per-server tool counts, specific tool presence, authentication
+- **MCP** — all 20 tools loaded across 5 servers, per-server tool counts, specific tool presence, authentication
+- **MCP Media** — image generation tool (via mcp_tools-generate_image), TTS tool (via mcp_tools-generate_tts), tool presence based on enabled providers, invalid model error handling, tool descriptions contain expected model names
 - **HybridS3** — full CRUD lifecycle (upload, download, list, delete, verify deletion), public read without auth, write rejection without auth, presigned URL generation and download
 - **Browser** — page navigation, interactive element detection, screenshot capture, full automation flow (navigate, find elements, click, type, screenshot)
 - **Claudebox** — chat completion via LiteLLM, direct API access via nginx, file operations (upload, download, list, delete), z.ai instance reachability, OpenAI-compatible models endpoint (both instances)

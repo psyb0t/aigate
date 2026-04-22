@@ -62,8 +62,6 @@ Sign up: [huggingface.co](https://huggingface.co/settings/tokens) — free tier 
 | Qwen/Qwen2.5-VL-7B-Instruct                  | `hf-qwen3-vl-8b`       | multimodal     |
 | google/gemma-3-12b-it                        | `hf-gemma-3-12b`       | multimodal     |
 | black-forest-labs/FLUX.1-schnell             | `hf-flux-schnell`      | image gen, fast |
-| black-forest-labs/FLUX.1-dev                 | `hf-flux-dev`          | image gen      |
-| stabilityai/stable-diffusion-3.5-large-turbo | `hf-sd-3.5-turbo`      | image gen      |
 
 ## Mistral AI (free tier: 1B tokens/month, 60 RPM)
 

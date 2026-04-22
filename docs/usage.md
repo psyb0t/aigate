@@ -442,3 +442,28 @@ curl http://localhost:4000/audio/speech \
 ```
 
 TTS models: `local-speaches-kokoro-tts` (CPU, many voices), `local-qwen3-cuda-tts` (CUDA, voices: alloy/echo/fable), `openai-tts-1`, `openai-tts-1-hd`.
+
+---
+
+## LibreChat Web UI
+
+Enable with `LIBRECHAT=1` in `.env`. Access at `http://localhost:4000/librechat/`.
+
+### First-time setup
+
+1. Navigate to `http://localhost:4000/librechat/`
+2. Register an account — the first user automatically becomes admin
+3. Set `LIBRECHAT_ALLOW_REGISTRATION=false` in `.env` and restart (`docker compose restart librechat`) to lock registration
+
+### What's pre-configured
+
+- All LiteLLM models are available in the model selector (auto-fetched)
+- All MCP tools (browser, storage, claudebox, image generation, TTS) are connected and available in conversations
+- Conversations are stored in MongoDB and persist across restarts
+- WebSocket streaming for real-time responses
+
+### Configuration
+
+All settings are customizable via `.env` — see [services-reference.md](services-reference.md#librechat-optional-librechat1) for the full list of environment variables.
+
+The LibreChat config file at `librechat/librechat.yaml` controls endpoints, MCP servers, and interface settings. Edit it directly for advanced customization (e.g. adding more MCP servers, changing interface options).

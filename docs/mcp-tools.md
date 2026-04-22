@@ -1,12 +1,12 @@
 # MCP Tool Ecosystem
 
-The [Model Context Protocol](https://modelcontextprotocol.io/) is what makes this gateway more than just an LLM router. Up to four MCP servers can be registered in LiteLLM (all optional, enabled via `.env` flags), exposing a total of 18 tools. Any model that supports tool use (function calling) can invoke these tools during a conversation — the model decides when and how to use them based on the user's request.
+The [Model Context Protocol](https://modelcontextprotocol.io/) is what makes this gateway more than just an LLM router. Up to five MCP servers can be registered in LiteLLM (all optional, enabled via `.env` flags), exposing a total of 20 tools. Any model that supports tool use (function calling) can invoke these tools during a conversation — the model decides when and how to use them based on the user's request.
 
 This means you can ask a Groq model to browse a website, take a screenshot, upload it to object storage, and return the public URL ��� and it will orchestrate all of that autonomously through MCP tool calls.
 
 ## Connecting
 
-The gateway exposes a single aggregated MCP endpoint that proxies all four servers:
+The gateway exposes a single aggregated MCP endpoint that proxies all five servers:
 
 ```
 POST http://localhost:4000/mcp/
@@ -24,6 +24,7 @@ Each individual service also exposes its own MCP endpoint directly (routed via n
 | hybrids3             | `http://localhost:4000/storage/mcp/`                |
 | claudebox            | `http://localhost:4000/claudebox/mcp/`              |
 | claudebox-zai        | `http://localhost:4000/claudebox-zai/mcp/`          |
+| mcp_tools            | via LiteLLM aggregation only (no direct nginx route)|
 
 ```bash
 # list all available MCP tools
@@ -144,3 +145,39 @@ claude_run(prompt="task B", workspace="shared")  # 409 if first is still running
 Same 5 tools as above, but backed by GLM models through [z.ai](https://z.ai)'s Anthropic-compatible API. Same workspace capabilities, same file operations, different underlying model. Use this when you want agentic execution without touching your Claude subscription or API key budget.
 
 The z.ai instance routes through a separate claudebox container — workspaces between the two instances are not shared.
+
+## mcp_tools — 2 tools (auto-enabled with image/TTS providers)
+
+Media generation tools. Auto-enabled when any image or TTS provider is active (HuggingFace, OpenAI, Speaches, CUDA). Discovers available models dynamically from LiteLLM at startup — tool descriptions include the list of available models and defaults. Auth via `MCP_TOOLS_AUTH_TOKEN`.
+
+Returns structured JSON with all parameters used and a persistent URL to the result file (uploaded to HybridS3). No base64 blobs are sent to the LLM.
+
+| Tool             | Description                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------------ |
+| `generate_image` | Generate an image from a text prompt. Returns JSON with `prompt`, `model`, `size`, and `url` (or `urls` + `revised_prompt` for OpenAI models). |
+| `generate_tts`   | Generate speech audio from text. Returns JSON with `text`, `model`, `voice`, `speed`, and `url`.             |
+
+### generate_image parameters
+
+| Parameter | Type   | Description                                          | Default                                |
+| --------- | ------ | ---------------------------------------------------- | -------------------------------------- |
+| `prompt`  | string | Text description of the image to generate            | _(required)_                           |
+| `model`   | string | Which image model to use (listed in tool description)| first available (prefers hf-flux-schnell) |
+| `size`    | string | Image dimensions (e.g. `1024x1024`)                  | `1024x1024`                            |
+
+### generate_tts parameters
+
+| Parameter | Type   | Description                                          | Default                                         |
+| --------- | ------ | ---------------------------------------------------- | ----------------------------------------------- |
+| `text`    | string | Text to convert to speech                            | _(required)_                                    |
+| `model`   | string | Which TTS model to use (listed in tool description)  | first available (prefers local-speaches-kokoro-tts) |
+| `voice`   | string | Voice to use                                         | `af_heart`                                      |
+| `speed`   | number | Speech speed multiplier                              | `1.0`                                           |
+
+### Error handling
+
+If an invalid model is requested, the tool returns an error JSON with the list of available models:
+
+```json
+{"error": "Model 'nonexistent' not available", "available_models": ["hf-flux-schnell"]}
+```

@@ -289,6 +289,82 @@ Atomic actions: `goto`, `get_text`, `get_html`, `get_interactive_elements`, `scr
 
 ---
 
+## MCP Tools — Media Generation (auto-enabled)
+
+Auto-enabled when any image or TTS provider is active (HuggingFace, OpenAI, Speaches, CUDA). Runs as an internal service — no direct nginx route, accessed only through LiteLLM's aggregated MCP endpoint at `/mcp/`.
+
+| Endpoint               | URL                | Auth                              |
+| ---------------------- | ------------------ | --------------------------------- |
+| MCP server (via proxy) | `POST /mcp/`       | `Bearer $LITELLM_MASTER_KEY`      |
+| Health (internal only) | `GET :8000/health`  | none (not exposed via nginx)      |
+
+### Tools
+
+- `generate_image` — create images from text prompts (FLUX, DALL-E, Stable Diffusion depending on enabled providers)
+- `generate_tts` — generate speech audio from text (Kokoro, Qwen3-TTS, OpenAI TTS depending on enabled providers)
+
+Both tools return structured JSON with persistent HybridS3 URLs — no base64 blobs sent to the LLM.
+
+See [mcp-tools.md](mcp-tools.md#mcp_tools--2-tools-auto-enabled-with-imagetts-providers) for full parameter reference.
+
+### Environment variables
+
+| Variable               | Default  | Description                          |
+| ---------------------- | -------- | ------------------------------------ |
+| `MCP_TOOLS_AUTH_TOKEN`  | —       | Bearer token for MCP auth (required) |
+| `MCP_MEM_LIMIT`        | `256m`   | Container memory limit               |
+| `MCP_MEMSWAP_LIMIT`    | `512m`   | Container memory + swap limit        |
+| `MCP_CPUS`             | `0.5`    | CPU limit                            |
+
+---
+
+## LibreChat (optional, `LIBRECHAT=1`)
+
+Web UI for LLM interaction at `/librechat/`. Pre-configured with all LiteLLM models and MCP tools. Uses MongoDB for conversation storage.
+
+| Endpoint      | URL                          | Auth                     |
+| ------------- | ---------------------------- | ------------------------ |
+| Web UI        | `GET /librechat/`            | email/password (own auth)|
+| API           | `/librechat/api/*`           | JWT (managed by LibreChat)|
+
+### Authentication
+
+LibreChat has its own email/password authentication — no basic auth (SPAs and basic auth are incompatible due to Authorization header collision). The first registered user automatically becomes admin. After creating your account, set `LIBRECHAT_ALLOW_REGISTRATION=false` in `.env` and restart to lock registration.
+
+### MCP tools integration
+
+All MCP tools from the LiteLLM aggregated endpoint are available in LibreChat conversations. Connected via streamable-http with `apiKey.source: admin` (bypasses LibreChat's OAuth detection probe). Configuration in `librechat/librechat.yaml`.
+
+### Environment variables
+
+| Variable                              | Default                                  | Description                                  |
+| ------------------------------------- | ---------------------------------------- | -------------------------------------------- |
+| `LIBRECHAT_DOMAIN_CLIENT`             | `http://librechat:3080/librechat`        | Public URL for client (sets `<base href>`)   |
+| `LIBRECHAT_DOMAIN_SERVER`             | `http://librechat:3080/librechat`        | Public URL for server API                    |
+| `LIBRECHAT_CREDS_KEY`                 | —                                        | Encryption key for stored credentials (64 hex chars) |
+| `LIBRECHAT_CREDS_IV`                  | —                                        | Encryption IV (32 hex chars)                 |
+| `LIBRECHAT_JWT_SECRET`                | —                                        | JWT signing secret                           |
+| `LIBRECHAT_TITLE_MODEL`               | `groq-llama-3.3-70b`                     | Model for auto-titling conversations         |
+| `LIBRECHAT_ALLOW_REGISTRATION`        | `true`                                   | Set to `false` after creating admin account  |
+| `LIBRECHAT_ALLOW_EMAIL_LOGIN`         | `true`                                   | Enable email/password login                  |
+| `LIBRECHAT_ALLOW_SOCIAL_LOGIN`        | `false`                                  | Enable social login providers                |
+| `LIBRECHAT_ALLOW_UNVERIFIED_EMAIL_LOGIN` | `true`                                | Allow login without email verification       |
+| `LIBRECHAT_DEBUG_LOGGING`             | `true`                                   | Enable debug-level logging                   |
+| `LIBRECHAT_DEBUG_CONSOLE`             | `false`                                  | Log to console (in addition to file)         |
+| `LIBRECHAT_MEM_LIMIT`                 | `512m`                                   | LibreChat container memory limit             |
+| `LIBRECHAT_MEMSWAP_LIMIT`             | `1g`                                     | LibreChat container memory + swap limit      |
+| `LIBRECHAT_CPUS`                      | `1.0`                                    | LibreChat CPU limit                          |
+| `LIBRECHAT_MONGO_MEM_LIMIT`           | `512m`                                   | MongoDB container memory limit               |
+| `LIBRECHAT_MONGO_MEMSWAP_LIMIT`       | `1g`                                     | MongoDB container memory + swap limit        |
+| `LIBRECHAT_MONGO_CPUS`                | `0.5`                                    | MongoDB CPU limit                            |
+| `RATELIMIT_LIBRECHAT`                 | `500r/m`                                 | Nginx rate limit                             |
+| `RATELIMIT_LIBRECHAT_BURST`           | `100`                                    | Burst allowance                              |
+| `TIMEOUT_LIBRECHAT`                   | `600s`                                   | Nginx proxy timeout                          |
+| `LIBRECHAT_MAX_BODY_SIZE`             | `25m`                                    | Max upload size                              |
+| `DATA_DIR_LIBRECHAT`                  | `${DATA_DIR}/librechat`                  | Data directory (MongoDB + uploads)           |
+
+---
+
 ## Cloudflared (optional, `CLOUDFLARED=1`)
 
 Disabled by default. Enable by setting `CLOUDFLARED=1` in `.env`.
