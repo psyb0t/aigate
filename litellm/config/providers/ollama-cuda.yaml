@@ -1,4 +1,4 @@
-- model_name: ollama-cuda-dolphin-mistral-7b
+- model_name: local-cuda-dolphin-mistral-7b
   litellm_params:
     model: ollama/dolphin-mistral:7b
     api_base: http://ollama-cuda:11434
@@ -6,7 +6,7 @@
       options:
         num_gpu: 99
 
-- model_name: ollama-cuda-qwen3-8b
+- model_name: local-cuda-qwen3-8b
   litellm_params:
     model: ollama/qwen3:8b
     api_base: http://ollama-cuda:11434
@@ -14,7 +14,7 @@
       options:
         num_gpu: 99
 
-- model_name: ollama-cuda-gemma3-12b
+- model_name: local-cuda-gemma3-12b
   litellm_params:
     model: ollama/gemma3:12b
     api_base: http://ollama-cuda:11434
@@ -22,7 +22,7 @@
       options:
         num_gpu: 99
 
-- model_name: ollama-cuda-qwen2.5-coder-7b
+- model_name: local-cuda-qwen2.5-coder-7b
   litellm_params:
     model: ollama/qwen2.5-coder:7b
     api_base: http://ollama-cuda:11434
@@ -30,7 +30,7 @@
       options:
         num_gpu: 99
 
-- model_name: ollama-cuda-llama3.1-8b
+- model_name: local-cuda-llama3.1-8b
   litellm_params:
     model: ollama/llama3.1:8b
     api_base: http://ollama-cuda:11434
@@ -38,7 +38,7 @@
       options:
         num_gpu: 99
 
-- model_name: ollama-cuda-gemma3-4b
+- model_name: local-cuda-gemma3-4b
   litellm_params:
     model: ollama/gemma3:4b
     api_base: http://ollama-cuda:11434
@@ -46,7 +46,7 @@
       options:
         num_gpu: 99
 
-- model_name: ollama-cuda-dolphin3
+- model_name: local-cuda-dolphin3
   litellm_params:
     model: ollama/dolphin3:latest
     api_base: http://ollama-cuda:11434
@@ -54,7 +54,7 @@
       options:
         num_gpu: 99
 
-- model_name: ollama-cuda-dolphin-phi
+- model_name: local-cuda-dolphin-phi
   litellm_params:
     model: ollama/dolphin-phi:latest
     api_base: http://ollama-cuda:11434

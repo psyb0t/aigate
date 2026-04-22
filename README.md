@@ -156,17 +156,17 @@ All local CPU models are last in fallback chains — used when cloud providers a
 
 | Model name | Description | RAM |
 | ---------- | ----------- | --- |
-| `ollama-cpu-llama3.2-3b` | General chat — smallest/fastest | ~2GB |
-| `ollama-cpu-qwen3-4b` | General chat — better quality, thinking mode | ~2.6GB |
-| `ollama-cpu-smollm2-1.7b` | General chat — absolute tiniest | ~1GB |
-| `ollama-cpu-qwen2.5-coder-1.5b` | Code — smallest | ~1GB |
-| `ollama-cpu-qwen2.5-coder-3b` | Code — better quality | ~2GB |
-| `ollama-cpu-phi3.5` | General chat (Microsoft) | ~2.2GB |
-| `ollama-cpu-gemma3-4b` | General chat + vision (Google Gemma 3) | ~2.6GB |
-| `ollama-cpu-dolphin-phi` | Uncensored assistant (Microsoft Phi) | ~1.6GB |
-| `ollama-cpu-nomic-embed` | Text embeddings — fastest, smallest (270MB, 512 token context) | ~270MB |
-| `ollama-cpu-bge-m3` | Text embeddings — long docs, multilingual (8192 token context) | ~570MB |
-| `ollama-cpu-qwen3-embed-0.6b` | Text embeddings — modern, efficient | ~500MB |
+| `local-cpu-llama3.2-3b` | General chat — smallest/fastest | ~2GB |
+| `local-cpu-qwen3-4b` | General chat — better quality, thinking mode | ~2.6GB |
+| `local-cpu-smollm2-1.7b` | General chat — absolute tiniest | ~1GB |
+| `local-cpu-qwen2.5-coder-1.5b` | Code — smallest | ~1GB |
+| `local-cpu-qwen2.5-coder-3b` | Code — better quality | ~2GB |
+| `local-cpu-phi3.5` | General chat (Microsoft) | ~2.2GB |
+| `local-cpu-gemma3-4b` | General chat + vision (Google Gemma 3) | ~2.6GB |
+| `local-cpu-dolphin-phi` | Uncensored assistant (Microsoft Phi) | ~1.6GB |
+| `local-cpu-nomic-embed` | Text embeddings — fastest, smallest (270MB, 512 token context) | ~270MB |
+| `local-cpu-bge-m3` | Text embeddings — long docs, multilingual (8192 token context) | ~570MB |
+| `local-cpu-qwen3-embed-0.6b` | Text embeddings — modern, efficient | ~500MB |
 
 ### Local models (Ollama, CUDA — `CUDA=1`)
 
@@ -174,14 +174,14 @@ CUDA models run with flash attention and quantized KV cache. A resource manager 
 
 | Model name | Description | VRAM |
 | ---------- | ----------- | ---- |
-| `ollama-cuda-qwen3-8b` | General chat — thinking mode | ~5GB |
-| `ollama-cuda-llama3.1-8b` | General chat | ~5GB |
-| `ollama-cuda-gemma3-4b` | General chat + vision | ~3GB |
-| `ollama-cuda-gemma3-12b` | General chat + vision — higher quality | ~8GB |
-| `ollama-cuda-qwen2.5-coder-7b` | Code | ~5GB |
-| `ollama-cuda-dolphin-mistral-7b` | Uncensored assistant | ~5GB |
-| `ollama-cuda-dolphin3` | Uncensored assistant (latest Dolphin) | ~5GB |
-| `ollama-cuda-dolphin-phi` | Uncensored assistant (tiny) | ~1.6GB |
+| `local-cuda-qwen3-8b` | General chat — thinking mode | ~5GB |
+| `local-cuda-llama3.1-8b` | General chat | ~5GB |
+| `local-cuda-gemma3-4b` | General chat + vision | ~3GB |
+| `local-cuda-gemma3-12b` | General chat + vision — higher quality | ~8GB |
+| `local-cuda-qwen2.5-coder-7b` | Code | ~5GB |
+| `local-cuda-dolphin-mistral-7b` | Uncensored assistant | ~5GB |
+| `local-cuda-dolphin3` | Uncensored assistant (latest Dolphin) | ~5GB |
+| `local-cuda-dolphin-phi` | Uncensored assistant (tiny) | ~1.6GB |
 
 ### Local transcription (Speaches, CPU — `SPEACHES=1`)
 
@@ -301,7 +301,7 @@ curl http://localhost:4000/chat/completions \
 curl http://localhost:4000/chat/completions \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model": "ollama-cpu-llama3.2-3b", "messages": [{"role": "user", "content": "hello"}]}'
+  -d '{"model": "local-cpu-llama3.2-3b", "messages": [{"role": "user", "content": "hello"}]}'
 
 # image generation
 curl http://localhost:4000/images/generations \
@@ -337,7 +337,7 @@ curl http://localhost:4000/audio/speech \
 curl http://localhost:4000/embeddings \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model": "ollama-cpu-nomic-embed", "input": "your text here"}'
+  -d '{"model": "local-cpu-nomic-embed", "input": "your text here"}'
 ```
 
 ### Async (via proxq)

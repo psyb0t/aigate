@@ -93,31 +93,31 @@ EXPECTED_MODELS=(
 # ollama models — only expected when OLLAMA=1
 if [ "${OLLAMA:-}" = "1" ]; then
     EXPECTED_MODELS+=(
-        "ollama-cpu-llama3.2-3b"
-        "ollama-cpu-qwen3-4b"
-        "ollama-cpu-smollm2-1.7b"
-        "ollama-cpu-qwen2.5-coder-1.5b"
-        "ollama-cpu-qwen2.5-coder-3b"
-        "ollama-cpu-phi3.5"
-        "ollama-cpu-gemma3-4b"
-        "ollama-cpu-nomic-embed"
-        "ollama-cpu-bge-m3"
-        "ollama-cpu-qwen3-embed-0.6b"
-        "ollama-cpu-dolphin-phi"
+        "local-cpu-llama3.2-3b"
+        "local-cpu-qwen3-4b"
+        "local-cpu-smollm2-1.7b"
+        "local-cpu-qwen2.5-coder-1.5b"
+        "local-cpu-qwen2.5-coder-3b"
+        "local-cpu-phi3.5"
+        "local-cpu-gemma3-4b"
+        "local-cpu-nomic-embed"
+        "local-cpu-bge-m3"
+        "local-cpu-qwen3-embed-0.6b"
+        "local-cpu-dolphin-phi"
     )
 fi
 
 # ollama-cuda models — only expected when CUDA=1
 if [ "${CUDA:-}" = "1" ]; then
     EXPECTED_MODELS+=(
-        "ollama-cuda-dolphin-mistral-7b"
-        "ollama-cuda-qwen3-8b"
-        "ollama-cuda-gemma3-12b"
-        "ollama-cuda-qwen2.5-coder-7b"
-        "ollama-cuda-llama3.1-8b"
-        "ollama-cuda-gemma3-4b"
-        "ollama-cuda-dolphin3"
-        "ollama-cuda-dolphin-phi"
+        "local-cuda-dolphin-mistral-7b"
+        "local-cuda-qwen3-8b"
+        "local-cuda-gemma3-12b"
+        "local-cuda-qwen2.5-coder-7b"
+        "local-cuda-llama3.1-8b"
+        "local-cuda-gemma3-4b"
+        "local-cuda-dolphin3"
+        "local-cuda-dolphin-phi"
         "local-qwen3-cuda-tts"
         "local-speaches-cuda-whisper-distil-large-v3"
         "local-speaches-cuda-parakeet-tdt-0.6b"
