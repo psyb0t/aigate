@@ -104,6 +104,9 @@ def active_mcp_servers(env):
         ("browser",       lambda e: is_flag(e, "BROWSER")),
         ("claudebox",     lambda e: is_flag(e, "CLAUDEBOX")),
         ("claudebox-zai", lambda e: is_flag(e, "CLAUDEBOX_ZAI")),
+        ("mcp",           lambda e: any(
+            is_flag(e, f) for f in ("HUGGINGFACE", "OPENAI", "SPEACHES", "CUDA")
+        )),
     ]
     return [name for name, check in checks if check(env)]
 

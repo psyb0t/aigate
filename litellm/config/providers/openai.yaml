@@ -22,23 +22,33 @@
   litellm_params:
     model: openai/dall-e-3
     api_key: os.environ/OPENAI_API_KEY
+  model_info:
+    mode: image_generation
 
 - model_name: openai-gpt-image-1
   litellm_params:
     model: openai/gpt-image-1
     api_key: os.environ/OPENAI_API_KEY
+  model_info:
+    mode: image_generation
 
 - model_name: openai-whisper
   litellm_params:
     model: openai/whisper-1
     api_key: os.environ/OPENAI_API_KEY
+  model_info:
+    mode: audio_transcription
 
 - model_name: openai-tts-1
   litellm_params:
     model: openai/tts-1
     api_key: os.environ/OPENAI_API_KEY
+  model_info:
+    mode: audio_speech
 
 - model_name: openai-tts-1-hd
   litellm_params:
     model: openai/tts-1-hd
     api_key: os.environ/OPENAI_API_KEY
+  model_info:
+    mode: audio_speech

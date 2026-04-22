@@ -526,6 +526,107 @@ services:
       - litellm-internal
       - litellm-public
 
+  # ── MCP tools (image generation + TTS, extensible) ─────────────────────────
+
+  mcp:
+    profiles: ["mcp"]
+    build: ./mcp
+    restart: unless-stopped
+    mem_limit: ${MCP_MEM_LIMIT:-256m}
+    memswap_limit: ${MCP_MEMSWAP_LIMIT:-512m}
+    cpus: ${MCP_CPUS:-0.5}
+    environment:
+      LITELLM_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      HF_TOKEN: ${HF_TOKEN:-}
+      HYBRIDS3_UPLOAD_KEY: ${HYBRIDS3_UPLOADS_KEY:-}
+      PUBLIC_BASE_URL: ${MCP_PUBLIC_BASE_URL:-https://aigate.51k.eu}
+      MCP_TOOLS_AUTH_TOKEN: ${MCP_TOOLS_AUTH_TOKEN:-lulz-4-security}
+    depends_on:
+      litellm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - litellm-internal
+      - litellm-public
+
+  # ── LibreChat (web UI for LLM interaction) ──────────────────────────────────
+
+  librechat-mongodb:
+    profiles: ["librechat"]
+    image: mongo:8.0.20
+    restart: unless-stopped
+    mem_limit: ${LIBRECHAT_MONGO_MEM_LIMIT:-512m}
+    memswap_limit: ${LIBRECHAT_MONGO_MEMSWAP_LIMIT:-1g}
+    cpus: ${LIBRECHAT_MONGO_CPUS:-0.5}
+    command: mongod --noauth
+    volumes:
+      - ${DATA_DIR_LIBRECHAT:-${DATA_DIR:-.data}/librechat}/mongodb:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.runCommand('ping').ok", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - litellm-internal
+
+  librechat:
+    profiles: ["librechat"]
+    image: ghcr.io/danny-avila/librechat:v0.8.4
+    restart: unless-stopped
+    mem_limit: ${LIBRECHAT_MEM_LIMIT:-512m}
+    memswap_limit: ${LIBRECHAT_MEMSWAP_LIMIT:-1g}
+    cpus: ${LIBRECHAT_CPUS:-1.0}
+    environment:
+      MONGO_URI: mongodb://librechat-mongodb:27017/librechat
+      DOMAIN_CLIENT: ${LIBRECHAT_DOMAIN_CLIENT:-http://librechat:3080/librechat}
+      DOMAIN_SERVER: ${LIBRECHAT_DOMAIN_SERVER:-http://librechat:3080/librechat}
+      TRUST_PROXY: "1"
+      NO_INDEX: "true"
+      DEBUG_LOGGING: ${LIBRECHAT_DEBUG_LOGGING:-true}
+      DEBUG_CONSOLE: ${LIBRECHAT_DEBUG_CONSOLE:-false}
+      ALLOW_EMAIL_LOGIN: ${LIBRECHAT_ALLOW_EMAIL_LOGIN:-true}
+      ALLOW_REGISTRATION: ${LIBRECHAT_ALLOW_REGISTRATION:-false}
+      ALLOW_SOCIAL_LOGIN: ${LIBRECHAT_ALLOW_SOCIAL_LOGIN:-false}
+      ALLOW_SOCIAL_REGISTRATION: "false"
+      ALLOW_UNVERIFIED_EMAIL_LOGIN: ${LIBRECHAT_ALLOW_UNVERIFIED_EMAIL_LOGIN:-true}
+      CREDS_KEY: ${LIBRECHAT_CREDS_KEY}
+      CREDS_IV: ${LIBRECHAT_CREDS_IV}
+      JWT_SECRET: ${LIBRECHAT_JWT_SECRET}
+      JWT_REFRESH_SECRET: ${LIBRECHAT_JWT_SECRET}
+      SEARCH: "false"
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      LIBRECHAT_TITLE_MODEL: ${LIBRECHAT_TITLE_MODEL:-groq-llama-3.3-70b}
+      CONFIG_PATH: /app/librechat.yaml
+    volumes:
+      - ./librechat/librechat.yaml:/app/librechat.yaml:ro
+      - ${DATA_DIR_LIBRECHAT:-${DATA_DIR:-.data}/librechat}/uploads:/app/client/public/images
+    depends_on:
+      librechat-mongodb:
+        condition: service_healthy
+      litellm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3080/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - litellm-internal
+
   # ── proxq (async job queue proxy for LiteLLM) ──────────────────────────────
 
   proxq:
@@ -678,6 +779,24 @@ configs:
               proxy_cache off;
           }
 
+          # LibreChat web UI (has its own email/password auth)
+          location /librechat/ {
+              limit_req zone=librechat burst=${RATELIMIT_LIBRECHAT_BURST:-100} nodelay;
+              proxy_pass http://librechat:3080/;
+              proxy_set_header Host $$http_host;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_http_version 1.1;
+              proxy_set_header Upgrade $$http_upgrade;
+              proxy_set_header Connection "upgrade";
+              proxy_read_timeout ${TIMEOUT_LIBRECHAT:-600s};
+              proxy_send_timeout ${TIMEOUT_LIBRECHAT:-600s};
+              proxy_buffering off;
+              proxy_cache off;
+              client_max_body_size ${LIBRECHAT_MAX_BODY_SIZE:-25m};
+          }
+
           # block root — don't expose LiteLLM swagger
           location = / {
               return 404;
@@ -769,6 +888,7 @@ configs:
       limit_req_zone $$binary_remote_addr zone=claudebox:10m rate=${RATELIMIT_CLAUDEBOX:-30r/m};
       limit_req_zone $$binary_remote_addr zone=browser:10m rate=${RATELIMIT_BROWSER:-30r/m};
       limit_req_zone $$binary_remote_addr zone=proxq:10m rate=${RATELIMIT_PROXQ:-120r/m};
+      limit_req_zone $$binary_remote_addr zone=librechat:10m rate=${RATELIMIT_LIBRECHAT:-500r/m};
 
   proxq_config:
     content: |

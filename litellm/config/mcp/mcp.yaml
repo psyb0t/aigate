@@ -1,0 +1,6 @@
+mcp_tools:
+  url: "http://mcp:8000/mcp"
+  transport: "http"
+  auth_type: "bearer_token"
+  auth_value: os.environ/MCP_TOOLS_AUTH_TOKEN
+  description: "Media generation — create images (FLUX, DALL-E, Stable Diffusion) and text-to-speech audio (Kokoro, Qwen3, OpenAI TTS). Tools: generate_image, generate_tts. Available tools depend on which providers are enabled."

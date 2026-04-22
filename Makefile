@@ -52,6 +52,29 @@ ifeq ($(strip $(SPEACHES)),1)
   _PROFILES += speaches
 endif
 
+# librechat: opt-in with LIBRECHAT=1
+ifeq ($(strip $(LIBRECHAT)),1)
+  _PROFILES += librechat
+endif
+
+# mcp: auto-enabled when any image or TTS provider is active
+_HAS_IMAGE_OR_TTS :=
+ifeq ($(strip $(HUGGINGFACE)),1)
+  _HAS_IMAGE_OR_TTS := 1
+endif
+ifeq ($(strip $(OPENAI)),1)
+  _HAS_IMAGE_OR_TTS := 1
+endif
+ifeq ($(strip $(SPEACHES)),1)
+  _HAS_IMAGE_OR_TTS := 1
+endif
+ifeq ($(strip $(CUDA)),1)
+  _HAS_IMAGE_OR_TTS := 1
+endif
+ifeq ($(_HAS_IMAGE_OR_TTS),1)
+  _PROFILES += mcp
+endif
+
 override COMPOSE_PROFILES := $(subst $(space),$(comma),$(strip $(_PROFILES)))
 export COMPOSE_PROFILES
 
@@ -93,7 +116,7 @@ run-bg:
 	docker compose up -d --build
 
 down:
-	COMPOSE_PROFILES=claudebox,claudebox-zai,cloudflared,hybrids3,browser,ollama,cuda,speaches \
+	COMPOSE_PROFILES=claudebox,claudebox-zai,cloudflared,hybrids3,browser,ollama,cuda,speaches,mcp,librechat \
 		docker compose down --remove-orphans
 
 restart: down run
@@ -129,6 +152,8 @@ help:
 	@echo "  ollama        set OLLAMA=1"
 	@echo "  cuda          set CUDA=1 (requires NVIDIA GPU + docker nvidia runtime)"
 	@echo "  speaches      set SPEACHES=1"
+	@echo "  librechat     set LIBRECHAT=1"
+	@echo "  mcp           (auto: any image/TTS provider enabled)"
 	@echo ""
 	@echo "Active profiles: $(if $(COMPOSE_PROFILES),$(COMPOSE_PROFILES),(none))"
 	@echo ""

@@ -1,0 +1,39 @@
+version: 1.2.1
+
+cache: true
+
+endpoints:
+  custom:
+    - name: "LiteLLM"
+      apiKey: "${LITELLM_MASTER_KEY}"
+      baseURL: "http://litellm:4000/v1"
+      models:
+        default: ["*"]
+        fetch: true
+      titleConvo: true
+      titleModel: "${LIBRECHAT_TITLE_MODEL}"
+      summarize: false
+      modelDisplayLabel: "LiteLLM"
+
+mcpSettings:
+  allowedDomains:
+    - "litellm"
+
+mcpServers:
+  aigate:
+    type: streamable-http
+    url: "http://litellm:4000/mcp/"
+    timeout: 120000
+    apiKey:
+      source: admin
+      key: "${LITELLM_MASTER_KEY}"
+      authorization_type: bearer
+
+interface:
+  endpointsMenu: true
+  modelSelect: true
+  parameters: true
+  presets: true
+
+registration:
+  socialLogins: []

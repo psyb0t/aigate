@@ -21,6 +21,7 @@ MCP_SERVER_TOOL_COUNTS=(
     "hybrids3|5"
     "claudebox-|3"
     "claudebox_zai-|3"
+    "mcp_tools-|1"
 )
 
 test_mcp_tools_loaded() {
@@ -37,8 +38,8 @@ print(len(tools))
 " 2>/dev/null)
     assert_not_empty "$total" "mcp tools count" || return 1
 
-    if [ "$total" -lt 15 ]; then
-        echo "  FAIL: expected at least 15 tools, got $total"
+    if [ "$total" -lt 17 ]; then
+        echo "  FAIL: expected at least 17 tools, got $total"
         return 1
     fi
     echo "  OK: $total total MCP tools loaded"
@@ -77,6 +78,8 @@ EXPECTED_MCP_TOOLS=(
     "claudebox-delete_file"
     "claudebox_zai-claude_run"
     "claudebox_zai-read_file"
+    "mcp_tools-generate_image"
+    "mcp_tools-generate_tts"
 )
 
 test_mcp_specific_tools() {
