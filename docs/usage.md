@@ -406,7 +406,7 @@ curl http://localhost:4000/chat/completions \
   }'
 ```
 
-Vision-capable models: `groq-llama-4-scout`, `hf-llama-4-scout`, `hf-qwen-vl-72b`, `hf-qwen3-vl-8b`, `hf-gemma-3-12b`, `mistral-small`, `anthropic-claude-opus-4`, `anthropic-claude-sonnet-4`, `anthropic-claude-haiku-4`, `openai-gpt-4o`, `openai-gpt-4o-mini`, `claudebox-opus`, `claudebox-sonnet`, `claudebox-haiku`, `local-cpu-gemma3-4b`, `local-cuda-gemma3-4b`, `local-cuda-gemma3-12b`.
+Vision-capable models: `groq-llama-4-scout`, `hf-llama-4-scout`, `hf-qwen-vl-72b`, `hf-qwen3-vl-8b`, `hf-gemma-3-12b`, `mistral-small`, `anthropic-claude-opus-4`, `anthropic-claude-sonnet-4`, `anthropic-claude-haiku-4`, `openai-gpt-4o`, `openai-gpt-4o-mini`, `claudebox-opus`, `claudebox-sonnet`, `claudebox-haiku`, `local-ollama-cpu-gemma3-4b`, `local-ollama-cuda-gemma3-4b`, `local-ollama-cuda-gemma3-12b`.
 
 ---
 

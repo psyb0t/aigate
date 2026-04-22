@@ -4,12 +4,12 @@ CUDA/CPU resource manager for LiteLLM proxy.
 Before each request, unloads competing model groups to free VRAM/RAM.
 
 Groups (CUDA):
-  cuda-llm : local-cuda-* models
+  cuda-llm : local-ollama-cuda-* models
   cuda-tts : local-qwen3-cuda-tts
   cuda-stt : local-speaches-cuda-*
 
 Groups (CPU):
-  cpu-llm : local-cpu-* models   (unload frees RAM)
+  cpu-llm : local-ollama-cpu-* models   (unload frees RAM)
   cpu-tts : local-speaches-kokoro-tts
   cpu-stt : local-speaches-whisper-*, local-speaches-parakeet-*
 
@@ -33,8 +33,8 @@ logger = logging.getLogger("litellm.proxy")
 # Model → group mapping
 # ---------------------------------------------------------------------------
 
-_CUDA_LLM_PREFIX = "local-cuda-"
-_CPU_LLM_PREFIX = "local-cpu-"
+_CUDA_LLM_PREFIX = "local-ollama-cuda-"
+_CPU_LLM_PREFIX = "local-ollama-cpu-"
 
 _CUDA_TTS = {"local-qwen3-cuda-tts"}
 _CUDA_STT = {"local-speaches-cuda-whisper-distil-large-v3", "local-speaches-cuda-parakeet-tdt-0.6b"}

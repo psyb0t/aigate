@@ -37,9 +37,9 @@
       "or-gpt-oss-20b",
       "hf-llama-3.1-8b",
       "openai-gpt-4o-mini",
-      "local-cpu-llama3.2-3b",
-      "local-cpu-smollm2-1.7b",
-      "local-cpu-phi3.5"
+      "local-ollama-cpu-llama3.2-3b",
+      "local-ollama-cpu-smollm2-1.7b",
+      "local-ollama-cpu-phi3.5"
     ]
   },
   {
@@ -81,9 +81,9 @@
       "hf-llama-3.1-8b",
       "anthropic-claude-haiku-4",
       "openai-gpt-4o-mini",
-      "local-cpu-llama3.2-3b",
-      "local-cpu-smollm2-1.7b",
-      "local-cpu-phi3.5"
+      "local-ollama-cpu-llama3.2-3b",
+      "local-ollama-cpu-smollm2-1.7b",
+      "local-ollama-cpu-phi3.5"
     ]
   },
   {
@@ -179,9 +179,9 @@
       "hf-llama-3.1-8b",
       "claudebox-haiku",
       "openai-gpt-4o-mini",
-      "local-cpu-llama3.2-3b",
-      "local-cpu-smollm2-1.7b",
-      "local-cpu-phi3.5"
+      "local-ollama-cpu-llama3.2-3b",
+      "local-ollama-cpu-smollm2-1.7b",
+      "local-ollama-cpu-phi3.5"
     ]
   },
   {
@@ -194,9 +194,9 @@
       "hf-llama-3.1-8b",
       "claudebox-haiku",
       "openai-gpt-4o-mini",
-      "local-cpu-llama3.2-3b",
-      "local-cpu-smollm2-1.7b",
-      "local-cpu-phi3.5"
+      "local-ollama-cpu-llama3.2-3b",
+      "local-ollama-cpu-smollm2-1.7b",
+      "local-ollama-cpu-phi3.5"
     ]
   },
   {
@@ -218,7 +218,7 @@
       "or-hermes-3-405b",
       "claudebox-sonnet",
       "openai-gpt-4o",
-      "local-cpu-gemma3-4b"
+      "local-ollama-cpu-gemma3-4b"
     ]
   },
   {
@@ -312,7 +312,7 @@
       "hf-qwen-vl-72b",
       "claudebox-sonnet",
       "openai-gpt-4o",
-      "local-cpu-gemma3-4b"
+      "local-ollama-cpu-gemma3-4b"
     ]
   },
   {
@@ -483,7 +483,7 @@
       "claudebox-sonnet",
       "claudebox-glm-4.7",
       "openai-gpt-4o",
-      "local-cpu-qwen2.5-coder-1.5b"
+      "local-ollama-cpu-qwen2.5-coder-1.5b"
     ]
   },
   {
@@ -540,7 +540,7 @@
       "claudebox-sonnet",
       "or-qwen3-coder",
       "openai-gpt-4o",
-      "local-cpu-qwen2.5-coder-1.5b"
+      "local-ollama-cpu-qwen2.5-coder-1.5b"
     ]
   },
   {
@@ -550,7 +550,7 @@
       "claudebox-sonnet",
       "or-qwen3-coder",
       "openai-gpt-4o",
-      "local-cpu-qwen2.5-coder-1.5b"
+      "local-ollama-cpu-qwen2.5-coder-1.5b"
     ]
   },
   {
@@ -605,60 +605,60 @@
     ]
   },
   {
-    "local-cuda-dolphin-mistral-7b": [
-      "local-cuda-llama3.1-8b",
-      "local-cuda-qwen3-8b",
-      "local-cpu-llama3.2-3b"
+    "local-ollama-cuda-dolphin-mistral-7b": [
+      "local-ollama-cuda-llama3.1-8b",
+      "local-ollama-cuda-qwen3-8b",
+      "local-ollama-cpu-llama3.2-3b"
     ]
   },
   {
-    "local-cuda-qwen3-8b": [
-      "local-cuda-llama3.1-8b",
-      "local-cuda-dolphin-mistral-7b",
-      "local-cpu-qwen3-4b"
+    "local-ollama-cuda-qwen3-8b": [
+      "local-ollama-cuda-llama3.1-8b",
+      "local-ollama-cuda-dolphin-mistral-7b",
+      "local-ollama-cpu-qwen3-4b"
     ]
   },
   {
-    "local-cuda-gemma3-12b": [
-      "local-cuda-qwen3-8b",
-      "local-cuda-llama3.1-8b",
-      "local-cpu-gemma3-4b"
+    "local-ollama-cuda-gemma3-12b": [
+      "local-ollama-cuda-qwen3-8b",
+      "local-ollama-cuda-llama3.1-8b",
+      "local-ollama-cpu-gemma3-4b"
     ]
   },
   {
-    "local-cuda-qwen2.5-coder-7b": [
-      "local-cuda-qwen3-8b",
-      "local-cpu-qwen2.5-coder-3b"
+    "local-ollama-cuda-qwen2.5-coder-7b": [
+      "local-ollama-cuda-qwen3-8b",
+      "local-ollama-cpu-qwen2.5-coder-3b"
     ]
   },
   {
-    "local-cuda-llama3.1-8b": [
-      "local-cuda-qwen3-8b",
-      "local-cuda-dolphin-mistral-7b",
-      "local-cpu-llama3.2-3b"
+    "local-ollama-cuda-llama3.1-8b": [
+      "local-ollama-cuda-qwen3-8b",
+      "local-ollama-cuda-dolphin-mistral-7b",
+      "local-ollama-cpu-llama3.2-3b"
     ]
   },
   {
-    "local-cuda-gemma3-4b": [
-      "local-cuda-gemma3-12b",
-      "local-cpu-gemma3-4b"
+    "local-ollama-cuda-gemma3-4b": [
+      "local-ollama-cuda-gemma3-12b",
+      "local-ollama-cpu-gemma3-4b"
     ]
   },
   {
-    "local-cuda-dolphin3": [
-      "local-cuda-dolphin-mistral-7b",
-      "local-cpu-dolphin-phi"
+    "local-ollama-cuda-dolphin3": [
+      "local-ollama-cuda-dolphin-mistral-7b",
+      "local-ollama-cpu-dolphin-phi"
     ]
   },
   {
-    "local-cpu-dolphin-phi": [
-      "local-cpu-llama3.2-3b"
+    "local-ollama-cpu-dolphin-phi": [
+      "local-ollama-cpu-llama3.2-3b"
     ]
   },
   {
-    "local-cuda-dolphin-phi": [
-      "local-cuda-dolphin3",
-      "local-cpu-dolphin-phi"
+    "local-ollama-cuda-dolphin-phi": [
+      "local-ollama-cuda-dolphin3",
+      "local-ollama-cpu-dolphin-phi"
     ]
   }
 ]
