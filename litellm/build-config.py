@@ -59,6 +59,10 @@ def load_env(path):
             value = rest.strip()
             if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
                 value = value[1:-1]
+            else:
+                comment_pos = value.find("#")
+                if comment_pos > 0:
+                    value = value[:comment_pos].rstrip()
             env[key] = value
     return env
 
