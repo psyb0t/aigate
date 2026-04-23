@@ -1,6 +1,6 @@
 # aigate
 
-A self-hosted AI platform. 28 services, 99 models, 20 tools, one `docker-compose up`.
+A self-hosted AI platform. 27 services, 99 models, 20 tools, one `docker-compose up`.
 
 Everything an AI-powered workflow needs — inference, tool use, browser automation, image generation, speech synthesis, transcription, object storage, agentic code execution, an async job queue, and a web UI — behind a single OpenAI-compatible endpoint at `http://localhost:4000`. Point any existing client at it and it works.
 
@@ -27,7 +27,7 @@ LibreChat at `/librechat/` — pre-configured with all models and MCP tools, con
 
 ### Infrastructure
 
-28 containers. Nginx reverse proxy with per-endpoint rate limiting. PostgreSQL + MongoDB for persistence. Two Redis instances (cache + browser session sync). Async job queue for long-running inference. Cloudflare Tunnel for public exposure with zero open ports.
+27 containers. Nginx reverse proxy with per-endpoint rate limiting. PostgreSQL + MongoDB for persistence. Two Redis instances (cache + browser session sync). Async job queue for long-running inference. Cloudflare Tunnel for public exposure with zero open ports.
 
 ### Security
 

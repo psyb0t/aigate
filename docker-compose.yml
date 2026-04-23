@@ -413,33 +413,59 @@ services:
       - litellm-public
 
   ollama-pull:
-    profiles: ["ollama"]
+    profiles: ["ollama", "cuda"]
     image: ollama/ollama:0.20.7
     restart: on-failure
     mem_limit: ${OLLAMA_PULL_MEM_LIMIT:-512m}
     memswap_limit: ${OLLAMA_PULL_MEMSWAP_LIMIT:-1g}
     cpus: ${OLLAMA_PULL_CPUS:-0.5}
-    network_mode: "service:ollama"
     entrypoint: >
       sh -c '
-        until ollama list > /dev/null 2>&1; do sleep 2; done;
         pull() { for i in 1 2 3 4 5; do ollama pull "$$1" && return 0; sleep 5; done; return 1; };
-        pull nomic-embed-text &&
-        pull bge-m3 &&
-        pull qwen3-embedding:0.6b &&
-        pull llama3.2:3b &&
-        pull qwen3:4b &&
-        pull smollm2:1.7b &&
-        pull qwen2.5-coder:1.5b &&
-        pull qwen2.5-coder:3b &&
-        pull phi3.5 &&
-        pull gemma3:4b &&
-        pull dolphin-phi:latest
+
+        if [ "$$PULL_CPU" = "1" ]; then
+          until OLLAMA_HOST=http://ollama:11434 ollama list > /dev/null 2>&1; do sleep 2; done;
+          export OLLAMA_HOST=http://ollama:11434;
+          pull nomic-embed-text &&
+          pull bge-m3 &&
+          pull qwen3-embedding:0.6b &&
+          pull llama3.2:3b &&
+          pull qwen3:4b &&
+          pull smollm2:1.7b &&
+          pull qwen2.5-coder:1.5b &&
+          pull qwen2.5-coder:3b &&
+          pull phi3.5 &&
+          pull gemma3:4b &&
+          pull dolphin-phi:latest;
+        fi;
+
+        if [ "$$PULL_CUDA" = "1" ]; then
+          until OLLAMA_HOST=http://ollama-cuda:11434 ollama list > /dev/null 2>&1; do sleep 2; done;
+          export OLLAMA_HOST=http://ollama-cuda:11434;
+          pull llama3.1:8b &&
+          pull dolphin-mistral:7b &&
+          pull qwen3:8b &&
+          pull gemma3:12b &&
+          pull qwen2.5-coder:7b &&
+          pull dolphin3:latest &&
+          pull gemma3:4b &&
+          pull dolphin-phi:latest &&
+          pull nomic-embed-text &&
+          pull bge-m3 &&
+          pull qwen3-embedding:0.6b &&
+          pull llama3.2:3b &&
+          pull qwen3:4b &&
+          pull smollm2:1.7b &&
+          pull qwen2.5-coder:1.5b &&
+          pull qwen2.5-coder:3b &&
+          pull phi3.5;
+        fi
       '
     environment:
-      - OLLAMA_HOST=http://localhost:11434
-    depends_on:
-      - ollama
+      PULL_CPU: "${OLLAMA:-0}"
+      PULL_CUDA: "${CUDA:-0}"
+    networks:
+      - litellm-public
 
   # ── Ollama CUDA (NVIDIA, local inference) ────────────────────────────────────
 
@@ -467,30 +493,6 @@ services:
     networks:
       - litellm-internal
       - litellm-public
-
-  ollama-cuda-pull:
-    profiles: ["cuda"]
-    image: ollama/ollama:0.20.7
-    restart: on-failure
-    mem_limit: ${OLLAMA_CUDA_PULL_MEM_LIMIT:-512m}
-    memswap_limit: ${OLLAMA_CUDA_PULL_MEMSWAP_LIMIT:-1g}
-    cpus: ${OLLAMA_CUDA_PULL_CPUS:-0.5}
-    network_mode: "service:ollama-cuda"
-    entrypoint: >
-      sh -c '
-        until ollama list > /dev/null 2>&1; do sleep 2; done;
-        pull() { for i in 1 2 3 4 5; do ollama pull "$$1" && return 0; sleep 5; done; return 1; };
-        pull llama3.1:8b &&
-        pull dolphin-mistral:7b &&
-        pull qwen3:8b &&
-        pull gemma3:12b &&
-        pull qwen2.5-coder:7b &&
-        pull dolphin3:latest
-      '
-    environment:
-      - OLLAMA_HOST=http://localhost:11434
-    depends_on:
-      - ollama-cuda
 
   # ── sd.cpp (local image generation — FLUX.1-schnell) ────────────────────────
 

@@ -149,7 +149,6 @@ sdcpp_pull_raw=$(       raw_mem  1  128 )
 # CUDA — models live in VRAM; these cover process RAM, KV cache, audio buffers
 sdcpp_cuda_raw=$(       raw_mem 15  512 )
 ollama_cuda_raw=$(      raw_mem  6  256 )
-ollama_cuda_pull_raw=$( raw_mem  2  128 )
 speaches_cuda_raw=$(    raw_mem  4  256 )
 qwen3_cuda_tts_raw=$(   raw_mem  4  512 )
 
@@ -177,7 +176,6 @@ sdcpp_cpu=$(           cpu 40  2 )
 sdcpp_pull_cpu=$(      cpu  2  1 )
 sdcpp_cuda_cpu=$(      cpu 40  2 )
 ollama_cuda_cpu=$(     cpu 30  2 )
-ollama_cuda_pull_cpu=$(cpu  5  1 )
 speaches_cuda_cpu=$(   cpu 20  2 )
 qwen3_cuda_tts_cpu=$(  cpu 20  2 )
 
@@ -250,7 +248,6 @@ sdcpp_pull_mem=$(       scale_mem $sdcpp_pull_raw       128 $scale ); sdcpp_pull
 # CUDA: each gets its full scaled allocation (must handle being the active service)
 sdcpp_cuda_mem=$(       scale_mem $sdcpp_cuda_raw       512 $scale ); sdcpp_cuda_swap=$(       _swap $sdcpp_cuda_mem )
 ollama_cuda_mem=$(      scale_mem $ollama_cuda_raw      256 $scale ); ollama_cuda_swap=$(      _swap $ollama_cuda_mem )
-ollama_cuda_pull_mem=$( scale_mem $ollama_cuda_pull_raw 128 $scale ); ollama_cuda_pull_swap=$( _swap $ollama_cuda_pull_mem )
 speaches_cuda_mem=$(    scale_mem $speaches_cuda_raw    256 $scale ); speaches_cuda_swap=$(    _swap $speaches_cuda_mem )
 qwen3_cuda_tts_mem=$(   scale_mem $qwen3_cuda_tts_raw   512 $scale ); qwen3_cuda_tts_swap=$(   _swap $qwen3_cuda_tts_mem )
 
@@ -294,7 +291,6 @@ if [ "$flag_cuda" = "1" ]; then
     [ "$flag_sdcpp" = "1" ] && row "sdcpp-cuda"             $sdcpp_cuda_mem        $sdcpp_cuda_swap        $sdcpp_cuda_cpu
     [ "$flag_sdcpp" = "1" ] && row "sdcpp-pull (one-shot)"  $sdcpp_pull_mem        $sdcpp_pull_swap        $sdcpp_pull_cpu
     row "ollama-cuda"                   $ollama_cuda_mem       $ollama_cuda_swap       $ollama_cuda_cpu
-    row "ollama-cuda-pull (one-shot)"   $ollama_cuda_pull_mem  $ollama_cuda_pull_swap  $ollama_cuda_pull_cpu
     row "speaches-cuda"                 $speaches_cuda_mem     $speaches_cuda_swap     $speaches_cuda_cpu
     row "qwen3-cuda-tts"                $qwen3_cuda_tts_mem    $qwen3_cuda_tts_swap    $qwen3_cuda_tts_cpu
 fi
@@ -417,10 +413,6 @@ SDCPP_CUDA_CPUS=${sdcpp_cuda_cpu}
 OLLAMA_CUDA_MEM_LIMIT=$(fmt $ollama_cuda_mem)
 OLLAMA_CUDA_MEMSWAP_LIMIT=$(fmt $ollama_cuda_swap)
 OLLAMA_CUDA_CPUS=${ollama_cuda_cpu}
-
-OLLAMA_CUDA_PULL_MEM_LIMIT=$(fmt $ollama_cuda_pull_mem)
-OLLAMA_CUDA_PULL_MEMSWAP_LIMIT=$(fmt $ollama_cuda_pull_swap)
-OLLAMA_CUDA_PULL_CPUS=${ollama_cuda_pull_cpu}
 
 SPEACHES_CUDA_MEM_LIMIT=$(fmt $speaches_cuda_mem)
 SPEACHES_CUDA_MEMSWAP_LIMIT=$(fmt $speaches_cuda_swap)
