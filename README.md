@@ -175,7 +175,7 @@ All local CPU models are last in fallback chains — used when cloud providers a
 
 ### Local models (Ollama, CUDA — `CUDA=1`)
 
-CUDA models run with flash attention and quantized KV cache. A resource manager enforces mutual exclusion per hardware — an `asyncio.Semaphore(1)` ensures only one CUDA job runs at a time across all groups (LLM, image gen, TTS, STT). Before each request, competing services are unloaded to free VRAM. The same logic applies on CPU. This prevents GPU OOM when e.g. an image generation request arrives while an LLM model is loaded.
+CUDA models run with flash attention and quantized KV cache. See [Resource management](#resource-management) below for how VRAM is shared across services.
 
 | Model name | Description | VRAM |
 | ---------- | ----------- | ---- |
@@ -231,9 +231,25 @@ CUDA models run with flash attention and quantized KV cache. A resource manager 
 | `local-sdcpp-cuda-flux-schnell` | FLUX Schnell — best quality, largest (~7GB VRAM) |
 | `local-sdcpp-cuda-juggernaut-xi` | Juggernaut XI — photorealistic SDXL fine-tune (~2.5GB VRAM) |
 
-Models auto-download on first use and cache in `.data/sdcpp/models/`. Idle timeout auto-unloads after 5 minutes (configurable via `SDCPP_IDLE_TIMEOUT` / `SDCPP_CUDA_IDLE_TIMEOUT`).
+Models auto-download on first use and cache in `.data/sdcpp/models/`.
 
 → [Full provider and model list](docs/providers.md)
+
+### Resource management
+
+Local services share limited hardware — a single GPU can't run an LLM, an image generator, and a TTS model simultaneously. The platform handles this automatically so you never have to think about it.
+
+**Automatic unloading** — every local service unloads idle models after a configurable timeout. Ollama unloads after 5 minutes by default. sd.cpp unloads after 5 minutes (`SDCPP_IDLE_TIMEOUT` / `SDCPP_CUDA_IDLE_TIMEOUT`). Speaches and Qwen3-TTS unload on demand. This means VRAM and RAM are only held while a model is actively serving or within its idle window.
+
+**Hardware semaphores** — a LiteLLM callback (`resource_manager.py`) enforces mutual exclusion per hardware. An `asyncio.Semaphore(1)` ensures only one CUDA job runs at a time across all groups (LLM, image gen, TTS, STT). The same applies on CPU. If a CUDA image generation request arrives while a CUDA LLM model is loaded, the request waits for the semaphore, then the resource manager unloads the LLM before the image generation proceeds. This prevents GPU OOM without any manual intervention.
+
+**Competing-group unload** — before each local request, all other groups on the same hardware are told to free resources. For example, a `local-sdcpp-cuda-flux-schnell` request will unload ollama-cuda models, speaches-cuda STT models, and qwen3-cuda-tts before starting. Each service has its own unload mechanism: Ollama uses `keep_alive: 0`, sd.cpp uses `/sdcpp/v1/unload`, Speaches uses `DELETE /api/ps/{model}`, and Qwen3-TTS uses `/unload`.
+
+**Auto-load on demand** — models load automatically when needed. Send a request to any model and its service loads it on the fly. No pre-loading, no manual model management. The sd.cpp wrapper accepts `/v1/images/generations` requests even when no model is loaded — it starts the sd-server subprocess with the right model automatically.
+
+**Non-blocking rejection** — the sd.cpp wrapper uses `TryLock` instead of blocking. If a generation or model swap is already in progress, new requests get an immediate 503 instead of queuing indefinitely. The resource manager semaphore handles scheduling at a higher level — requests wait at the LiteLLM layer, not inside individual services.
+
+The net effect: you can freely mix LLM chat, image generation, TTS, and STT requests across local services. The platform queues, unloads, loads, and routes automatically. The only constraint is throughput — one local job per hardware at a time.
 
 ## Setup
 
@@ -289,7 +305,7 @@ Reads your system's RAM, swap, and CPU core count and writes a `.env.limits` fil
 
 Allocations are **proportional to your enabled services** — enabling more services means each gets a smaller slice. The script reads your `.env` flags (`CUDA`, `SPEACHES`, `OLLAMA`, `BROWSER`, etc.) and only counts active services toward the RAM budget. Re-run it any time you enable or disable a service, move to a different server, or change your hardware.
 
-CUDA services (`ollama-cuda`, `speaches-cuda`, `qwen3-cuda-tts`) are **resource-manager-aware**: only one has models loaded at a time, so the budget counts the largest of the three plus small idle overhead for the others — not all three at full allocation.
+CUDA services (`ollama-cuda`, `speaches-cuda`, `qwen3-cuda-tts`, `sdcpp-cuda`) are [resource-manager-aware](#resource-management) — only one has models loaded at a time, so the budget counts the largest plus small idle overhead for the others.
 
 Set `MAXUSE` to cap the entire stack to a percentage of your machine's resources — useful when you're sharing the server with other workloads:
 
