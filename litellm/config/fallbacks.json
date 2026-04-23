@@ -554,13 +554,6 @@
     ]
   },
   {
-    "voxtral-small": [
-      "groq-whisper-large-v3-turbo",
-      "groq-whisper-large-v3",
-      "openai-whisper"
-    ]
-  },
-  {
     "cohere-command-a": [
       "mistral-large",
       "cerebras-qwen3-235b",
@@ -662,17 +655,299 @@
     ]
   },
   {
+    "local-ollama-cpu-llama3.2-3b": [
+      "local-ollama-cpu-smollm2-1.7b",
+      "local-ollama-cpu-phi3.5",
+      "local-ollama-cpu-qwen3-4b"
+    ]
+  },
+  {
+    "local-ollama-cpu-qwen3-4b": [
+      "local-ollama-cpu-llama3.2-3b",
+      "local-ollama-cpu-phi3.5",
+      "local-ollama-cpu-gemma3-4b"
+    ]
+  },
+  {
+    "local-ollama-cpu-smollm2-1.7b": [
+      "local-ollama-cpu-llama3.2-3b",
+      "local-ollama-cpu-phi3.5"
+    ]
+  },
+  {
+    "local-ollama-cpu-phi3.5": [
+      "local-ollama-cpu-llama3.2-3b",
+      "local-ollama-cpu-smollm2-1.7b",
+      "local-ollama-cpu-qwen3-4b"
+    ]
+  },
+  {
+    "local-ollama-cpu-gemma3-4b": [
+      "local-ollama-cpu-qwen3-4b",
+      "local-ollama-cpu-llama3.2-3b"
+    ]
+  },
+  {
+    "local-ollama-cpu-qwen2.5-coder-1.5b": [
+      "local-ollama-cpu-qwen2.5-coder-3b",
+      "local-ollama-cpu-qwen3-4b"
+    ]
+  },
+  {
+    "local-ollama-cpu-qwen2.5-coder-3b": [
+      "local-ollama-cpu-qwen2.5-coder-1.5b",
+      "local-ollama-cpu-qwen3-4b"
+    ]
+  },
+  {
+    "local-ollama-cpu-nomic-embed": [
+      "local-ollama-cpu-bge-m3",
+      "local-ollama-cpu-qwen3-embed-0.6b",
+      "cohere-embed",
+      "mistral-embed"
+    ]
+  },
+  {
+    "local-ollama-cpu-bge-m3": [
+      "local-ollama-cpu-nomic-embed",
+      "local-ollama-cpu-qwen3-embed-0.6b",
+      "cohere-embed",
+      "mistral-embed"
+    ]
+  },
+  {
+    "local-ollama-cpu-qwen3-embed-0.6b": [
+      "local-ollama-cpu-nomic-embed",
+      "local-ollama-cpu-bge-m3",
+      "cohere-embed",
+      "mistral-embed"
+    ]
+  },
+  {
     "local-sdcpp-cuda-flux-schnell": [
-      "local-sdcpp-cpu-flux-schnell",
+      "local-sdcpp-cuda-sdxl-lightning",
+      "local-sdcpp-cuda-juggernaut-xi",
       "hf-flux-schnell",
       "openai-dall-e-3"
     ]
   },
   {
-    "local-sdcpp-cpu-flux-schnell": [
+    "local-sdcpp-cuda-sdxl-lightning": [
+      "local-sdcpp-cuda-flux-schnell",
+      "local-sdcpp-cuda-sdxl-turbo",
+      "hf-flux-schnell",
+      "openai-dall-e-3"
+    ]
+  },
+  {
+    "local-sdcpp-cuda-sdxl-turbo": [
+      "local-sdcpp-cuda-sdxl-lightning",
+      "local-sdcpp-cuda-sd-turbo",
+      "local-sdcpp-cpu-sdxl-turbo",
+      "hf-flux-schnell",
+      "openai-dall-e-3"
+    ]
+  },
+  {
+    "local-sdcpp-cuda-sd-turbo": [
+      "local-sdcpp-cuda-sdxl-turbo",
+      "local-sdcpp-cuda-sdxl-lightning",
+      "local-sdcpp-cpu-sd-turbo",
+      "hf-flux-schnell",
+      "openai-dall-e-3"
+    ]
+  },
+  {
+    "local-sdcpp-cuda-juggernaut-xi": [
+      "local-sdcpp-cuda-sdxl-lightning",
       "local-sdcpp-cuda-flux-schnell",
       "hf-flux-schnell",
       "openai-dall-e-3"
     ]
+  },
+  {
+    "local-sdcpp-cpu-sd-turbo": [
+      "local-sdcpp-cpu-sdxl-turbo",
+      "local-sdcpp-cuda-sd-turbo",
+      "hf-flux-schnell",
+      "openai-dall-e-3"
+    ]
+  },
+  {
+    "local-sdcpp-cpu-sdxl-turbo": [
+      "local-sdcpp-cpu-sd-turbo",
+      "local-sdcpp-cuda-sdxl-turbo",
+      "hf-flux-schnell",
+      "openai-dall-e-3"
+    ]
+  },
+  {
+    "local-speaches-whisper-distil-large-v3": [
+      "local-speaches-parakeet-tdt-0.6b",
+      "local-speaches-cuda-whisper-distil-large-v3",
+      "groq-whisper-large-v3-turbo",
+      "groq-whisper-large-v3",
+      "openai-whisper"
+    ]
+  },
+  {
+    "local-speaches-parakeet-tdt-0.6b": [
+      "local-speaches-whisper-distil-large-v3",
+      "local-speaches-cuda-parakeet-tdt-0.6b",
+      "groq-whisper-large-v3-turbo",
+      "groq-whisper-large-v3",
+      "openai-whisper"
+    ]
+  },
+  {
+    "local-speaches-cuda-whisper-distil-large-v3": [
+      "local-speaches-cuda-parakeet-tdt-0.6b",
+      "local-speaches-whisper-distil-large-v3",
+      "groq-whisper-large-v3-turbo",
+      "groq-whisper-large-v3",
+      "openai-whisper"
+    ]
+  },
+  {
+    "local-speaches-cuda-parakeet-tdt-0.6b": [
+      "local-speaches-cuda-whisper-distil-large-v3",
+      "local-speaches-parakeet-tdt-0.6b",
+      "groq-whisper-large-v3-turbo",
+      "groq-whisper-large-v3",
+      "openai-whisper"
+    ]
+  },
+  {
+    "local-speaches-kokoro-tts": [
+      "local-qwen3-cuda-tts",
+      "openai-tts-1",
+      "openai-tts-1-hd"
+    ]
+  },
+  {
+    "local-qwen3-cuda-tts": [
+      "local-speaches-kokoro-tts",
+      "openai-tts-1",
+      "openai-tts-1-hd"
+    ]
+  },
+  {
+    "voxtral-small": [
+      "groq-whisper-large-v3-turbo",
+      "groq-whisper-large-v3",
+      "local-speaches-whisper-distil-large-v3",
+      "openai-whisper"
+    ]
+  },
+  {
+    "groq-whisper-large-v3": [
+      "groq-whisper-large-v3-turbo",
+      "voxtral-small",
+      "local-speaches-whisper-distil-large-v3",
+      "openai-whisper"
+    ]
+  },
+  {
+    "groq-whisper-large-v3-turbo": [
+      "groq-whisper-large-v3",
+      "voxtral-small",
+      "local-speaches-whisper-distil-large-v3",
+      "openai-whisper"
+    ]
+  },
+  {
+    "openai-whisper": [
+      "groq-whisper-large-v3-turbo",
+      "groq-whisper-large-v3",
+      "voxtral-small",
+      "local-speaches-whisper-distil-large-v3"
+    ]
+  },
+  {
+    "openai-tts-1": [
+      "openai-tts-1-hd",
+      "local-speaches-kokoro-tts",
+      "local-qwen3-cuda-tts"
+    ]
+  },
+  {
+    "openai-tts-1-hd": [
+      "openai-tts-1",
+      "local-speaches-kokoro-tts",
+      "local-qwen3-cuda-tts"
+    ]
+  },
+  {
+    "openai-gpt-4o": [
+      "anthropic-claude-sonnet-4",
+      "claudebox-sonnet",
+      "mistral-large",
+      "cerebras-qwen3-235b"
+    ]
+  },
+  {
+    "openai-gpt-4o-mini": [
+      "anthropic-claude-haiku-4",
+      "claudebox-haiku",
+      "ministral-8b",
+      "cerebras-llama-3.1-8b"
+    ]
+  },
+  {
+    "openai-o3": [
+      "openai-gpt-4o",
+      "anthropic-claude-opus-4",
+      "claudebox-opus",
+      "cerebras-qwen3-235b"
+    ]
+  },
+  {
+    "openai-o3-mini": [
+      "openai-gpt-4o-mini",
+      "anthropic-claude-haiku-4",
+      "claudebox-haiku",
+      "cerebras-llama-3.1-8b"
+    ]
+  },
+  {
+    "openai-dall-e-3": [
+      "openai-gpt-image-1",
+      "hf-flux-schnell",
+      "local-sdcpp-cuda-flux-schnell",
+      "local-sdcpp-cpu-sd-turbo"
+    ]
+  },
+  {
+    "openai-gpt-image-1": [
+      "openai-dall-e-3",
+      "hf-flux-schnell",
+      "local-sdcpp-cuda-flux-schnell",
+      "local-sdcpp-cpu-sd-turbo"
+    ]
+  },
+  {
+    "hf-flux-schnell": [
+      "local-sdcpp-cuda-flux-schnell",
+      "local-sdcpp-cpu-sd-turbo",
+      "openai-dall-e-3",
+      "openai-gpt-image-1"
+    ]
+  },
+  {
+    "cohere-embed": [
+      "mistral-embed",
+      "local-ollama-cpu-nomic-embed",
+      "local-ollama-cpu-bge-m3"
+    ]
+  },
+  {
+    "mistral-embed": [
+      "cohere-embed",
+      "local-ollama-cpu-nomic-embed",
+      "local-ollama-cpu-bge-m3"
+    ]
+  },
+  {
+    "cohere-rerank": []
   }
 ]

@@ -8,6 +8,7 @@
 | Embeddings             | `POST /embeddings`                            | `Bearer $LITELLM_MASTER_KEY` |
 | Image generation       | `POST /images/generations`                    | `Bearer $LITELLM_MASTER_KEY` |
 | Audio transcription    | `POST /audio/transcriptions`                  | `Bearer $LITELLM_MASTER_KEY` |
+| Text-to-speech         | `POST /audio/speech`                           | `Bearer $LITELLM_MASTER_KEY` |
 | Models list            | `GET /models`                                 | `Bearer $LITELLM_MASTER_KEY` |
 | Health check           | `GET /health/liveliness`                      | none                    |
 | MCP server (all tools) | `POST /mcp/`                                  | `Bearer $LITELLM_MASTER_KEY` |
@@ -325,18 +326,21 @@ Local image generation via [stable-diffusion.cpp](https://github.com/leejet/stab
 | -------- | ------- | ----------- |
 | `SDCPP_IDLE_TIMEOUT` | `5m` | CPU idle timeout before auto-unload |
 | `SDCPP_CUDA_IDLE_TIMEOUT` | `5m` | CUDA idle timeout before auto-unload |
-| `SDCPP_MEM_LIMIT` | `4g` | CPU container memory limit |
-| `SDCPP_MEMSWAP_LIMIT` | `8g` | CPU container memory + swap limit |
-| `SDCPP_CPUS` | `4` | CPU container CPU limit |
-| `SDCPP_CUDA_MEM_LIMIT` | `4g` | CUDA container memory limit |
-| `SDCPP_CUDA_MEMSWAP_LIMIT` | `8g` | CUDA container memory + swap limit |
-| `SDCPP_CUDA_CPUS` | `4` | CUDA container CPU limit |
+| `SDCPP_MEM_LIMIT` | `12g` | CPU container memory limit |
+| `SDCPP_MEMSWAP_LIMIT` | `24g` | CPU container memory + swap limit |
+| `SDCPP_CPUS` | `4.0` | CPU container CPU limit |
+| `SDCPP_CUDA_MEM_LIMIT` | `12g` | CUDA container memory limit |
+| `SDCPP_CUDA_MEMSWAP_LIMIT` | `24g` | CUDA container memory + swap limit |
+| `SDCPP_CUDA_CPUS` | `4.0` | CUDA container CPU limit |
+| `SDCPP_LOAD_TIMEOUT` / `SDCPP_CUDA_LOAD_TIMEOUT` | `10m` | Max time to wait for model load |
+| `SDCPP_VERBOSE` / `SDCPP_CUDA_VERBOSE` | `false` | Debug logging |
+| `SDCPP_LOG_LEVEL` / `SDCPP_CUDA_LOG_LEVEL` | `info` | Log level |
 
 ---
 
 ## MCP Tools — Media Generation (auto-enabled)
 
-Auto-enabled when any image or TTS provider is active (HuggingFace, OpenAI, Speaches, CUDA). Runs as an internal service — no direct nginx route, accessed only through LiteLLM's aggregated MCP endpoint at `/mcp/`.
+Auto-enabled when any image or TTS provider is active (HuggingFace, OpenAI, Speaches, SDCPP, CUDA). Runs as an internal service — no direct nginx route, accessed only through LiteLLM's aggregated MCP endpoint at `/mcp/`.
 
 | Endpoint               | URL                | Auth                              |
 | ---------------------- | ------------------ | --------------------------------- |

@@ -48,7 +48,7 @@ IMAGE_PATTERNS = [
 IMAGE_DEFAULT_ORDER = [
     "hf-flux-schnell",
     "local-sdcpp-cuda-flux-schnell",
-    "local-sdcpp-cpu-flux-schnell",
+    "local-sdcpp-cpu-sd-turbo",
     "openai-dall-e-3",
 ]
 TTS_DEFAULT_ORDER = [

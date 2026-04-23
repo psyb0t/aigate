@@ -1,6 +1,6 @@
 # aigate
 
-A self-hosted AI platform. 27 services, 99 models, 20 tools, one `docker-compose up`.
+A self-hosted AI platform. 28 services, 99 models, 20 tools, one `docker-compose up`.
 
 Everything an AI-powered workflow needs — inference, tool use, browser automation, image generation, speech synthesis, transcription, object storage, agentic code execution, an async job queue, and a web UI — behind a single OpenAI-compatible endpoint at `http://localhost:4000`. Point any existing client at it and it works.
 
@@ -27,7 +27,7 @@ LibreChat at `/librechat/` — pre-configured with all models and MCP tools, con
 
 ### Infrastructure
 
-27 containers. Nginx reverse proxy with per-endpoint rate limiting. PostgreSQL + MongoDB for persistence. Two Redis instances (cache + browser session sync). Async job queue for long-running inference. Cloudflare Tunnel for public exposure with zero open ports.
+28 containers. Nginx reverse proxy with per-endpoint rate limiting. PostgreSQL + MongoDB for persistence. Two Redis instances (cache + browser session sync). Async job queue for long-running inference. Cloudflare Tunnel for public exposure with zero open ports.
 
 ### Security
 
@@ -118,7 +118,7 @@ Default writable locations:
 | **Qwen3 CUDA TTS** _(optional, `CUDA=1`)_ | CUDA-accelerated TTS via [faster-qwen3-tts](https://github.com/andimarafioti/faster-qwen3-tts). Runs `Qwen3-TTS-12Hz-0.6B-Base` with CUDA graphs. Voice cloning via reference audio. Models cached in `.data/qwen3-tts/`. Requires `nvidia-container-toolkit`. |
 | **sd.cpp CPU** _(optional, `SDCPP=1`)_ | Local CPU image generation via [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp). Go wrapper with OpenAI-compatible `/v1/images/generations` endpoint, model hot-swap, idle timeout auto-unload. Models: sd-turbo, sdxl-turbo. Models cached in `.data/sdcpp/models/`. |
 | **sd.cpp CUDA** _(optional, `SDCPP=1` + `CUDA=1`)_ | CUDA-accelerated image generation via stable-diffusion.cpp. Same wrapper as CPU with CUDA backend. Models: sd-turbo, sdxl-turbo, sdxl-lightning, flux-schnell, juggernaut-xi. Non-blocking — rejects concurrent requests with 503 instead of queuing (resource manager handles scheduling). Requires `nvidia-container-toolkit`. |
-| **MCP tools** _(auto-enabled)_ | Media generation MCP server. Exposes `generate_image` and `generate_tts` tools to any model with function calling. Discovers available models dynamically from LiteLLM. Returns structured JSON with persistent URLs (uploaded to HybridS3) — no base64 blobs. Auto-enabled when any image or TTS provider is active (HuggingFace, OpenAI, Speaches, CUDA). |
+| **MCP tools** _(auto-enabled)_ | Media generation MCP server. Exposes `generate_image` and `generate_tts` tools to any model with function calling. Discovers available models dynamically from LiteLLM. Returns structured JSON with persistent URLs (uploaded to HybridS3) — no base64 blobs. Auto-enabled when any image or TTS provider is active (HuggingFace, OpenAI, Speaches, SDCPP, CUDA). |
 | **[LibreChat](https://github.com/danny-avila/LibreChat)** _(optional, `LIBRECHAT=1`)_ | Web UI for LLM interaction at `/librechat/`. Pre-configured with all LiteLLM models and MCP tools. MongoDB-backed conversation storage. Email/password auth — first registered user becomes admin, then set `LIBRECHAT_ALLOW_REGISTRATION=false` and restart. WebSocket streaming. Configurable via `.env` (registration, rate limits, debug logging, JWT secrets). |
 | **cloudflared** _(optional, `CLOUDFLARED=1`)_ | Cloudflare Tunnel. Disabled by default — enable with `CLOUDFLARED=1` in `.env`. Runs a quick tunnel (random `*.trycloudflare.com` URL, no account) or a named tunnel (fixed domain, requires config file and credentials). |
 
@@ -153,7 +153,25 @@ Up to 20 tools across 5 optional servers. Any model that supports function calli
 | 1st | Free cloud | Groq, Cerebras, OpenRouter, HuggingFace, Mistral, Cohere |
 | 2nd | Flat-rate | claudebox (Max sub), claudebox-zai (z.ai) |
 | 3rd | Pay-per-token | Anthropic, OpenAI |
-| Last resort | Local (CPU/CUDA) | Ollama, Speaches, Qwen3 CUDA TTS |
+| Last resort | Local (CPU/CUDA) | Ollama, Speaches, Qwen3 CUDA TTS, sd.cpp |
+
+### Fallback chains
+
+Every model has a fallback chain defined in `litellm/config/fallbacks.json`. When a provider fails or rate-limits, LiteLLM tries the next one automatically. You request one model — the gateway figures out who can actually serve it.
+
+Example: you request `groq-llama-3.3-70b`. Groq returns 429 (rate limited). LiteLLM silently retries with `cerebras-qwen3-235b`. Cerebras is down. It tries `mistral-small`. Mistral responds. You get the response — same format, same schema, no error. The `model` field in the response tells you which provider actually served it.
+
+```
+groq-llama-3.3-70b → 429 rate limited
+  ↓ fallback
+cerebras-qwen3-235b → 503 unavailable
+  ↓ fallback
+mistral-small → 200 ✓
+```
+
+For LLM chat models, chains follow the priority tiers: free cloud first, then flat-rate, then pay-per-token, then local. For image, TTS, and STT models, local models are preferred over paid cloud (they're free and have no rate limits). Small models fall back to other small models. Code models fall back to other code models. Local CUDA models fall back to local CPU models.
+
+Chains are filtered at startup — `make run` regenerates the LiteLLM config and strips out any provider you haven't enabled. If you only have `GROQ=1` and `OLLAMA=1`, the chain skips everything in between.
 
 ### Local models (Ollama, CPU)
 
@@ -462,6 +480,40 @@ make test
 121 tests covering health, routing, auth, MCP, MCP media tools, storage CRUD, browser automation, claudebox, proxq async job lifecycle, local TTS/STT round-trips, CUDA audio, resource manager unload verification, local image generation (CPU/CUDA), MCP-to-sdcpp integration, LLM-to-MCP e2e tool calling, and security. Designed for zero/minimal token usage.
 
 → [Testing guide](docs/testing.md)
+
+## Logs and Debugging
+
+```bash
+make logs                           # follow all logs
+docker compose logs litellm -f      # follow one service
+docker compose logs --since 5m      # last 5 minutes
+```
+
+LiteLLM logs every request with the model name, provider, latency, and token usage. When a fallback triggers, you'll see the failed provider and which one took over. The resource manager logs every semaphore acquire/release and every competing-group unload — search for `[resource_manager]` in the logs.
+
+Per-service debug options:
+
+| Variable | Default | What it does |
+| -------- | ------- | ------------ |
+| `SDCPP_VERBOSE` / `SDCPP_CUDA_VERBOSE` | `false` | sd.cpp wrapper debug logging |
+| `SDCPP_LOG_LEVEL` / `SDCPP_CUDA_LOG_LEVEL` | `info` | sd.cpp wrapper log level |
+| `LIBRECHAT_DEBUG_LOGGING` | `true` | LibreChat verbose logging |
+
+Ollama and Speaches log to stdout by default — visible in `docker compose logs`.
+
+## Troubleshooting
+
+**GPU out of memory** — the resource manager should prevent this, but if it happens: check `docker compose logs litellm | grep resource_manager` to verify the semaphore is working. Make sure you're not bypassing LiteLLM by hitting services directly. Run `make limits` to regenerate memory limits.
+
+**Model download stuck** — Ollama pulls models in the background on first start. Large models (8B+) can take a while. Check progress with `docker compose logs ollama -f`. sd.cpp models download via `sdcpp-pull` — check `docker compose logs sdcpp-pull -f`. If a download fails, delete the partial file from `.data/` and restart.
+
+**"Connection refused" or "Bad Gateway"** — the service isn't ready yet. Check `docker compose ps` for unhealthy containers. Check logs for the specific service. Common cause: a dependent service (PostgreSQL, Redis) hasn't started yet — Docker healthchecks handle this, but on slow machines the start period may not be enough.
+
+**Slow local inference** — expected if the resource manager just swapped models. The first request after a swap includes model load time (seconds for Ollama, up to minutes for sd.cpp FLUX on CPU). Subsequent requests are fast until the idle timeout unloads the model. Increase idle timeouts to keep models warm longer.
+
+**Rate limited on every provider** — all free tiers have limits. Groq: ~30 req/min. Cerebras: ~30 req/min. HuggingFace: varies. If you're hitting all of them, the fallback chain will eventually land on a paid provider or local model. Check `docker compose logs litellm | grep fallback` to see the chain in action. Consider enabling more free providers to spread the load.
+
+**Tests failing** — make sure the stack is running (`make run-bg`) and healthy (`docker compose ps`). Tests require the services they're testing to be enabled — `CUDA=1` for CUDA tests, `SDCPP=1` for sd.cpp tests, etc. Run `bash test.sh --help` to see which tests are available and their requirements.
 
 ## License
 

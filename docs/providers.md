@@ -1,6 +1,6 @@
 # Providers and Models
 
-All providers are configured in `litellm/config.yaml`. Free-tier providers are tried first in fallback chains. Each provider is opt-in: set its flag to `1` in `.env` (e.g. `GROQ=1`) and fill in the API key. The flag activates the provider — the key alone does nothing.
+Providers are configured via YAML fragments in `litellm/config/providers/`. `make run` assembles them into `litellm/config.yaml` (auto-generated, gitignored). Free-tier providers are tried first in fallback chains. Each provider is opt-in: set its flag to `1` in `.env` (e.g. `GROQ=1`) and fill in the API key. The flag activates the provider — the key alone does nothing.
 
 ## Groq (free tier)
 
@@ -230,4 +230,4 @@ CUDA-accelerated image generation. Same Go wrapper with CUDA backend. Non-blocki
 
 Every model has its own fallback chain. When a provider fails, is rate-limited, or returns an error, LiteLLM automatically tries the next model in the chain. Free providers are always tried first.
 
-For example, `groq-llama-3.3-70b` falls back to `cerebras-qwen3-235b` → `or-llama-3.3-70b` → `hf-llama-3.3-70b` → `claudebox-sonnet`. See `litellm/config.yaml` for the full configuration.
+For example, `groq-llama-3.3-70b` falls back through `cerebras-qwen3-235b` → `mistral-small` → `cohere-command-r` → `or-llama-3.3-70b` → `hf-llama-3.3-70b` → `claudebox-sonnet` → `claudebox-glm-4.7` → `openai-gpt-4o`. See `litellm/config/fallbacks.json` for all chains.
