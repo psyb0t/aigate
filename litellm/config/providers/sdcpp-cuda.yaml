@@ -1,0 +1,49 @@
+- model_name: local-sdcpp-cuda-flux-schnell
+  litellm_params:
+    model: openai/local-sdcpp-cuda-flux-schnell
+    api_base: http://sdcpp-cuda:7234/v1
+    api_key: unused
+    timeout: 600
+    num_retries: 0
+  model_info:
+    mode: image_generation
+
+- model_name: local-sdcpp-cuda-sdxl-lightning
+  litellm_params:
+    model: openai/local-sdcpp-cuda-sdxl-lightning
+    api_base: http://sdcpp-cuda:7234/v1
+    api_key: unused
+    timeout: 600
+    num_retries: 0
+  model_info:
+    mode: image_generation
+
+- model_name: local-sdcpp-cuda-sdxl-turbo
+  litellm_params:
+    model: openai/local-sdcpp-cuda-sdxl-turbo
+    api_base: http://sdcpp-cuda:7234/v1
+    api_key: unused
+    timeout: 600
+    num_retries: 0
+  model_info:
+    mode: image_generation
+
+- model_name: local-sdcpp-cuda-sd-turbo
+  litellm_params:
+    model: openai/local-sdcpp-cuda-sd-turbo
+    api_base: http://sdcpp-cuda:7234/v1
+    api_key: unused
+    timeout: 600
+    num_retries: 0
+  model_info:
+    mode: image_generation
+
+- model_name: local-sdcpp-cuda-juggernaut-xi
+  litellm_params:
+    model: openai/local-sdcpp-cuda-juggernaut-xi
+    api_base: http://sdcpp-cuda:7234/v1
+    api_key: unused
+    timeout: 600
+    num_retries: 0
+  model_info:
+    mode: image_generation

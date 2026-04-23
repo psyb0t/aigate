@@ -1,0 +1,19 @@
+- model_name: local-sdcpp-cpu-sdxl-turbo
+  litellm_params:
+    model: openai/local-sdcpp-cpu-sdxl-turbo
+    api_base: http://sdcpp:7234/v1
+    api_key: unused
+    timeout: 600
+    num_retries: 0
+  model_info:
+    mode: image_generation
+
+- model_name: local-sdcpp-cpu-sd-turbo
+  litellm_params:
+    model: openai/local-sdcpp-cpu-sd-turbo
+    api_base: http://sdcpp:7234/v1
+    api_key: unused
+    timeout: 600
+    num_retries: 0
+  model_info:
+    mode: image_generation

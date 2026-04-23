@@ -47,6 +47,14 @@ ifeq ($(strip $(CUDA)),1)
   _PROFILES += cuda
 endif
 
+# sdcpp: opt-in with SDCPP=1 (always CPU; add CUDA variant when CUDA=1)
+ifeq ($(strip $(SDCPP)),1)
+  _PROFILES += sdcpp
+  ifeq ($(strip $(CUDA)),1)
+    _PROFILES += sdcpp-cuda
+  endif
+endif
+
 # speaches: opt-in with SPEACHES=1
 ifeq ($(strip $(SPEACHES)),1)
   _PROFILES += speaches
@@ -69,6 +77,9 @@ ifeq ($(strip $(SPEACHES)),1)
   _HAS_IMAGE_OR_TTS := 1
 endif
 ifeq ($(strip $(CUDA)),1)
+  _HAS_IMAGE_OR_TTS := 1
+endif
+ifeq ($(strip $(SDCPP)),1)
   _HAS_IMAGE_OR_TTS := 1
 endif
 ifeq ($(_HAS_IMAGE_OR_TTS),1)
@@ -116,7 +127,7 @@ run-bg:
 	docker compose up -d --build
 
 down:
-	COMPOSE_PROFILES=claudebox,claudebox-zai,cloudflared,hybrids3,browser,ollama,cuda,speaches,mcp,librechat \
+	COMPOSE_PROFILES=claudebox,claudebox-zai,cloudflared,hybrids3,browser,ollama,cuda,sdcpp,sdcpp-cuda,speaches,mcp,librechat \
 		docker compose down --remove-orphans
 
 restart: down run-bg
@@ -151,6 +162,7 @@ help:
 	@echo "  browser       set BROWSER=1"
 	@echo "  ollama        set OLLAMA=1"
 	@echo "  cuda          set CUDA=1 (requires NVIDIA GPU + docker nvidia runtime)"
+	@echo "  sdcpp         set SDCPP=1 (CPU build, or CUDA build when CUDA=1)"
 	@echo "  speaches      set SPEACHES=1"
 	@echo "  librechat     set LIBRECHAT=1"
 	@echo "  mcp           (auto: any image/TTS provider enabled)"

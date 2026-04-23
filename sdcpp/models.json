@@ -1,0 +1,60 @@
+{
+  "models": {
+    "flux-schnell": {
+      "args": [
+        "--diffusion-model", "/models/flux1-schnell-Q4_0.gguf",
+        "--vae", "/models/ae.safetensors",
+        "--clip_l", "/models/clip_l.safetensors",
+        "--t5xxl", "/models/t5xxl_fp16.safetensors",
+        "--cfg-scale", "1.0",
+        "--sampling-method", "euler",
+        "--steps", "4"
+      ],
+      "width": 1024,
+      "height": 1024
+    },
+    "sdxl-lightning": {
+      "args": [
+        "--model", "/models/sdxl_lightning_4step.q8_0.gguf",
+        "--cfg-scale", "1.0",
+        "--sampling-method", "euler",
+        "--steps", "4"
+      ],
+      "width": 1024,
+      "height": 1024
+    },
+    "sdxl-turbo": {
+      "args": [
+        "--model", "/models/sd_xl_turbo_1.0.q8_0.gguf",
+        "--cfg-scale", "1.0",
+        "--sampling-method", "euler",
+        "--steps", "1"
+      ],
+      "width": 512,
+      "height": 512
+    },
+    "sd-turbo": {
+      "args": [
+        "--model", "/models/sd_turbo-f16-q8_0.gguf",
+        "--cfg-scale", "1.0",
+        "--steps", "8"
+      ],
+      "width": 512,
+      "height": 512
+    },
+    "juggernaut-xi": {
+      "args": [
+        "--diffusion-model", "/models/juggernautXL_juggXIByRundiffusion-Q5_K_M.gguf",
+        "--vae", "/models/xlVAEC_c91.safetensors",
+        "--clip_l", "/models/clip_l_sdxl.safetensors",
+        "--clip_g", "/models/clip_g.safetensors",
+        "--cfg-scale", "5.0",
+        "--sampling-method", "dpm++2m",
+        "--steps", "30"
+      ],
+      "width": 1024,
+      "height": 1024
+    }
+  },
+  "default_model": "flux-schnell"
+}

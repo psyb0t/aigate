@@ -94,6 +94,8 @@ def active_providers(env):
         ("qwen3-cuda-tts", lambda e: is_flag(e, "CUDA")),
         ("speaches",       lambda e: is_flag(e, "SPEACHES")),
         ("speaches-cuda",  lambda e: is_flag(e, "CUDA")),
+        ("sdcpp",          lambda e: is_flag(e, "SDCPP")),
+        ("sdcpp-cuda",     lambda e: is_flag(e, "SDCPP") and is_flag(e, "CUDA")),
     ]
     return [name for name, check in checks if check(env)]
 
@@ -105,7 +107,7 @@ def active_mcp_servers(env):
         ("claudebox",     lambda e: is_flag(e, "CLAUDEBOX")),
         ("claudebox-zai", lambda e: is_flag(e, "CLAUDEBOX_ZAI")),
         ("mcp",           lambda e: any(
-            is_flag(e, f) for f in ("HUGGINGFACE", "OPENAI", "SPEACHES", "CUDA")
+            is_flag(e, f) for f in ("HUGGINGFACE", "OPENAI", "SPEACHES", "CUDA", "SDCPP")
         )),
     ]
     return [name for name, check in checks if check(env)]

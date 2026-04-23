@@ -42,10 +42,13 @@ IMAGE_PATTERNS = [
     re.compile(r"^hf-sd-"),
     re.compile(r"^openai-dall-e-"),
     re.compile(r"^openai-gpt-image-"),
+    re.compile(r"^local-sdcpp-"),
 ]
 
 IMAGE_DEFAULT_ORDER = [
     "hf-flux-schnell",
+    "local-sdcpp-cuda-flux-schnell",
+    "local-sdcpp-cpu-flux-schnell",
     "openai-dall-e-3",
 ]
 TTS_DEFAULT_ORDER = [
@@ -194,7 +197,7 @@ async def _generate_hf(model_id, prompt):
     """Call HF Inference API directly — returns raw bytes."""
     url = f"{HF_INFERENCE_BASE}/{model_id}"
     headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-    async with httpx.AsyncClient(timeout=180) as client:
+    async with httpx.AsyncClient(timeout=1800) as client:
         resp = await client.post(
             url,
             headers=headers,
@@ -209,7 +212,7 @@ async def _generate_openai_images(model, prompt, size):
     """Call LiteLLM OpenAI-compatible image gen endpoint.
     Returns list of (bytes, content_type) tuples.
     """
-    async with httpx.AsyncClient(timeout=180) as client:
+    async with httpx.AsyncClient(timeout=1800) as client:
         resp = await client.post(
             f"{LITELLM_URL}/v1/images/generations",
             headers=_litellm_headers(),
@@ -365,7 +368,7 @@ if tts_models:
                 )
             ]
 
-        async with httpx.AsyncClient(timeout=120) as client:
+        async with httpx.AsyncClient(timeout=1800) as client:
             resp = await client.post(
                 f"{LITELLM_URL}/v1/audio/speech",
                 headers=_litellm_headers(),

@@ -492,6 +492,134 @@ services:
     depends_on:
       - ollama-cuda
 
+  # ── sd.cpp (local image generation — FLUX.1-schnell) ────────────────────────
+
+  sdcpp:
+    profiles: ["sdcpp"]
+    build:
+      context: ./sdcpp
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      sdcpp-pull:
+        condition: service_completed_successfully
+    mem_limit: ${SDCPP_MEM_LIMIT:-12g}
+    memswap_limit: ${SDCPP_MEMSWAP_LIMIT:-24g}
+    cpus: ${SDCPP_CPUS:-4.0}
+    environment:
+      HTTP_SERVER_LISTENADDRESS: "0.0.0.0:7234"
+      HTTP_SERVER_WRITETIMEOUT: "15m"
+      MODEL_PREFIX: "local-sdcpp-cpu-"
+      EXTRA_ARGS: "-t,-1"
+      IDLE_TIMEOUT: ${SDCPP_IDLE_TIMEOUT:-5m}
+      LOAD_TIMEOUT: ${SDCPP_LOAD_TIMEOUT:-10m}
+      VERBOSE: ${SDCPP_VERBOSE:-false}
+      LOG_LEVEL: ${SDCPP_LOG_LEVEL:-info}
+    volumes:
+      - ${DATA_DIR_SDCPP:-${DATA_DIR:-.data}/sdcpp}:/models:ro
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/7234'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - litellm-internal
+
+  sdcpp-cuda:
+    profiles: ["sdcpp-cuda"]
+    build:
+      context: ./sdcpp
+      dockerfile: Dockerfile.cuda
+    restart: unless-stopped
+    depends_on:
+      sdcpp-pull:
+        condition: service_completed_successfully
+    mem_limit: ${SDCPP_CUDA_MEM_LIMIT:-12g}
+    memswap_limit: ${SDCPP_CUDA_MEMSWAP_LIMIT:-24g}
+    cpus: ${SDCPP_CUDA_CPUS:-4.0}
+    environment:
+      HTTP_SERVER_LISTENADDRESS: "0.0.0.0:7234"
+      HTTP_SERVER_WRITETIMEOUT: "15m"
+      MODEL_PREFIX: "local-sdcpp-cuda-"
+      EXTRA_ARGS: "--clip-on-cpu,--diffusion-fa"
+      IDLE_TIMEOUT: ${SDCPP_CUDA_IDLE_TIMEOUT:-5m}
+      LOAD_TIMEOUT: ${SDCPP_CUDA_LOAD_TIMEOUT:-10m}
+      VERBOSE: ${SDCPP_CUDA_VERBOSE:-false}
+      LOG_LEVEL: ${SDCPP_CUDA_LOG_LEVEL:-info}
+    volumes:
+      - ${DATA_DIR_SDCPP:-${DATA_DIR:-.data}/sdcpp}:/models:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/7234'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - litellm-internal
+
+  sdcpp-pull:
+    profiles: ["sdcpp", "sdcpp-cuda"]
+    image: alpine:3.21
+    restart: "no"
+    mem_limit: ${SDCPP_PULL_MEM_LIMIT:-1g}
+    memswap_limit: ${SDCPP_PULL_MEMSWAP_LIMIT:-2g}
+    cpus: ${SDCPP_PULL_CPUS:-2.0}
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+    entrypoint:
+      - sh
+      - -c
+      - |
+        set -eu
+        apk add -q --no-cache aria2
+        dl() {
+          dest="/models/$$2"
+          if [ -f "$$dest" ]; then echo "exists: $$dest"; return 0; fi
+          echo "downloading: $$2 from $$1"
+          if [ -n "$${HF_TOKEN:-}" ]; then
+            aria2c -x 8 -s 8 --file-allocation=none --summary-interval=10 \
+              --header="Authorization: Bearer $$HF_TOKEN" \
+              -d /models -o "$$2.tmp" "$$1"
+          else
+            aria2c -x 8 -s 8 --file-allocation=none --summary-interval=10 \
+              -d /models -o "$$2.tmp" "$$1"
+          fi
+          mv "/models/$$2.tmp" "$$dest"
+        }
+        # FLUX schnell (diffusion model + components)
+        dl "https://huggingface.co/leejet/FLUX.1-schnell-gguf/resolve/main/flux1-schnell-q4_0.gguf" "flux1-schnell-Q4_0.gguf"
+        dl "https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/ae.safetensors" "ae.safetensors"
+        dl "https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors" "clip_l.safetensors"
+        dl "https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp16.safetensors" "t5xxl_fp16.safetensors"
+        # SDXL Lightning 4-step
+        dl "https://huggingface.co/mzwing/SDXL-Lightning-GGUF/resolve/main/sdxl_lightning_4step.q8_0.gguf" "sdxl_lightning_4step.q8_0.gguf"
+        # SDXL Turbo
+        dl "https://huggingface.co/OlegSkutte/sdxl-turbo-GGUF/resolve/main/sd_xl_turbo_1.0.q8_0.gguf" "sd_xl_turbo_1.0.q8_0.gguf"
+        # SD Turbo
+        dl "https://huggingface.co/Green-Sky/SD-Turbo-GGUF/resolve/main/sd_turbo-f16-q8_0.gguf" "sd_turbo-f16-q8_0.gguf"
+        # Juggernaut XI + shared SDXL components
+        dl "https://huggingface.co/hum-ma/SDXL-models-GGUF/resolve/main/juggernautXL_juggXIByRundiffusion-Q5_K_M.gguf" "juggernautXL_juggXIByRundiffusion-Q5_K_M.gguf"
+        dl "https://huggingface.co/hum-ma/SDXL-models-GGUF/resolve/main/clip/clip_l.safetensors" "clip_l_sdxl.safetensors"
+        dl "https://huggingface.co/hum-ma/SDXL-models-GGUF/resolve/main/clip/clip_g.safetensors" "clip_g.safetensors"
+        dl "https://huggingface.co/hum-ma/SDXL-models-GGUF/resolve/main/vae/xlVAEC_c91.safetensors" "xlVAEC_c91.safetensors"
+        echo "all models ready"
+    volumes:
+      - ${DATA_DIR_SDCPP:-${DATA_DIR:-.data}/sdcpp}:/models
+    networks:
+      - litellm-public
+
   # ── Qwen3 CUDA TTS (CUDA-accelerated TTS, voice cloning) ────────────────────
 
   qwen3-cuda-tts:

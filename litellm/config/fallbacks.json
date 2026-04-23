@@ -660,5 +660,19 @@
       "local-ollama-cuda-dolphin3",
       "local-ollama-cpu-dolphin-phi"
     ]
+  },
+  {
+    "local-sdcpp-cuda-flux-schnell": [
+      "local-sdcpp-cpu-flux-schnell",
+      "hf-flux-schnell",
+      "openai-dall-e-3"
+    ]
+  },
+  {
+    "local-sdcpp-cpu-flux-schnell": [
+      "local-sdcpp-cuda-flux-schnell",
+      "hf-flux-schnell",
+      "openai-dall-e-3"
+    ]
   }
 ]

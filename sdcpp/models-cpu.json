@@ -1,0 +1,24 @@
+{
+  "models": {
+    "sdxl-turbo": {
+      "args": [
+        "--model", "/models/sd_xl_turbo_1.0.q8_0.gguf",
+        "--cfg-scale", "1.0",
+        "--sampling-method", "euler",
+        "--steps", "1"
+      ],
+      "width": 512,
+      "height": 512
+    },
+    "sd-turbo": {
+      "args": [
+        "--model", "/models/sd_turbo-f16-q8_0.gguf",
+        "--cfg-scale", "1.0",
+        "--steps", "8"
+      ],
+      "width": 512,
+      "height": 512
+    }
+  },
+  "default_model": "sd-turbo"
+}

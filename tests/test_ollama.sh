@@ -144,7 +144,7 @@ test_ollama_cuda_chat_completion() {
     out=$(curl -s --max-time 120 -X POST "$BASE_URL/chat/completions" \
         -H "Content-Type: application/json" \
         -H "$AUTH_HEADER" \
-        -d '{"model":"local-ollama-cuda-llama3.1-8b","messages":[{"role":"user","content":"respond with exactly the word CUDAPONG and nothing else"}]}')
+        -d '{"model":"local-ollama-cuda-dolphin-phi","messages":[{"role":"user","content":"respond with exactly the word CUDAPONG and nothing else"}]}')
 
     if echo "$out" | grep -qi "\"error\""; then
         echo "  FAIL: ollama-cuda chat error: $(echo "$out" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("error",{}).get("message","?"))' 2>/dev/null)"
@@ -212,7 +212,7 @@ test_ollama_cuda_gemma3_vision() {
     local fixture="$FIXTURES_DIR/cow.jpg"
     if [ ! -f "$fixture" ]; then
         echo "  SKIP: $fixture not found"
-        echo "OK: ollama_cuda_gemma3-12b_vision (skipped)"
+        echo "OK: ollama_cuda_gemma3-4b_vision (skipped)"
         return 0
     fi
 
@@ -223,19 +223,19 @@ test_ollama_cuda_gemma3_vision() {
     out=$(curl -s --max-time 180 -X POST "$BASE_URL/chat/completions" \
         -H "Content-Type: application/json" \
         -H "$AUTH_HEADER" \
-        -d "{\"model\":\"local-ollama-cuda-gemma3-12b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"image_url\",\"image_url\":{\"url\":\"data:image/jpeg;base64,$b64\"}},{\"type\":\"text\",\"text\":\"What animal is in this image? Answer in one word.\"}]}]}")
+        -d "{\"model\":\"local-ollama-cuda-gemma3-4b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"image_url\",\"image_url\":{\"url\":\"data:image/jpeg;base64,$b64\"}},{\"type\":\"text\",\"text\":\"What animal is in this image? Answer in one word.\"}]}]}")
 
     if echo "$out" | grep -qi "\"error\""; then
-        echo "  FAIL: gemma3-12b error: $(echo "$out" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("error",{}).get("message","?"))' 2>/dev/null)"
+        echo "  FAIL: gemma3-4b error: $(echo "$out" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("error",{}).get("message","?"))' 2>/dev/null)"
         return 1
     fi
 
     local content
     content=$(echo "$out" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['choices'][0]['message']['content'])" 2>/dev/null)
-    echo "  gemma3-12b says: $content"
+    echo "  gemma3-4b says: $content"
 
-    assert_contains_icase "$content" "cow" "gemma3-12b identifies cow in image" || return 1
-    echo "OK: ollama_cuda_gemma3-12b_vision"
+    assert_contains_icase "$content" "cow" "gemma3-4b identifies cow in image" || return 1
+    echo "OK: ollama_cuda_gemma3-4b_vision"
 }
 
 ALL_TESTS+=(
