@@ -367,11 +367,23 @@ Skills stack — every `SKILL.md` found is appended in alphabetical order by dir
 ## Image Generation
 
 ```bash
-# image generation
+# image generation (cloud — HuggingFace FLUX)
 curl http://localhost:4000/images/generations \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model": "hf-flux-schnell", "prompt": "cyberpunk city at night"}'
+
+# image generation (local CUDA — sd-turbo, fast)
+curl http://localhost:4000/images/generations \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "local-sdcpp-cuda-sd-turbo", "prompt": "cyberpunk city at night", "size": "512x512"}'
+
+# image generation (local CPU — sd-turbo, slower)
+curl http://localhost:4000/images/generations \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "local-sdcpp-cpu-sd-turbo", "prompt": "cyberpunk city at night", "size": "512x512"}'
 ```
 
 ---

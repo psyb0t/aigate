@@ -55,6 +55,11 @@ func main() {
 		srv.Shutdown()
 	}()
 
+	if err := os.Setenv("HTTP_SERVER_LISTENADDRESS", "0.0.0.0:7234"); err != nil {
+		slog.Error("setenv failed", "error", err)
+		os.Exit(1)
+	}
+
 	httpSrv, err := serbewr.New()
 	if err != nil {
 		slog.Error("server create failed", "error", err)

@@ -507,7 +507,6 @@ services:
     memswap_limit: ${SDCPP_MEMSWAP_LIMIT:-24g}
     cpus: ${SDCPP_CPUS:-4.0}
     environment:
-      HTTP_SERVER_LISTENADDRESS: "0.0.0.0:7234"
       HTTP_SERVER_WRITETIMEOUT: "15m"
       MODEL_PREFIX: "local-sdcpp-cpu-"
       EXTRA_ARGS: "-t,-1"
@@ -541,7 +540,6 @@ services:
     memswap_limit: ${SDCPP_CUDA_MEMSWAP_LIMIT:-24g}
     cpus: ${SDCPP_CUDA_CPUS:-4.0}
     environment:
-      HTTP_SERVER_LISTENADDRESS: "0.0.0.0:7234"
       HTTP_SERVER_WRITETIMEOUT: "15m"
       MODEL_PREFIX: "local-sdcpp-cuda-"
       EXTRA_ARGS: "--clip-on-cpu,--diffusion-fa"

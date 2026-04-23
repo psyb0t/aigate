@@ -203,6 +203,27 @@ CUDA-accelerated TTS with voice cloning via [faster-qwen3-tts](https://github.co
 | ----- | ----- | ---- |
 | `local-qwen3-cuda-tts` | Qwen/Qwen3-TTS-12Hz-0.6B-Base | TTS — voices: alloy, echo, fable |
 
+## sd.cpp CPU (local — `SDCPP=1`)
+
+Local CPU image generation via [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp). Go wrapper with model hot-swap, idle auto-unload, OpenAI-compatible `/v1/images/generations`. Models cached in `.data/sdcpp/models/`.
+
+| Alias | Model | Notes |
+| ----- | ----- | ----- |
+| `local-sdcpp-cpu-sd-turbo` | stabilityai/sd-turbo | fastest, smallest (~1.7GB) |
+| `local-sdcpp-cpu-sdxl-turbo` | stabilityai/sdxl-turbo | better quality (~2.5GB) |
+
+## sd.cpp CUDA (local NVIDIA — `SDCPP=1` + `CUDA=1`)
+
+CUDA-accelerated image generation. Same Go wrapper with CUDA backend. Non-blocking — rejects concurrent requests with 503 (resource manager handles scheduling via semaphore).
+
+| Alias | Model | Notes |
+| ----- | ----- | ----- |
+| `local-sdcpp-cuda-sd-turbo` | stabilityai/sd-turbo | fastest on GPU (~1.7GB VRAM) |
+| `local-sdcpp-cuda-sdxl-turbo` | stabilityai/sdxl-turbo | fast, good quality (~2.5GB VRAM) |
+| `local-sdcpp-cuda-sdxl-lightning` | ByteDance/SDXL-Lightning | fast, high quality (~2.5GB VRAM) |
+| `local-sdcpp-cuda-flux-schnell` | black-forest-labs/FLUX.1-schnell | best quality, largest (~7GB VRAM) |
+| `local-sdcpp-cuda-juggernaut-xi` | RunDiffusion/Juggernaut-XI-v11 | photorealistic SDXL fine-tune (~2.5GB VRAM) |
+
 ---
 
 ## Fallbacks

@@ -1,12 +1,12 @@
 # aigate
 
-A self-hosted AI platform. 25 services, 92 models, 20 tools, one `docker-compose up`.
+A self-hosted AI platform. 27 services, 99 models, 20 tools, one `docker-compose up`.
 
 Everything an AI-powered workflow needs — inference, tool use, browser automation, image generation, speech synthesis, transcription, object storage, agentic code execution, an async job queue, and a web UI — behind a single OpenAI-compatible endpoint at `http://localhost:4000`. Point any existing client at it and it works.
 
 ### Models and routing
 
-92 models across 13 providers. Six providers are completely free (Groq, Cerebras, OpenRouter, HuggingFace, Mistral, Cohere). Three run locally on your own hardware — CPU or NVIDIA GPU — with no network calls, no rate limits, and no usage costs (Ollama, Speaches, Qwen3 TTS). The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
+99 models across 15 providers. Six providers are completely free (Groq, Cerebras, OpenRouter, HuggingFace, Mistral, Cohere). Five run locally on your own hardware — CPU or NVIDIA GPU — with no network calls, no rate limits, and no usage costs (Ollama, Speaches, Qwen3 TTS, stable-diffusion.cpp CPU, stable-diffusion.cpp CUDA). The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
 
 ### Tools and capabilities
 
@@ -15,7 +15,7 @@ Everything an AI-powered workflow needs — inference, tool use, browser automat
 - **Stealth browser cluster** — 5 Camoufox replicas behind HAProxy, real OS-level mouse and keyboard input, zero CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, and every other bot detector we've thrown at it.
 - **Agentic Claude Code ×2** — full shell access, persistent workspaces, file I/O, tool use. One instance on your Claude subscription or API key, one running GLM models through z.ai.
 - **Object storage** — S3-compatible, public-read uploads, presigned URLs, auto-expiry. Plain HTTP and boto3.
-- **Image generation** — FLUX, DALL-E, Stable Diffusion via MCP tools that return persistent URLs, not base64 blobs.
+- **Image generation** — FLUX, DALL-E, Stable Diffusion (cloud + local CPU/CUDA via stable-diffusion.cpp) via MCP tools that return persistent URLs, not base64 blobs. Local models: sd-turbo, sdxl-turbo, sdxl-lightning, flux-schnell, juggernaut-xi.
 - **Text-to-speech** — Kokoro (CPU), Qwen3-TTS with voice cloning (CUDA), OpenAI TTS.
 - **Transcription** — Whisper (cloud + local CPU/CUDA), Parakeet (~3400× real-time on CPU).
 
@@ -27,7 +27,7 @@ LibreChat at `/librechat/` — pre-configured with all models and MCP tools, con
 
 ### Infrastructure
 
-25 containers. Nginx reverse proxy with per-endpoint rate limiting. PostgreSQL + MongoDB for persistence. Two Redis instances (cache + browser session sync). Async job queue for long-running inference. Cloudflare Tunnel for public exposure with zero open ports.
+27 containers. Nginx reverse proxy with per-endpoint rate limiting. PostgreSQL + MongoDB for persistence. Two Redis instances (cache + browser session sync). Async job queue for long-running inference. Cloudflare Tunnel for public exposure with zero open ports.
 
 ### Security
 
@@ -65,6 +65,8 @@ nginx :4000                                          ┌────────
                                   ├─ Speaches CPU       (local, transcription + TTS, SPEACHES=1)
                                   ├─ Speaches CUDA      (local, CUDA STT, CUDA=1)
                                   ├─ Qwen3 CUDA TTS     (local, CUDA voice-cloning, CUDA=1)
+                                  ├─ sd.cpp CPU         (local, image gen, SDCPP=1)
+                                  ├─ sd.cpp CUDA        (local, image gen, SDCPP=1 + CUDA=1)
                                   ├─ claudebox          (flat-rate, CLAUDEBOX=1)
                                   ├─ claudebox-zai      (flat-rate, CLAUDEBOX_ZAI=1)
                                   ├─ Anthropic          (pay-per-token, ANTHROPIC=1)
@@ -93,6 +95,7 @@ Default writable locations:
 | `.data/ollama/` | ollama, ollama-cuda | Downloaded model weights (shared — CPU and CUDA instances read the same blobs) |
 | `.data/speaches/` | speaches, speaches-cuda | Downloaded Whisper and Parakeet model weights (HuggingFace cache, shared between CPU/CUDA) |
 | `.data/qwen3-tts/` | qwen3-cuda-tts | Downloaded Qwen3-TTS model weights (HuggingFace cache) |
+| `.data/sdcpp/models/` | sdcpp, sdcpp-cuda | Downloaded stable-diffusion model weights (shared between CPU and CUDA) |
 | `.data/librechat/` | librechat, librechat-mongodb | Conversation data (MongoDB), file uploads |
 | `.data/cloudflared/` | cloudflared | Tunnel config and credentials (if using named tunnel) |
 
@@ -113,6 +116,8 @@ Default writable locations:
 | **Speaches** _(optional, `SPEACHES=1`)_ | Local CPU audio via [speaches-ai/speaches](https://github.com/speaches-ai/speaches). Transcription: `faster-distil-whisper-large-v3` (multilingual) and `parakeet-tdt-0.6b-v2` (English, ~3400× real-time on CPU). Text-to-speech: `Kokoro-82M` int8 (high-quality, multiple voices). Models cached in `.data/speaches/`. |
 | **Speaches CUDA** _(optional, `CUDA=1`)_ | CUDA-accelerated Whisper STT via speaches. Uses the same model cache as CPU speaches. Shares `.data/speaches/` — no separate download. Requires `nvidia-container-toolkit`. |
 | **Qwen3 CUDA TTS** _(optional, `CUDA=1`)_ | CUDA-accelerated TTS via [faster-qwen3-tts](https://github.com/andimarafioti/faster-qwen3-tts). Runs `Qwen3-TTS-12Hz-0.6B-Base` with CUDA graphs. Voice cloning via reference audio. Models cached in `.data/qwen3-tts/`. Requires `nvidia-container-toolkit`. |
+| **sd.cpp CPU** _(optional, `SDCPP=1`)_ | Local CPU image generation via [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp). Go wrapper with OpenAI-compatible `/v1/images/generations` endpoint, model hot-swap, idle timeout auto-unload. Models: sd-turbo, sdxl-turbo. Models cached in `.data/sdcpp/models/`. |
+| **sd.cpp CUDA** _(optional, `SDCPP=1` + `CUDA=1`)_ | CUDA-accelerated image generation via stable-diffusion.cpp. Same wrapper as CPU with CUDA backend. Models: sd-turbo, sdxl-turbo, sdxl-lightning, flux-schnell, juggernaut-xi. Non-blocking — rejects concurrent requests with 503 instead of queuing (resource manager handles scheduling). Requires `nvidia-container-toolkit`. |
 | **MCP tools** _(auto-enabled)_ | Media generation MCP server. Exposes `generate_image` and `generate_tts` tools to any model with function calling. Discovers available models dynamically from LiteLLM. Returns structured JSON with persistent URLs (uploaded to HybridS3) — no base64 blobs. Auto-enabled when any image or TTS provider is active (HuggingFace, OpenAI, Speaches, CUDA). |
 | **[LibreChat](https://github.com/danny-avila/LibreChat)** _(optional, `LIBRECHAT=1`)_ | Web UI for LLM interaction at `/librechat/`. Pre-configured with all LiteLLM models and MCP tools. MongoDB-backed conversation storage. Email/password auth — first registered user becomes admin, then set `LIBRECHAT_ALLOW_REGISTRATION=false` and restart. WebSocket streaming. Configurable via `.env` (registration, rate limits, debug logging, JWT secrets). |
 | **cloudflared** _(optional, `CLOUDFLARED=1`)_ | Cloudflare Tunnel. Disabled by default — enable with `CLOUDFLARED=1` in `.env`. Runs a quick tunnel (random `*.trycloudflare.com` URL, no account) or a named tunnel (fixed domain, requires config file and credentials). |
@@ -139,7 +144,7 @@ Up to 20 tools across 5 optional servers. Any model that supports function calli
 
 ## Providers and Models
 
-92 models across 13 providers. Six are free tier with no credit card required. Three run locally on your own hardware — CPU or NVIDIA GPU — with no rate limits. Per-model fallback chains route automatically through alternative providers when one fails or rate-limits.
+99 models across 15 providers. Six are free tier with no credit card required. Five run locally on your own hardware — CPU or NVIDIA GPU — with no rate limits. Per-model fallback chains route automatically through alternative providers when one fails or rate-limits.
 
 ### Routing philosophy
 
@@ -170,7 +175,7 @@ All local CPU models are last in fallback chains — used when cloud providers a
 
 ### Local models (Ollama, CUDA — `CUDA=1`)
 
-CUDA models run with flash attention and quantized KV cache. A resource manager callback runs before each request and unloads competing services on the same hardware — Ollama CUDA, Speaches CUDA (STT), and Qwen3 CUDA TTS each occupy significant VRAM, so only one loads at a time. The same logic applies on CPU: Speaches Kokoro (TTS) and Speaches Whisper/Parakeet (STT) are unloaded before the other needs to load.
+CUDA models run with flash attention and quantized KV cache. A resource manager enforces mutual exclusion per hardware — an `asyncio.Semaphore(1)` ensures only one CUDA job runs at a time across all groups (LLM, image gen, TTS, STT). Before each request, competing services are unloaded to free VRAM. The same logic applies on CPU. This prevents GPU OOM when e.g. an image generation request arrives while an LLM model is loaded.
 
 | Model name | Description | VRAM |
 | ---------- | ----------- | ---- |
@@ -209,6 +214,25 @@ CUDA models run with flash attention and quantized KV cache. A resource manager 
 | ---------- | ----------- |
 | `local-qwen3-cuda-tts` | Qwen3-TTS 0.6B via faster-qwen3-tts — CUDA graphs, voice cloning (voices: alloy, echo, fable) |
 
+### Local image generation (sd.cpp, CPU — `SDCPP=1`)
+
+| Model name | Description |
+| ---------- | ----------- |
+| `local-sdcpp-cpu-sd-turbo` | SD Turbo — fastest, smallest (~1.7GB) |
+| `local-sdcpp-cpu-sdxl-turbo` | SDXL Turbo — better quality, larger (~2.5GB) |
+
+### Local image generation (sd.cpp, CUDA — `SDCPP=1` + `CUDA=1`)
+
+| Model name | Description |
+| ---------- | ----------- |
+| `local-sdcpp-cuda-sd-turbo` | SD Turbo — fastest on GPU (~1.7GB VRAM) |
+| `local-sdcpp-cuda-sdxl-turbo` | SDXL Turbo — better quality (~2.5GB VRAM) |
+| `local-sdcpp-cuda-sdxl-lightning` | SDXL Lightning — fast, high quality (~2.5GB VRAM) |
+| `local-sdcpp-cuda-flux-schnell` | FLUX Schnell — best quality, largest (~7GB VRAM) |
+| `local-sdcpp-cuda-juggernaut-xi` | Juggernaut XI — photorealistic SDXL fine-tune (~2.5GB VRAM) |
+
+Models auto-download on first use and cache in `.data/sdcpp/models/`. Idle timeout auto-unloads after 5 minutes (configurable via `SDCPP_IDLE_TIMEOUT` / `SDCPP_CUDA_IDLE_TIMEOUT`).
+
 → [Full provider and model list](docs/providers.md)
 
 ## Setup
@@ -243,8 +267,9 @@ Everything is opt-in via flags in `.env`. API keys are stored separately and nev
 | `COHERE=1` | Cohere models (free: 1K req/day) |
 | `GROQ=1` | Groq models (free tier) |
 | `OLLAMA=1` | Local Ollama CPU inference (~6GB+ RAM) |
-| `CUDA=1` | Local NVIDIA GPU inference — Ollama CUDA + Speaches CUDA (CUDA Whisper) + Qwen3 CUDA TTS (requires `nvidia-container-toolkit`) |
+| `CUDA=1` | Local NVIDIA GPU inference — Ollama CUDA + Speaches CUDA (CUDA Whisper) + Qwen3 CUDA TTS + sd.cpp CUDA (requires `nvidia-container-toolkit`) |
 | `SPEACHES=1` | Local Speaches CPU transcription/TTS (~4GB RAM) |
+| `SDCPP=1` | Local stable-diffusion.cpp image generation (CPU; add `CUDA=1` for GPU) |
 | `HYBRIDS3=1` | Object storage service + MCP server (S3-compatible, plain HTTP, auto-expiry) |
 | `BROWSER=1` | Stealth browser cluster + MCP server (5 replicas, ~1.3GB RAM) |
 | `LIBRECHAT=1` | LibreChat web UI at `/librechat/` with all models and MCP tools |
@@ -308,6 +333,12 @@ curl http://localhost:4000/images/generations \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model": "hf-flux-schnell", "prompt": "a cat riding a skateboard"}'
+
+# local image generation (CUDA — sd-turbo, fast)
+curl http://localhost:4000/images/generations \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "local-sdcpp-cuda-sd-turbo", "prompt": "a red panda in a forest", "size": "512x512"}'
 
 # transcription (cloud — Groq Whisper, fast)
 curl http://localhost:4000/audio/transcriptions \
@@ -412,7 +443,7 @@ make test          # run test suite (stack must be running)
 make test
 ```
 
-97 tests covering health, routing, auth, MCP, MCP media tools, storage CRUD, browser automation, claudebox, proxq async job lifecycle, local TTS/STT round-trips, CUDA audio, resource manager unload verification, and security. Designed for zero/minimal token usage.
+121 tests covering health, routing, auth, MCP, MCP media tools, storage CRUD, browser automation, claudebox, proxq async job lifecycle, local TTS/STT round-trips, CUDA audio, resource manager unload verification, local image generation (CPU/CUDA), MCP-to-sdcpp integration, LLM-to-MCP e2e tool calling, and security. Designed for zero/minimal token usage.
 
 → [Testing guide](docs/testing.md)
 
