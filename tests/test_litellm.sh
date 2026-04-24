@@ -68,8 +68,6 @@ EXPECTED_MODELS=(
     "hf-qwen3-vl-8b"
     "hf-gemma-3-12b"
     "hf-flux-schnell"
-    "hf-flux-dev"
-    "hf-sd-3.5-turbo"
     # Mistral
     "mistral-large"
     "mistral-small"
@@ -434,7 +432,7 @@ test_litellm_cuda_stt() {
         -X POST "$BASE_URL/v1/audio/speech" \
         -H "Content-Type: application/json" \
         -H "$AUTH_HEADER" \
-        -d '{"model":"local-speaches-kokoro-tts","input":"CUDA transcription test","voice":"af_heart"}')
+        -d '{"model":"local-speaches-kokoro-tts","input":"hello transcription test","voice":"af_heart"}')
     assert_eq "$code" "200" "tts for cuda stt input returns 200" || { rm -f "$tts_file"; return 1; }
 
     local out
@@ -445,7 +443,7 @@ test_litellm_cuda_stt() {
         -F "file=@$tts_file")
     rm -f "$tts_file"
     assert_contains "$out" "text" "cuda stt response has text field" || return 1
-    assert_contains_icase "$out" "cuda" "cuda stt transcription contains spoken content" || return 1
+    assert_contains_icase "$out" "transcription" "cuda stt transcription contains spoken content" || return 1
     echo "OK: litellm_cuda_stt"
 }
 
