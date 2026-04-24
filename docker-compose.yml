@@ -645,7 +645,13 @@ services:
               count: all
               capabilities: [gpu]
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -676,7 +682,13 @@ services:
       litellm:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -760,7 +772,7 @@ services:
   # ── proxq (async job queue proxy for LiteLLM) ──────────────────────────────
 
   proxq:
-    image: psyb0t/proxq:v0.6.0
+    image: psyb0t/proxq:v0.9.0
     restart: unless-stopped
     mem_limit: ${PROXQ_MEM_LIMIT:-256m}
     memswap_limit: ${PROXQ_MEMSWAP_LIMIT:-512m}
@@ -1017,7 +1029,7 @@ configs:
       limit_req_zone $$binary_remote_addr zone=storage:10m rate=${RATELIMIT_STORAGE:-60r/m};
       limit_req_zone $$binary_remote_addr zone=claudebox:10m rate=${RATELIMIT_CLAUDEBOX:-30r/m};
       limit_req_zone $$binary_remote_addr zone=browser:10m rate=${RATELIMIT_BROWSER:-30r/m};
-      limit_req_zone $$binary_remote_addr zone=proxq:10m rate=${RATELIMIT_PROXQ:-120r/m};
+      limit_req_zone $$binary_remote_addr zone=proxq:10m rate=${RATELIMIT_PROXQ:-600r/m};
       limit_req_zone $$binary_remote_addr zone=librechat:10m rate=${RATELIMIT_LIBRECHAT:-500r/m};
 
   proxq_config:
