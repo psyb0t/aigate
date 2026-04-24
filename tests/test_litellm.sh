@@ -96,25 +96,27 @@ if [ "${OLLAMA:-}" = "1" ]; then
         "local-ollama-cpu-smollm2-1.7b"
         "local-ollama-cpu-qwen2.5-coder-1.5b"
         "local-ollama-cpu-qwen2.5-coder-3b"
-        "local-ollama-cpu-phi3.5"
+        "local-ollama-cpu-phi4-mini"
+        "local-ollama-cpu-gemma4-e2b"
         "local-ollama-cpu-gemma3-4b"
-        "local-ollama-cpu-nomic-embed"
+        "local-ollama-cpu-dolphin-phi"
         "local-ollama-cpu-bge-m3"
         "local-ollama-cpu-qwen3-embed-0.6b"
-        "local-ollama-cpu-dolphin-phi"
     )
 fi
 
 # ollama-cuda models — only expected when OLLAMA_CUDA=1
 if [ "${OLLAMA_CUDA:-}" = "1" ]; then
     EXPECTED_MODELS+=(
-        "local-ollama-cuda-dolphin-mistral-7b"
         "local-ollama-cuda-qwen3-8b"
-        "local-ollama-cuda-gemma3-12b"
+        "local-ollama-cuda-gemma4-e4b"
+        "local-ollama-cuda-gemma4-e2b"
         "local-ollama-cuda-qwen2.5-coder-7b"
+        "local-ollama-cuda-deepseek-coder-v2-16b"
         "local-ollama-cuda-llama3.1-8b"
-        "local-ollama-cuda-gemma3-4b"
-        "local-ollama-cuda-dolphin3"
+        "local-ollama-cuda-qwen3-abliterated-16b"
+        "local-ollama-cuda-gemma4-abliterated-e4b"
+        "local-ollama-cuda-deepseek-r1-8b"
         "local-ollama-cuda-dolphin-phi"
     )
 fi

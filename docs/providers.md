@@ -154,10 +154,10 @@ Models are downloaded on first start and cached in `.data/ollama/`. No GPU requi
 | `local-ollama-cpu-smollm2-1.7b` | smollm2:1.7b | general chat, smallest, ~1GB RAM |
 | `local-ollama-cpu-qwen2.5-coder-1.5b` | qwen2.5-coder:1.5b | code, ~1GB RAM |
 | `local-ollama-cpu-qwen2.5-coder-3b` | qwen2.5-coder:3b | code, ~2GB RAM |
-| `local-ollama-cpu-phi3.5` | phi3.5 | general chat, ~2.2GB RAM |
-| `local-ollama-cpu-gemma3-4b` | gemma3:4b | general chat + vision, ~2.6GB RAM |
+| `local-ollama-cpu-phi4-mini` | phi4-mini | general chat, 128K ctx, ~2.5GB RAM |
+| `local-ollama-cpu-gemma4-e2b` | gemma4:e2b | general chat + vision (Gemma 4), ~7.2GB RAM |
+| `local-ollama-cpu-gemma3-4b` | gemma3:4b | general chat + vision — lightweight, ~2.6GB RAM |
 | `local-ollama-cpu-dolphin-phi` | dolphin-phi:latest | uncensored, ~1.6GB RAM |
-| `local-ollama-cpu-nomic-embed` | nomic-embed-text | embeddings, 512 ctx, ~270MB RAM |
 | `local-ollama-cpu-bge-m3` | bge-m3 | embeddings, multilingual, 8192 ctx, ~570MB RAM |
 | `local-ollama-cpu-qwen3-embed-0.6b` | qwen3-embedding:0.6b | embeddings, ~500MB RAM |
 
@@ -169,11 +169,13 @@ Requires `nvidia-container-toolkit`. Flash attention + quantized KV cache enable
 | ----- | ----- | ----- |
 | `local-ollama-cuda-qwen3-8b` | qwen3:8b | general chat, thinking mode, ~5GB VRAM |
 | `local-ollama-cuda-llama3.1-8b` | llama3.1:8b | general chat, ~5GB VRAM |
-| `local-ollama-cuda-gemma3-4b` | gemma3:4b | general chat + vision, ~3GB VRAM |
-| `local-ollama-cuda-gemma3-12b` | gemma3:12b | general chat + vision, ~8GB VRAM |
+| `local-ollama-cuda-gemma4-e2b` | gemma4:e2b | general chat + vision, ~7.2GB VRAM |
+| `local-ollama-cuda-gemma4-e4b` | gemma4:e4b | general chat + vision, ~9.6GB VRAM |
 | `local-ollama-cuda-qwen2.5-coder-7b` | qwen2.5-coder:7b | code, ~5GB VRAM |
-| `local-ollama-cuda-dolphin-mistral-7b` | dolphin-mistral:7b | uncensored, ~5GB VRAM |
-| `local-ollama-cuda-dolphin3` | dolphin3:latest | uncensored (latest Dolphin), ~5GB VRAM |
+| `local-ollama-cuda-deepseek-coder-v2-16b` | deepseek-coder-v2:16b | code, MoE 2.4B active, 160K ctx, ~8.9GB VRAM |
+| `local-ollama-cuda-deepseek-r1-8b` | deepseek-r1:8b | reasoning, thinking mode, ~5.2GB VRAM |
+| `local-ollama-cuda-qwen3-abliterated-16b` | huihui_ai/qwen3-abliterated:16b | uncensored, ~9.8GB VRAM |
+| `local-ollama-cuda-gemma4-abliterated-e4b` | huihui_ai/gemma-4-abliterated:e4b | uncensored + vision, ~9.6GB VRAM |
 | `local-ollama-cuda-dolphin-phi` | dolphin-phi:latest | uncensored, tiny, ~1.6GB VRAM |
 
 ## Speaches CPU (local — `SPEACHES=1`)

@@ -111,8 +111,8 @@ Default writable locations:
 | **[claudebox](https://github.com/psyb0t/docker-claudebox) ×2** _(optional, `CLAUDEBOX=1` / `CLAUDEBOX_ZAI=1`)_ | Claude Code CLI in API mode. Full agentic loop — shell access, file I/O, tool use, persistent workspaces. One instance uses your OAuth token or Anthropic API key; the other points at z.ai for GLM models. Both expose REST API, OpenAI-compatible endpoint, and MCP server. |
 | **[hybrids3](https://github.com/psyb0t/docker-hybrids3)** _(optional, `HYBRIDS3=1`)_ | S3-compatible object storage. Plain HTTP upload/download, boto3-compatible, bearer token auth, auto-expiry, MCP server. The `uploads` bucket is public-read — files are accessible by direct URL without signing. |
 | **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** _(optional, `BROWSER=1`)_ | 5 Camoufox (hardened Firefox) replicas behind HAProxy. Real OS-level mouse and keyboard input via PyAutoGUI — no CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan. Redis cookie sync across replicas. REST API and MCP server. |
-| **Ollama** _(optional, `OLLAMA=1`)_ | Local CPU inference. Runs llama3.2:3b, qwen3:4b, smollm2:1.7b, qwen2.5-coder:1.5b, qwen2.5-coder:3b, phi3.5, gemma3:4b (general + vision), nomic-embed-text, bge-m3, qwen3-embedding:0.6b (embeddings), dolphin-phi. Models are downloaded automatically on first start and cached in `.data/ollama/`. No GPU required. |
-| **Ollama CUDA** _(optional, `OLLAMA_CUDA=1`)_ | Local NVIDIA GPU inference. Runs dolphin-mistral:7b, qwen3:8b, gemma3:12b, qwen2.5-coder:7b, llama3.1:8b, gemma3:4b, dolphin3:latest, dolphin-phi. Flash attention and KV cache enabled. Shares model storage with CPU ollama — no duplicate downloads. Requires `nvidia-container-toolkit`. |
+| **Ollama** _(optional, `OLLAMA=1`)_ | Local CPU inference. Runs llama3.2:3b, qwen3:4b, smollm2:1.7b, qwen2.5-coder:1.5b, qwen2.5-coder:3b, phi4-mini, gemma4:e2b, gemma3:4b (vision), bge-m3, qwen3-embedding:0.6b (embeddings), dolphin-phi. Models are downloaded automatically on first start and cached in `.data/ollama/`. No GPU required. |
+| **Ollama CUDA** _(optional, `OLLAMA_CUDA=1`)_ | Local NVIDIA GPU inference. Runs qwen3:8b, gemma4:e4b, gemma4:e2b, qwen2.5-coder:7b, deepseek-coder-v2:16b, llama3.1:8b, qwen3-abliterated:16b, gemma4-abliterated:e4b (uncensored vision), deepseek-r1:8b, dolphin-phi. Flash attention and KV cache enabled. Shares model storage with CPU ollama — no duplicate downloads. Requires `nvidia-container-toolkit`. |
 | **Speaches** _(optional, `SPEACHES=1`)_ | Local CPU audio via [speaches-ai/speaches](https://github.com/speaches-ai/speaches). Transcription: `faster-distil-whisper-large-v3` (multilingual) and `parakeet-tdt-0.6b-v2` (English, ~3400× real-time on CPU). Text-to-speech: `Kokoro-82M` int8 (high-quality, multiple voices). Models cached in `.data/speaches/`. |
 | **Speaches CUDA** _(optional, `SPEACHES_CUDA=1`)_ | CUDA-accelerated Whisper STT via speaches. Uses the same model cache as CPU speaches. Shares `.data/speaches/` — no separate download. Requires `nvidia-container-toolkit`. |
 | **Qwen3 CUDA TTS** _(optional, `QWEN_TTS_CUDA=1`)_ | CUDA-accelerated TTS via [faster-qwen3-tts](https://github.com/andimarafioti/faster-qwen3-tts). Runs `Qwen3-TTS-12Hz-0.6B-Base` with CUDA graphs. Voice cloning via reference audio. Models cached in `.data/qwen3-tts/`. Requires `nvidia-container-toolkit`. |
@@ -184,10 +184,10 @@ All local CPU models are last in fallback chains — used when cloud providers a
 | `local-ollama-cpu-smollm2-1.7b` | General chat — absolute tiniest | ~1GB |
 | `local-ollama-cpu-qwen2.5-coder-1.5b` | Code — smallest | ~1GB |
 | `local-ollama-cpu-qwen2.5-coder-3b` | Code — better quality | ~2GB |
-| `local-ollama-cpu-phi3.5` | General chat (Microsoft) | ~2.2GB |
-| `local-ollama-cpu-gemma3-4b` | General chat + vision (Google Gemma 3) | ~2.6GB |
+| `local-ollama-cpu-phi4-mini` | General chat (Microsoft Phi 4, 128K ctx) | ~2.5GB |
+| `local-ollama-cpu-gemma4-e2b` | General chat + vision (Google Gemma 4, 2.3B effective) | ~7.2GB |
+| `local-ollama-cpu-gemma3-4b` | General chat + vision — lightweight (Google Gemma 3) | ~2.6GB |
 | `local-ollama-cpu-dolphin-phi` | Uncensored assistant (Microsoft Phi) | ~1.6GB |
-| `local-ollama-cpu-nomic-embed` | Text embeddings — fastest, smallest (270MB, 512 token context) | ~270MB |
 | `local-ollama-cpu-bge-m3` | Text embeddings — long docs, multilingual (8192 token context) | ~570MB |
 | `local-ollama-cpu-qwen3-embed-0.6b` | Text embeddings — modern, efficient | ~500MB |
 
@@ -199,11 +199,13 @@ CUDA models run with flash attention and quantized KV cache. See [Resource manag
 | ---------- | ----------- | ---- |
 | `local-ollama-cuda-qwen3-8b` | General chat — thinking mode | ~5GB |
 | `local-ollama-cuda-llama3.1-8b` | General chat | ~5GB |
-| `local-ollama-cuda-gemma3-4b` | General chat + vision | ~3GB |
-| `local-ollama-cuda-gemma3-12b` | General chat + vision — higher quality | ~8GB |
+| `local-ollama-cuda-gemma4-e2b` | General chat + vision (Gemma 4, 2.3B effective) | ~7.2GB |
+| `local-ollama-cuda-gemma4-e4b` | General chat + vision — higher quality (Gemma 4, 4.5B effective) | ~9.6GB |
 | `local-ollama-cuda-qwen2.5-coder-7b` | Code | ~5GB |
-| `local-ollama-cuda-dolphin-mistral-7b` | Uncensored assistant | ~5GB |
-| `local-ollama-cuda-dolphin3` | Uncensored assistant (latest Dolphin) | ~5GB |
+| `local-ollama-cuda-deepseek-coder-v2-16b` | Code — MoE, 2.4B active, 160K ctx | ~8.9GB |
+| `local-ollama-cuda-deepseek-r1-8b` | Reasoning / thinking model | ~5.2GB |
+| `local-ollama-cuda-qwen3-abliterated-16b` | Uncensored — abliterated Qwen3 | ~9.8GB |
+| `local-ollama-cuda-gemma4-abliterated-e4b` | Uncensored + vision — abliterated Gemma 4 | ~9.6GB |
 | `local-ollama-cuda-dolphin-phi` | Uncensored assistant (tiny) | ~1.6GB |
 
 ### Local transcription (Speaches, CPU — `SPEACHES=1`)
@@ -405,7 +407,7 @@ curl http://localhost:4000/audio/speech \
 curl http://localhost:4000/embeddings \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model": "local-ollama-cpu-nomic-embed", "input": "your text here"}'
+  -d '{"model": "local-ollama-cpu-bge-m3", "input": "your text here"}'
 ```
 
 ### Async (via proxq)

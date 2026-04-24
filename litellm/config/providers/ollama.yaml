@@ -23,9 +23,14 @@
     model: ollama/qwen2.5-coder:3b
     api_base: http://ollama:11434
 
-- model_name: local-ollama-cpu-phi3.5
+- model_name: local-ollama-cpu-phi4-mini
   litellm_params:
-    model: ollama/phi3.5
+    model: ollama/phi4-mini
+    api_base: http://ollama:11434
+
+- model_name: local-ollama-cpu-gemma4-e2b
+  litellm_params:
+    model: ollama/gemma4:e2b
     api_base: http://ollama:11434
 
 - model_name: local-ollama-cpu-gemma3-4b
@@ -37,13 +42,6 @@
   litellm_params:
     model: ollama/dolphin-phi:latest
     api_base: http://ollama:11434
-
-- model_name: local-ollama-cpu-nomic-embed
-  litellm_params:
-    model: ollama/nomic-embed-text
-    api_base: http://ollama:11434
-  model_info:
-    mode: embedding
 
 - model_name: local-ollama-cpu-bge-m3
   litellm_params:

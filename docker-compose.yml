@@ -426,7 +426,6 @@ services:
         if [ "$$PULL_CPU" = "1" ]; then
           until OLLAMA_HOST=http://ollama:11434 ollama list > /dev/null 2>&1; do sleep 2; done;
           export OLLAMA_HOST=http://ollama:11434;
-          pull nomic-embed-text &&
           pull bge-m3 &&
           pull qwen3-embedding:0.6b &&
           pull llama3.2:3b &&
@@ -434,7 +433,8 @@ services:
           pull smollm2:1.7b &&
           pull qwen2.5-coder:1.5b &&
           pull qwen2.5-coder:3b &&
-          pull phi3.5 &&
+          pull phi4-mini &&
+          pull gemma4:e2b &&
           pull gemma3:4b &&
           pull dolphin-phi:latest;
         fi;
@@ -442,15 +442,16 @@ services:
         if [ "$$PULL_CUDA" = "1" ]; then
           until OLLAMA_HOST=http://ollama-cuda:11434 ollama list > /dev/null 2>&1; do sleep 2; done;
           export OLLAMA_HOST=http://ollama-cuda:11434;
-          pull llama3.1:8b &&
-          pull dolphin-mistral:7b &&
           pull qwen3:8b &&
-          pull gemma3:12b &&
+          pull gemma4:e4b &&
+          pull gemma4:e2b &&
           pull qwen2.5-coder:7b &&
-          pull dolphin3:latest &&
-          pull gemma3:4b &&
+          pull deepseek-coder-v2:16b &&
+          pull llama3.1:8b &&
+          pull huihui_ai/qwen3-abliterated:16b &&
+          pull huihui_ai/gemma-4-abliterated:e4b &&
+          pull deepseek-r1:8b &&
           pull dolphin-phi:latest &&
-          pull nomic-embed-text &&
           pull bge-m3 &&
           pull qwen3-embedding:0.6b &&
           pull llama3.2:3b &&
@@ -458,7 +459,8 @@ services:
           pull smollm2:1.7b &&
           pull qwen2.5-coder:1.5b &&
           pull qwen2.5-coder:3b &&
-          pull phi3.5;
+          pull phi4-mini &&
+          pull gemma3:4b;
         fi
       '
     environment:

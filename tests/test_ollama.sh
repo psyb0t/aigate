@@ -15,9 +15,10 @@ OLLAMA_EXPECTED_MODELS=(
     "local-ollama-cpu-smollm2-1.7b"
     "local-ollama-cpu-qwen2.5-coder-1.5b"
     "local-ollama-cpu-qwen2.5-coder-3b"
-    "local-ollama-cpu-phi3.5"
+    "local-ollama-cpu-phi4-mini"
+    "local-ollama-cpu-gemma4-e2b"
     "local-ollama-cpu-gemma3-4b"
-    "local-ollama-cpu-nomic-embed"
+    "local-ollama-cpu-dolphin-phi"
     "local-ollama-cpu-bge-m3"
     "local-ollama-cpu-qwen3-embed-0.6b"
 )
@@ -60,7 +61,7 @@ test_ollama_embedding() {
     out=$(curl -s --max-time 120 -X POST "$BASE_URL/embeddings" \
         -H "Content-Type: application/json" \
         -H "$AUTH_HEADER" \
-        -d '{"model":"local-ollama-cpu-nomic-embed","input":"hello world"}')
+        -d '{"model":"local-ollama-cpu-bge-m3","input":"hello world"}')
 
     if echo "$out" | grep -qi "\"error\""; then
         echo "  FAIL: ollama embedding error: $(echo "$out" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("error",{}).get("message","?"))' 2>/dev/null)"
@@ -72,13 +73,13 @@ test_ollama_embedding() {
     echo "OK: ollama_embedding"
 }
 
-# ── vision: gemma3-4b identifies cow in cow.jpg ───────────────────────────
+# ── vision: gemma4-e2b identifies cow in cow.jpg ───────────────────────────
 
-test_ollama_gemma3_vision() {
+test_ollama_gemma4_vision() {
     local fixture="$FIXTURES_DIR/cow.jpg"
     if [ ! -f "$fixture" ]; then
         echo "  SKIP: $fixture not found"
-        echo "OK: ollama_gemma3-4b_vision (skipped)"
+        echo "OK: ollama_gemma4-e2b_vision (skipped)"
         return 0
     fi
 
@@ -89,26 +90,26 @@ test_ollama_gemma3_vision() {
     out=$(curl -s --max-time 180 -X POST "$BASE_URL/chat/completions" \
         -H "Content-Type: application/json" \
         -H "$AUTH_HEADER" \
-        -d "{\"model\":\"local-ollama-cpu-gemma3-4b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"image_url\",\"image_url\":{\"url\":\"data:image/jpeg;base64,$b64\"}},{\"type\":\"text\",\"text\":\"What animal is in this image? Answer in one word.\"}]}]}")
+        -d "{\"model\":\"local-ollama-cpu-gemma4-e2b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"image_url\",\"image_url\":{\"url\":\"data:image/jpeg;base64,$b64\"}},{\"type\":\"text\",\"text\":\"What animal is in this image? Answer in one word.\"}]}]}")
 
     if echo "$out" | grep -qi "\"error\""; then
-        echo "  FAIL: gemma3-4b error: $(echo "$out" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("error",{}).get("message","?"))' 2>/dev/null)"
+        echo "  FAIL: gemma4-e2b error: $(echo "$out" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("error",{}).get("message","?"))' 2>/dev/null)"
         return 1
     fi
 
     local content
     content=$(echo "$out" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['choices'][0]['message']['content'])" 2>/dev/null)
-    echo "  gemma3-4b says: $content"
+    echo "  gemma4-e2b says: $content"
 
-    assert_contains_icase "$content" "cow" "gemma3-4b identifies cow in image" || return 1
-    echo "OK: ollama_gemma3-4b_vision"
+    assert_contains_icase "$content" "cow" "gemma4-e2b identifies cow in image" || return 1
+    echo "OK: ollama_gemma4-e2b_vision"
 }
 
 ALL_TESTS+=(
     test_ollama_models_registered
     test_ollama_chat_completion
     test_ollama_embedding
-    test_ollama_gemma3_vision
+    test_ollama_gemma4_vision
 )
 
 # ── CUDA tests — only when OLLAMA_CUDA=1 ─────────────────────────────────
@@ -118,13 +119,15 @@ if [ "${OLLAMA_CUDA:-}" != "1" ]; then
 fi
 
 OLLAMA_CUDA_EXPECTED_MODELS=(
-    "local-ollama-cuda-dolphin-mistral-7b"
     "local-ollama-cuda-qwen3-8b"
-    "local-ollama-cuda-gemma3-12b"
+    "local-ollama-cuda-gemma4-e4b"
     "local-ollama-cuda-qwen2.5-coder-7b"
+    "local-ollama-cuda-deepseek-coder-v2-16b"
     "local-ollama-cuda-llama3.1-8b"
-    "local-ollama-cuda-gemma3-4b"
-    "local-ollama-cuda-dolphin3"
+    "local-ollama-cuda-gemma4-e2b"
+    "local-ollama-cuda-qwen3-abliterated-16b"
+    "local-ollama-cuda-gemma4-abliterated-e4b"
+    "local-ollama-cuda-deepseek-r1-8b"
     "local-ollama-cuda-dolphin-phi"
 )
 
@@ -162,33 +165,16 @@ test_ollama_cuda_uncensored() {
     out=$(curl -s --max-time 120 -X POST "$BASE_URL/chat/completions" \
         -H "Content-Type: application/json" \
         -H "$AUTH_HEADER" \
-        -d '{"model":"local-ollama-cuda-dolphin-mistral-7b","messages":[{"role":"user","content":"respond with exactly the word DOLPHINPONG and nothing else"}]}')
+        -d '{"model":"local-ollama-cuda-qwen3-abliterated-16b","messages":[{"role":"user","content":"respond with exactly the word ABLITPONG and nothing else"}]}')
 
     if echo "$out" | grep -qi "\"error\""; then
-        echo "  FAIL: dolphin-mistral error: $(echo "$out" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("error",{}).get("message","?"))' 2>/dev/null)"
+        echo "  FAIL: qwen3-abliterated error: $(echo "$out" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("error",{}).get("message","?"))' 2>/dev/null)"
         return 1
     fi
 
-    assert_contains_icase "$out" "DOLPHINPONG" "dolphin-mistral response" || return 1
-    assert_contains "$out" "choices" "dolphin-mistral has choices" || return 1
+    assert_contains_icase "$out" "ABLITPONG" "qwen3-abliterated response" || return 1
+    assert_contains "$out" "choices" "qwen3-abliterated has choices" || return 1
     echo "OK: ollama_cuda_uncensored"
-}
-
-test_ollama_cuda_dolphin3() {
-    local out
-    out=$(curl -s --max-time 120 -X POST "$BASE_URL/chat/completions" \
-        -H "Content-Type: application/json" \
-        -H "$AUTH_HEADER" \
-        -d '{"model":"local-ollama-cuda-dolphin3","messages":[{"role":"user","content":"respond with exactly the word DOLPHIN3PONG and nothing else"}]}')
-
-    if echo "$out" | grep -qi "\"error\""; then
-        echo "  FAIL: dolphin3 error: $(echo "$out" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("error",{}).get("message","?"))' 2>/dev/null)"
-        return 1
-    fi
-
-    assert_contains_icase "$out" "DOLPHIN3PONG" "dolphin3 response" || return 1
-    assert_contains "$out" "choices" "dolphin3 has choices" || return 1
-    echo "OK: ollama_cuda_dolphin3"
 }
 
 test_ollama_cuda_dolphin_phi() {
@@ -207,11 +193,11 @@ test_ollama_cuda_dolphin_phi() {
     echo "OK: ollama_cuda_dolphin_phi"
 }
 
-test_ollama_cuda_gemma3_vision() {
+test_ollama_cuda_gemma4_vision() {
     local fixture="$FIXTURES_DIR/cow.jpg"
     if [ ! -f "$fixture" ]; then
         echo "  SKIP: $fixture not found"
-        echo "OK: ollama_cuda_gemma3-4b_vision (skipped)"
+        echo "OK: ollama_cuda_gemma4-e2b_vision (skipped)"
         return 0
     fi
 
@@ -222,26 +208,25 @@ test_ollama_cuda_gemma3_vision() {
     out=$(curl -s --max-time 180 -X POST "$BASE_URL/chat/completions" \
         -H "Content-Type: application/json" \
         -H "$AUTH_HEADER" \
-        -d "{\"model\":\"local-ollama-cuda-gemma3-4b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"image_url\",\"image_url\":{\"url\":\"data:image/jpeg;base64,$b64\"}},{\"type\":\"text\",\"text\":\"What animal is in this image? Answer in one word.\"}]}]}")
+        -d "{\"model\":\"local-ollama-cuda-gemma4-e2b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"image_url\",\"image_url\":{\"url\":\"data:image/jpeg;base64,$b64\"}},{\"type\":\"text\",\"text\":\"What animal is in this image? Answer in one word.\"}]}]}")
 
     if echo "$out" | grep -qi "\"error\""; then
-        echo "  FAIL: gemma3-4b error: $(echo "$out" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("error",{}).get("message","?"))' 2>/dev/null)"
+        echo "  FAIL: gemma4-e2b error: $(echo "$out" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("error",{}).get("message","?"))' 2>/dev/null)"
         return 1
     fi
 
     local content
     content=$(echo "$out" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['choices'][0]['message']['content'])" 2>/dev/null)
-    echo "  gemma3-4b says: $content"
+    echo "  gemma4-e2b says: $content"
 
-    assert_contains_icase "$content" "cow" "gemma3-4b identifies cow in image" || return 1
-    echo "OK: ollama_cuda_gemma3-4b_vision"
+    assert_contains_icase "$content" "cow" "gemma4-e2b identifies cow in image" || return 1
+    echo "OK: ollama_cuda_gemma4-e2b_vision"
 }
 
 ALL_TESTS+=(
     test_ollama_cuda_models_registered
     test_ollama_cuda_chat_completion
     test_ollama_cuda_uncensored
-    test_ollama_cuda_dolphin3
     test_ollama_cuda_dolphin_phi
-    test_ollama_cuda_gemma3_vision
+    test_ollama_cuda_gemma4_vision
 )
