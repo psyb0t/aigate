@@ -6,9 +6,14 @@
 # scaled to fit within the effective RAM budget. Enabling more services means
 # each gets a smaller slice.
 #
-# Resource manager awareness: CUDA services (ollama-cuda, speaches-cuda,
-# qwen3-cuda-tts) share one model slot — only one has models loaded at a time.
-# Peak concurrent CUDA RAM = max(three active allocations) + 2 × idle overhead.
+# Resource manager awareness: local services share model slots — only one has
+# models loaded at a time per hardware class.
+# CUDA group: ollama-cuda, speaches-cuda, qwen3-cuda-tts, sdcpp-cuda
+# CPU group: ollama, speaches, sdcpp
+# Peak concurrent RAM per group = max(active allocations) + (N-1) × idle overhead.
+#
+# System overhead: 2 GB or 5% of total RAM (whichever is larger) is reserved
+# for the OS, kernel buffers, and filesystem cache before any service allocation.
 #
 # MAXUSE: percentage of total system resources the stack may use (default: 100).
 #   MAXUSE=80 make limits
@@ -67,14 +72,19 @@ if [ "$maxuse" -lt 10 ] || [ "$maxuse" -gt 100 ]; then
     exit 1
 fi
 
-effective_ram_mb=$(( total_ram_mb * maxuse / 100 ))
+# Reserve RAM for OS: 2 GB or 5% of total, whichever is larger
+os_reserve_mb=$(( total_ram_mb * 5 / 100 ))
+[ "$os_reserve_mb" -lt 2048 ] && os_reserve_mb=2048
+
+effective_ram_mb=$(( total_ram_mb * maxuse / 100 - os_reserve_mb ))
+[ "$effective_ram_mb" -lt 512 ] && effective_ram_mb=512
 effective_swap_mb=$(( total_swap_mb * maxuse / 100 ))
 effective_cores=$(awk -v cores="$total_cores" -v pct="$maxuse" \
     'BEGIN { printf "%.2f", cores * pct / 100 }')
 
 echo ""
 echo "System info:"
-echo "  RAM:   ${total_ram_mb} MB  (effective: ${effective_ram_mb} MB at ${maxuse}%)"
+echo "  RAM:   ${total_ram_mb} MB  (effective: ${effective_ram_mb} MB — ${os_reserve_mb} MB OS reserve, ${maxuse}% MAXUSE)"
 echo "  Swap:  ${total_swap_mb} MB  (effective: ${effective_swap_mb} MB at ${maxuse}%)"
 echo "  Cores: ${total_cores}  (effective: ${effective_cores} at ${maxuse}%)"
 echo "  MAXUSE: ${maxuse}%"
@@ -195,9 +205,18 @@ concurrent=$(( concurrent + nginx_raw + postgres_raw + redis_raw + proxq_raw ))
 [ "$flag_claudebox" = "1" ]   && concurrent=$(( concurrent + claudebox_raw ))
 [ "$flag_cbzai" = "1" ]       && concurrent=$(( concurrent + cbzai_raw ))
 [ "$flag_hybrids3" = "1" ]    && concurrent=$(( concurrent + hybrids3_raw ))
-[ "$flag_speaches" = "1" ]    && concurrent=$(( concurrent + speaches_raw ))
-[ "$flag_ollama" = "1" ]      && concurrent=$(( concurrent + ollama_raw ))
-[ "$flag_sdcpp" = "1" ]        && concurrent=$(( concurrent + sdcpp_raw ))
+# CPU local group: resource manager ensures only one has models loaded at a time.
+# Count max(active CPU local services) + idle overhead for the rest.
+cpu_idle=128  # MB per idle CPU local container (models unloaded from RAM)
+cpu_local_count=0; cpu_local_max=0
+[ "$flag_speaches" = "1" ]  && cpu_local_count=$(( cpu_local_count + 1 )) && [ "$speaches_raw" -gt "$cpu_local_max" ]  && cpu_local_max=$speaches_raw
+[ "$flag_ollama" = "1" ]    && cpu_local_count=$(( cpu_local_count + 1 )) && [ "$ollama_raw" -gt "$cpu_local_max" ]    && cpu_local_max=$ollama_raw
+[ "$flag_sdcpp" = "1" ]     && cpu_local_count=$(( cpu_local_count + 1 )) && [ "$sdcpp_raw" -gt "$cpu_local_max" ]     && cpu_local_max=$sdcpp_raw
+if [ "$cpu_local_count" -gt 0 ]; then
+    cpu_local_idle_count=$(( cpu_local_count - 1 ))
+    [ "$cpu_local_idle_count" -lt 0 ] && cpu_local_idle_count=0
+    concurrent=$(( concurrent + cpu_local_max + cpu_local_idle_count * cpu_idle ))
+fi
 [ "$flag_cloudflared" = "1" ]  && concurrent=$(( concurrent + cloudflared_raw ))
 [ "$flag_mcp" = "1" ]          && concurrent=$(( concurrent + mcp_raw ))
 [ "$flag_librechat" = "1" ]    && concurrent=$(( concurrent + librechat_raw + librechat_mongo_raw ))
@@ -276,6 +295,10 @@ if [ "$flag_browser" = "1" ]; then
     row "stealthy-auto-browse (×${sab_replicas})" $sab_mem $sab_swap $sab_cpu
     row "stealthy-auto-browse-proxy"    $sab_proxy_mem  $sab_proxy_swap  $sab_proxy_cpu
 fi
+if [ "$flag_speaches" = "1" ] || [ "$flag_ollama" = "1" ] || [ "$flag_sdcpp" = "1" ]; then
+    echo ""
+    echo "CPU local services (one model slot shared via resource manager):"
+fi
 [ "$flag_speaches" = "1" ]    && row "speaches"              $speaches_mem   $speaches_swap   $speaches_cpu
 [ "$flag_ollama" = "1" ]      && row "ollama"                $ollama_mem     $ollama_swap     $ollama_cpu
 if [ "$flag_ollama" = "1" ] || [ "$flag_ollama_cuda" = "1" ]; then
@@ -307,7 +330,6 @@ total_mem=$(( nginx_mem + postgres_mem + redis_mem + proxq_mem ))
 [ "$flag_speaches" = "1" ]    && total_mem=$(( total_mem + speaches_mem ))
 [ "$flag_ollama" = "1" ]      && total_mem=$(( total_mem + ollama_mem ))
 [ "$flag_sdcpp" = "1" ]          && total_mem=$(( total_mem + sdcpp_mem ))
-[ "$flag_sdcpp_cuda" = "1" ]     && total_mem=$(( total_mem + sdcpp_cuda_mem ))
 [ "$flag_cloudflared" = "1" ]    && total_mem=$(( total_mem + cloudflared_mem ))
 [ "$flag_mcp" = "1" ]            && total_mem=$(( total_mem + mcp_mem ))
 [ "$flag_librechat" = "1" ]      && total_mem=$(( total_mem + librechat_mem + librechat_mongo_mem ))
