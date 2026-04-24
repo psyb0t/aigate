@@ -105,8 +105,8 @@ if [ "${OLLAMA:-}" = "1" ]; then
     )
 fi
 
-# ollama-cuda models — only expected when CUDA=1
-if [ "${CUDA:-}" = "1" ]; then
+# ollama-cuda models — only expected when OLLAMA_CUDA=1
+if [ "${OLLAMA_CUDA:-}" = "1" ]; then
     EXPECTED_MODELS+=(
         "local-ollama-cuda-dolphin-mistral-7b"
         "local-ollama-cuda-qwen3-8b"
@@ -116,7 +116,19 @@ if [ "${CUDA:-}" = "1" ]; then
         "local-ollama-cuda-gemma3-4b"
         "local-ollama-cuda-dolphin3"
         "local-ollama-cuda-dolphin-phi"
+    )
+fi
+
+# qwen3 cuda tts — only expected when QWEN_TTS_CUDA=1
+if [ "${QWEN_TTS_CUDA:-}" = "1" ]; then
+    EXPECTED_MODELS+=(
         "local-qwen3-cuda-tts"
+    )
+fi
+
+# speaches-cuda models — only expected when SPEACHES_CUDA=1
+if [ "${SPEACHES_CUDA:-}" = "1" ]; then
+    EXPECTED_MODELS+=(
         "local-speaches-cuda-whisper-distil-large-v3"
         "local-speaches-cuda-parakeet-tdt-0.6b"
     )
@@ -361,11 +373,11 @@ test_litellm_resource_manager() {
     echo "OK: litellm_resource_manager"
 }
 
-# ── CUDA resource manager unloads on CUDA requests (CUDA=1) ────────────────
+# ── CUDA resource manager unloads on CUDA requests ──────────────────────────
 
 test_litellm_cuda_resource_manager() {
-    if [ "${CUDA:-}" != "1" ]; then
-        echo "OK: litellm_cuda_resource_manager (skipped — CUDA not enabled)"
+    if [ "${QWEN_TTS_CUDA:-}" != "1" ]; then
+        echo "OK: litellm_cuda_resource_manager (skipped — QWEN_TTS_CUDA not enabled)"
         return 0
     fi
 
@@ -389,11 +401,11 @@ test_litellm_cuda_resource_manager() {
     echo "OK: litellm_cuda_resource_manager"
 }
 
-# ── CUDA TTS via qwen3-cuda-tts (CUDA=1) ──────────────────────────────────
+# ── CUDA TTS via qwen3-cuda-tts (QWEN_TTS_CUDA=1) ───────────────────────────
 
 test_litellm_cuda_tts() {
-    if [ "${CUDA:-}" != "1" ]; then
-        echo "OK: litellm_cuda_tts (skipped — CUDA not enabled)"
+    if [ "${QWEN_TTS_CUDA:-}" != "1" ]; then
+        echo "OK: litellm_cuda_tts (skipped — QWEN_TTS_CUDA not enabled)"
         return 0
     fi
     local tmpfile
@@ -413,15 +425,15 @@ test_litellm_cuda_tts() {
     echo "OK: litellm_cuda_tts"
 }
 
-# ── CUDA STT via speaches-cuda (CUDA=1) ────────────────────────────────────
+# ── CUDA STT via speaches-cuda (SPEACHES_CUDA=1) ─────────────────────────────
 
 test_litellm_cuda_stt() {
-    if [ "${CUDA:-}" != "1" ]; then
-        echo "OK: litellm_cuda_stt (skipped — CUDA not enabled)"
+    if [ "${SPEACHES_CUDA:-}" != "1" ]; then
+        echo "OK: litellm_cuda_stt (skipped — SPEACHES_CUDA not enabled)"
         return 0
     fi
     if [ "${SPEACHES:-}" != "1" ]; then
-        echo "OK: litellm_cuda_stt (skipped — SPEACHES not enabled)"
+        echo "OK: litellm_cuda_stt (skipped — SPEACHES not enabled, needed for TTS input)"
         return 0
     fi
     # generate audio via cpu tts to feed into cuda stt

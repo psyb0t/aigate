@@ -61,12 +61,12 @@ nginx :4000                                          ┌────────
                                   ├─ Mistral            (free: 1B tokens/month, MISTRAL=1)
                                   ├─ Cohere             (free: 1K req/day, COHERE=1)
                                   ├─ Ollama CPU         (local, OLLAMA=1)
-                                  ├─ Ollama CUDA        (local, NVIDIA, CUDA=1)
+                                  ├─ Ollama CUDA        (local, NVIDIA, OLLAMA_CUDA=1)
                                   ├─ Speaches CPU       (local, transcription + TTS, SPEACHES=1)
-                                  ├─ Speaches CUDA      (local, CUDA STT, CUDA=1)
-                                  ├─ Qwen3 CUDA TTS     (local, CUDA voice-cloning, CUDA=1)
+                                  ├─ Speaches CUDA      (local, CUDA STT, SPEACHES_CUDA=1)
+                                  ├─ Qwen3 CUDA TTS     (local, CUDA voice-cloning, QWEN_TTS_CUDA=1)
                                   ├─ sd.cpp CPU         (local, image gen, SDCPP=1)
-                                  ├─ sd.cpp CUDA        (local, image gen, SDCPP=1 + CUDA=1)
+                                  ├─ sd.cpp CUDA        (local, image gen, SDCPP_CUDA=1)
                                   ├─ claudebox          (flat-rate, CLAUDEBOX=1)
                                   ├─ claudebox-zai      (flat-rate, CLAUDEBOX_ZAI=1)
                                   ├─ Anthropic          (pay-per-token, ANTHROPIC=1)
@@ -112,13 +112,13 @@ Default writable locations:
 | **[hybrids3](https://github.com/psyb0t/docker-hybrids3)** _(optional, `HYBRIDS3=1`)_ | S3-compatible object storage. Plain HTTP upload/download, boto3-compatible, bearer token auth, auto-expiry, MCP server. The `uploads` bucket is public-read — files are accessible by direct URL without signing. |
 | **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** _(optional, `BROWSER=1`)_ | 5 Camoufox (hardened Firefox) replicas behind HAProxy. Real OS-level mouse and keyboard input via PyAutoGUI — no CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan. Redis cookie sync across replicas. REST API and MCP server. |
 | **Ollama** _(optional, `OLLAMA=1`)_ | Local CPU inference. Runs llama3.2:3b, qwen3:4b, smollm2:1.7b, qwen2.5-coder:1.5b, qwen2.5-coder:3b, phi3.5, gemma3:4b (general + vision), nomic-embed-text, bge-m3, qwen3-embedding:0.6b (embeddings), dolphin-phi. Models are downloaded automatically on first start and cached in `.data/ollama/`. No GPU required. |
-| **Ollama CUDA** _(optional, `CUDA=1`)_ | Local NVIDIA GPU inference. Runs dolphin-mistral:7b, qwen3:8b, gemma3:12b, qwen2.5-coder:7b, llama3.1:8b, gemma3:4b, dolphin3:latest, dolphin-phi. Flash attention and KV cache enabled. Shares model storage with CPU ollama — no duplicate downloads. Requires `nvidia-container-toolkit`. |
+| **Ollama CUDA** _(optional, `OLLAMA_CUDA=1`)_ | Local NVIDIA GPU inference. Runs dolphin-mistral:7b, qwen3:8b, gemma3:12b, qwen2.5-coder:7b, llama3.1:8b, gemma3:4b, dolphin3:latest, dolphin-phi. Flash attention and KV cache enabled. Shares model storage with CPU ollama — no duplicate downloads. Requires `nvidia-container-toolkit`. |
 | **Speaches** _(optional, `SPEACHES=1`)_ | Local CPU audio via [speaches-ai/speaches](https://github.com/speaches-ai/speaches). Transcription: `faster-distil-whisper-large-v3` (multilingual) and `parakeet-tdt-0.6b-v2` (English, ~3400× real-time on CPU). Text-to-speech: `Kokoro-82M` int8 (high-quality, multiple voices). Models cached in `.data/speaches/`. |
-| **Speaches CUDA** _(optional, `CUDA=1`)_ | CUDA-accelerated Whisper STT via speaches. Uses the same model cache as CPU speaches. Shares `.data/speaches/` — no separate download. Requires `nvidia-container-toolkit`. |
-| **Qwen3 CUDA TTS** _(optional, `CUDA=1`)_ | CUDA-accelerated TTS via [faster-qwen3-tts](https://github.com/andimarafioti/faster-qwen3-tts). Runs `Qwen3-TTS-12Hz-0.6B-Base` with CUDA graphs. Voice cloning via reference audio. Models cached in `.data/qwen3-tts/`. Requires `nvidia-container-toolkit`. |
+| **Speaches CUDA** _(optional, `SPEACHES_CUDA=1`)_ | CUDA-accelerated Whisper STT via speaches. Uses the same model cache as CPU speaches. Shares `.data/speaches/` — no separate download. Requires `nvidia-container-toolkit`. |
+| **Qwen3 CUDA TTS** _(optional, `QWEN_TTS_CUDA=1`)_ | CUDA-accelerated TTS via [faster-qwen3-tts](https://github.com/andimarafioti/faster-qwen3-tts). Runs `Qwen3-TTS-12Hz-0.6B-Base` with CUDA graphs. Voice cloning via reference audio. Models cached in `.data/qwen3-tts/`. Requires `nvidia-container-toolkit`. |
 | **sd.cpp CPU** _(optional, `SDCPP=1`)_ | Local CPU image generation via [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp). Go wrapper with OpenAI-compatible `/v1/images/generations` endpoint, model hot-swap, idle timeout auto-unload. Models: sd-turbo, sdxl-turbo. Models cached in `.data/sdcpp/models/`. |
-| **sd.cpp CUDA** _(optional, `SDCPP=1` + `CUDA=1`)_ | CUDA-accelerated image generation via stable-diffusion.cpp. Same wrapper as CPU with CUDA backend. Models: sd-turbo, sdxl-turbo, sdxl-lightning, flux-schnell, juggernaut-xi. Non-blocking — rejects concurrent requests with 503 instead of queuing (resource manager handles scheduling). Requires `nvidia-container-toolkit`. |
-| **MCP tools** _(auto-enabled)_ | Media generation MCP server. Exposes `generate_image` and `generate_tts` tools to any model with function calling. Discovers available models dynamically from LiteLLM. Returns structured JSON with persistent URLs (uploaded to HybridS3) — no base64 blobs. Auto-enabled when any image or TTS provider is active (HuggingFace, OpenAI, Speaches, SDCPP, CUDA). |
+| **sd.cpp CUDA** _(optional, `SDCPP_CUDA=1`)_ | CUDA-accelerated image generation via stable-diffusion.cpp. Same wrapper as CPU with CUDA backend. Models: sd-turbo, sdxl-turbo, sdxl-lightning, flux-schnell, juggernaut-xi. Non-blocking — rejects concurrent requests with 503 instead of queuing (resource manager handles scheduling). Requires `nvidia-container-toolkit`. |
+| **MCP tools** _(auto-enabled)_ | Media generation MCP server. Exposes `generate_image` and `generate_tts` tools to any model with function calling. Discovers available models dynamically from LiteLLM. Returns structured JSON with persistent URLs (uploaded to HybridS3) — no base64 blobs. Auto-enabled when any image or TTS provider is active (HuggingFace, OpenAI, Speaches, SDCPP). |
 | **[LibreChat](https://github.com/danny-avila/LibreChat)** _(optional, `LIBRECHAT=1`)_ | Web UI for LLM interaction at `/librechat/`. Pre-configured with all LiteLLM models and MCP tools. MongoDB-backed conversation storage. Email/password auth — first registered user becomes admin, then set `LIBRECHAT_ALLOW_REGISTRATION=false` and restart. WebSocket streaming. Configurable via `.env` (registration, rate limits, debug logging, JWT secrets). |
 | **cloudflared** _(optional, `CLOUDFLARED=1`)_ | Cloudflare Tunnel. Disabled by default — enable with `CLOUDFLARED=1` in `.env`. Runs a quick tunnel (random `*.trycloudflare.com` URL, no account) or a named tunnel (fixed domain, requires config file and credentials). |
 
@@ -191,7 +191,7 @@ All local CPU models are last in fallback chains — used when cloud providers a
 | `local-ollama-cpu-bge-m3` | Text embeddings — long docs, multilingual (8192 token context) | ~570MB |
 | `local-ollama-cpu-qwen3-embed-0.6b` | Text embeddings — modern, efficient | ~500MB |
 
-### Local models (Ollama, CUDA — `CUDA=1`)
+### Local models (Ollama CUDA — `OLLAMA_CUDA=1`)
 
 CUDA models run with flash attention and quantized KV cache. See [Resource management](#resource-management) below for how VRAM is shared across services.
 
@@ -219,14 +219,14 @@ CUDA models run with flash attention and quantized KV cache. See [Resource manag
 | ---------- | ----------- |
 | `local-speaches-kokoro-tts` | Kokoro 82M int8 — high-quality, multiple voices (af_heart, af_alloy, af_bella, etc.) |
 
-### Local transcription (CUDA — `CUDA=1`)
+### Local transcription (CUDA — `SPEACHES_CUDA=1`)
 
 | Model name | Description |
 | ---------- | ----------- |
 | `local-speaches-cuda-whisper-distil-large-v3` | CUDA-accelerated Whisper — same model as CPU, faster inference |
 | `local-speaches-cuda-parakeet-tdt-0.6b` | CUDA-accelerated Parakeet TDT |
 
-### Local text-to-speech (CUDA — `CUDA=1`)
+### Local text-to-speech (CUDA — `QWEN_TTS_CUDA=1`)
 
 | Model name | Description |
 | ---------- | ----------- |
@@ -239,7 +239,7 @@ CUDA models run with flash attention and quantized KV cache. See [Resource manag
 | `local-sdcpp-cpu-sd-turbo` | SD Turbo — fastest, smallest (~1.7GB) |
 | `local-sdcpp-cpu-sdxl-turbo` | SDXL Turbo — better quality, larger (~2.5GB) |
 
-### Local image generation (sd.cpp, CUDA — `SDCPP=1` + `CUDA=1`)
+### Local image generation (sd.cpp, CUDA — `SDCPP_CUDA=1`)
 
 | Model name | Description |
 | ---------- | ----------- |
@@ -301,9 +301,12 @@ Everything is opt-in via flags in `.env`. API keys are stored separately and nev
 | `COHERE=1` | Cohere models (free: 1K req/day) |
 | `GROQ=1` | Groq models (free tier) |
 | `OLLAMA=1` | Local Ollama CPU inference (~6GB+ RAM) |
-| `CUDA=1` | Local NVIDIA GPU inference — Ollama CUDA + Speaches CUDA (CUDA Whisper) + Qwen3 CUDA TTS + sd.cpp CUDA (requires `nvidia-container-toolkit`) |
+| `OLLAMA_CUDA=1` | Local Ollama NVIDIA GPU inference (requires `nvidia-container-toolkit`) |
 | `SPEACHES=1` | Local Speaches CPU transcription/TTS (~4GB RAM) |
-| `SDCPP=1` | Local stable-diffusion.cpp image generation (CPU; add `CUDA=1` for GPU) |
+| `SPEACHES_CUDA=1` | Local CUDA-accelerated STT (requires `nvidia-container-toolkit`) |
+| `QWEN_TTS_CUDA=1` | Local CUDA-accelerated TTS via Qwen3 (voice cloning, requires `nvidia-container-toolkit`) |
+| `SDCPP=1` | Local stable-diffusion.cpp CPU image generation |
+| `SDCPP_CUDA=1` | Local stable-diffusion.cpp CUDA image generation (requires `nvidia-container-toolkit`) |
 | `HYBRIDS3=1` | Object storage service + MCP server (S3-compatible, plain HTTP, auto-expiry) |
 | `BROWSER=1` | Stealth browser cluster + MCP server (5 replicas, ~1.3GB RAM) |
 | `LIBRECHAT=1` | LibreChat web UI at `/librechat/` with all models and MCP tools |
@@ -513,7 +516,7 @@ Ollama and Speaches log to stdout by default — visible in `docker compose logs
 
 **Rate limited on every provider** — all free tiers have limits. Groq: ~30 req/min. Cerebras: ~30 req/min. HuggingFace: varies. If you're hitting all of them, the fallback chain will eventually land on a paid provider or local model. Check `docker compose logs litellm | grep fallback` to see the chain in action. Consider enabling more free providers to spread the load.
 
-**Tests failing** — make sure the stack is running (`make run-bg`) and healthy (`docker compose ps`). Tests require the services they're testing to be enabled — `CUDA=1` for CUDA tests, `SDCPP=1` for sd.cpp tests, etc. Run `bash test.sh --help` to see which tests are available and their requirements.
+**Tests failing** — make sure the stack is running (`make run-bg`) and healthy (`docker compose ps`). Tests require the services they're testing to be enabled — `OLLAMA_CUDA=1` for Ollama CUDA tests, `SDCPP_CUDA=1` for sd.cpp CUDA tests, etc. Run `bash test.sh --help` to see which tests are available and their requirements.
 
 ## License
 

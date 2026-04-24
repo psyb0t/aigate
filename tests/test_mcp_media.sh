@@ -31,11 +31,11 @@ for t in tools:
 # ── MCP media tools present ───────────────────────────────────────────────
 
 _has_image_providers() {
-    [ "${HUGGINGFACE:-}" = "1" ] || [ "${OPENAI:-}" = "1" ] || [ "${SDCPP:-}" = "1" ]
+    [ "${HUGGINGFACE:-}" = "1" ] || [ "${OPENAI:-}" = "1" ] || [ "${SDCPP:-}" = "1" ] || [ "${SDCPP_CUDA:-}" = "1" ]
 }
 
 _has_tts_providers() {
-    [ "${SPEACHES:-}" = "1" ] || [ "${CUDA:-}" = "1" ] || [ "${OPENAI:-}" = "1" ]
+    [ "${SPEACHES:-}" = "1" ] || [ "${QWEN_TTS_CUDA:-}" = "1" ] || [ "${OPENAI:-}" = "1" ]
 }
 
 test_mcp_media_tools_present() {
@@ -82,9 +82,9 @@ test_mcp_media_tool_descriptions() {
             assert_contains "$img_desc" "local-sdcpp-cpu-sd-turbo" \
                 "image description lists local-sdcpp-cpu-sd-turbo (SDCPP=1)" || return 1
         fi
-        if [ "${SDCPP:-}" = "1" ] && [ "${CUDA:-}" = "1" ]; then
+        if [ "${SDCPP_CUDA:-}" = "1" ]; then
             assert_contains "$img_desc" "local-sdcpp-cuda-sd-turbo" \
-                "image description lists local-sdcpp-cuda-sd-turbo (SDCPP+CUDA)" || return 1
+                "image description lists local-sdcpp-cuda-sd-turbo (SDCPP_CUDA=1)" || return 1
         fi
     fi
 
@@ -97,9 +97,9 @@ test_mcp_media_tool_descriptions() {
             assert_contains "$tts_desc" "local-speaches-kokoro-tts" \
                 "tts description lists kokoro (SPEACHES=1)" || return 1
         fi
-        if [ "${CUDA:-}" = "1" ]; then
+        if [ "${QWEN_TTS_CUDA:-}" = "1" ]; then
             assert_contains "$tts_desc" "local-qwen3-cuda-tts" \
-                "tts description lists qwen3-cuda (CUDA=1)" || return 1
+                "tts description lists qwen3-cuda (QWEN_TTS_CUDA=1)" || return 1
         fi
         if [ "${OPENAI:-}" = "1" ]; then
             assert_contains "$tts_desc" "openai-tts-1" \
@@ -185,8 +185,8 @@ print('no')
 # ── Image generation via sdcpp-cuda (through LiteLLM + resource manager) ─
 
 test_mcp_media_generate_image_sdcpp_cuda() {
-    if [ "${SDCPP:-}" != "1" ] || [ "${CUDA:-}" != "1" ]; then
-        echo "  SKIP: SDCPP+CUDA not enabled"
+    if [ "${SDCPP_CUDA:-}" != "1" ]; then
+        echo "  SKIP: SDCPP_CUDA not enabled"
         echo "OK: mcp_media_generate_image_sdcpp_cuda (skipped)"
         return 0
     fi
@@ -252,8 +252,8 @@ print('no')
 # ── E2E: LLM → tool_call → MCP image gen → LLM response ────────────────
 
 test_mcp_media_e2e_llm_image_gen() {
-    if [ "${SDCPP:-}" != "1" ] || [ "${CUDA:-}" != "1" ]; then
-        echo "  SKIP: SDCPP+CUDA not enabled"
+    if [ "${SDCPP_CUDA:-}" != "1" ] || [ "${OLLAMA_CUDA:-}" != "1" ]; then
+        echo "  SKIP: SDCPP_CUDA + OLLAMA_CUDA not both enabled"
         echo "OK: mcp_media_e2e_llm_image_gen (skipped)"
         return 0
     fi

@@ -42,22 +42,34 @@ ifeq ($(strip $(OLLAMA)),1)
   _PROFILES += ollama
 endif
 
-# cuda: opt-in with CUDA=1
-ifeq ($(strip $(CUDA)),1)
-  _PROFILES += cuda
+# ollama CUDA: opt-in with OLLAMA_CUDA=1
+ifeq ($(strip $(OLLAMA_CUDA)),1)
+  _PROFILES += ollama-cuda
 endif
 
-# sdcpp: opt-in with SDCPP=1 (always CPU; add CUDA variant when CUDA=1)
+# sdcpp: opt-in with SDCPP=1
 ifeq ($(strip $(SDCPP)),1)
   _PROFILES += sdcpp
-  ifeq ($(strip $(CUDA)),1)
-    _PROFILES += sdcpp-cuda
-  endif
+endif
+
+# sdcpp CUDA: opt-in with SDCPP_CUDA=1
+ifeq ($(strip $(SDCPP_CUDA)),1)
+  _PROFILES += sdcpp-cuda
 endif
 
 # speaches: opt-in with SPEACHES=1
 ifeq ($(strip $(SPEACHES)),1)
   _PROFILES += speaches
+endif
+
+# speaches CUDA: opt-in with SPEACHES_CUDA=1
+ifeq ($(strip $(SPEACHES_CUDA)),1)
+  _PROFILES += speaches-cuda
+endif
+
+# qwen3 CUDA TTS: opt-in with QWEN_TTS_CUDA=1
+ifeq ($(strip $(QWEN_TTS_CUDA)),1)
+  _PROFILES += qwen3-cuda-tts
 endif
 
 # librechat: opt-in with LIBRECHAT=1
@@ -76,10 +88,16 @@ endif
 ifeq ($(strip $(SPEACHES)),1)
   _HAS_IMAGE_OR_TTS := 1
 endif
-ifeq ($(strip $(CUDA)),1)
+ifeq ($(strip $(SPEACHES_CUDA)),1)
+  _HAS_IMAGE_OR_TTS := 1
+endif
+ifeq ($(strip $(QWEN_TTS_CUDA)),1)
   _HAS_IMAGE_OR_TTS := 1
 endif
 ifeq ($(strip $(SDCPP)),1)
+  _HAS_IMAGE_OR_TTS := 1
+endif
+ifeq ($(strip $(SDCPP_CUDA)),1)
   _HAS_IMAGE_OR_TTS := 1
 endif
 ifeq ($(_HAS_IMAGE_OR_TTS),1)
@@ -162,10 +180,13 @@ help:
 	@echo "  cloudflared   set CLOUDFLARED=1"
 	@echo "  hybrids3      set HYBRIDS3=1"
 	@echo "  browser       set BROWSER=1"
-	@echo "  ollama        set OLLAMA=1"
-	@echo "  cuda          set CUDA=1 (requires NVIDIA GPU + docker nvidia runtime)"
-	@echo "  sdcpp         set SDCPP=1 (CPU build, or CUDA build when CUDA=1)"
-	@echo "  speaches      set SPEACHES=1"
+	@echo "  ollama        set OLLAMA=1 (CPU inference)"
+	@echo "  ollama-cuda   set OLLAMA_CUDA=1 (NVIDIA GPU inference)"
+	@echo "  sdcpp         set SDCPP=1 (CPU image generation)"
+	@echo "  sdcpp-cuda    set SDCPP_CUDA=1 (NVIDIA GPU image generation)"
+	@echo "  speaches      set SPEACHES=1 (CPU TTS + STT)"
+	@echo "  speaches-cuda set SPEACHES_CUDA=1 (NVIDIA GPU STT)"
+	@echo "  qwen-tts-cuda set QWEN_TTS_CUDA=1 (NVIDIA GPU TTS)"
 	@echo "  librechat     set LIBRECHAT=1"
 	@echo "  mcp           (auto: any image/TTS provider enabled)"
 	@echo ""

@@ -359,7 +359,7 @@ services:
   # ── Speaches CUDA (CUDA Whisper STT) ────────────────────────────────────────
 
   speaches-cuda:
-    profiles: ["cuda"]
+    profiles: ["speaches-cuda"]
     image: ghcr.io/speaches-ai/speaches:0.9.0-rc.3-cuda
     restart: unless-stopped
     mem_limit: ${SPEACHES_CUDA_MEM_LIMIT:-4g}
@@ -413,7 +413,7 @@ services:
       - litellm-public
 
   ollama-pull:
-    profiles: ["ollama", "cuda"]
+    profiles: ["ollama", "ollama-cuda"]
     image: ollama/ollama:0.20.7
     restart: on-failure
     mem_limit: ${OLLAMA_PULL_MEM_LIMIT:-512m}
@@ -463,14 +463,14 @@ services:
       '
     environment:
       PULL_CPU: "${OLLAMA:-0}"
-      PULL_CUDA: "${CUDA:-0}"
+      PULL_CUDA: "${OLLAMA_CUDA:-0}"
     networks:
       - litellm-public
 
   # ── Ollama CUDA (NVIDIA, local inference) ────────────────────────────────────
 
   ollama-cuda:
-    profiles: ["cuda"]
+    profiles: ["ollama-cuda"]
     image: ollama/ollama:0.20.7
     restart: unless-stopped
     mem_limit: ${OLLAMA_CUDA_MEM_LIMIT:-12g}
@@ -623,7 +623,7 @@ services:
   # ── Qwen3 CUDA TTS (CUDA-accelerated TTS, voice cloning) ────────────────────
 
   qwen3-cuda-tts:
-    profiles: ["cuda"]
+    profiles: ["qwen3-cuda-tts"]
     build:
       context: ./qwen3-cuda-tts
     restart: unless-stopped

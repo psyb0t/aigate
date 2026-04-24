@@ -292,7 +292,7 @@ Atomic actions: `goto`, `get_text`, `get_html`, `get_interactive_elements`, `scr
 
 ## sd.cpp — Local Image Generation (optional, `SDCPP=1`)
 
-Local image generation via [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) with a Go wrapper. CPU variant runs with `SDCPP=1`, CUDA variant with `SDCPP=1` + `CUDA=1`. Both expose an OpenAI-compatible `/v1/images/generations` endpoint proxied through LiteLLM.
+Local image generation via [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) with a Go wrapper. CPU variant runs with `SDCPP=1`, CUDA variant with `SDCPP_CUDA=1`. Both expose an OpenAI-compatible `/v1/images/generations` endpoint proxied through LiteLLM.
 
 ### Endpoints (internal — accessed through LiteLLM, not directly via nginx)
 
@@ -310,7 +310,7 @@ Local image generation via [stable-diffusion.cpp](https://github.com/leejet/stab
 
 **CPU** (`SDCPP=1`): sd-turbo, sdxl-turbo
 
-**CUDA** (`SDCPP=1` + `CUDA=1`): sd-turbo, sdxl-turbo, sdxl-lightning, flux-schnell, juggernaut-xi
+**CUDA** (`SDCPP_CUDA=1`): sd-turbo, sdxl-turbo, sdxl-lightning, flux-schnell, juggernaut-xi
 
 ### Behavior
 

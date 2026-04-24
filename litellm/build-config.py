@@ -90,12 +90,12 @@ def active_providers(env):
         ("cohere",        lambda e: is_flag(e, "COHERE")),
         ("groq",          lambda e: is_flag(e, "GROQ")),
         ("ollama",        lambda e: is_flag(e, "OLLAMA")),
-        ("ollama-cuda",     lambda e: is_flag(e, "CUDA")),
-        ("qwen3-cuda-tts", lambda e: is_flag(e, "CUDA")),
+        ("ollama-cuda",     lambda e: is_flag(e, "OLLAMA_CUDA")),
+        ("qwen3-cuda-tts", lambda e: is_flag(e, "QWEN_TTS_CUDA")),
         ("speaches",       lambda e: is_flag(e, "SPEACHES")),
-        ("speaches-cuda",  lambda e: is_flag(e, "CUDA")),
+        ("speaches-cuda",  lambda e: is_flag(e, "SPEACHES_CUDA")),
         ("sdcpp",          lambda e: is_flag(e, "SDCPP")),
-        ("sdcpp-cuda",     lambda e: is_flag(e, "SDCPP") and is_flag(e, "CUDA")),
+        ("sdcpp-cuda",     lambda e: is_flag(e, "SDCPP_CUDA")),
     ]
     return [name for name, check in checks if check(env)]
 
@@ -107,7 +107,7 @@ def active_mcp_servers(env):
         ("claudebox",     lambda e: is_flag(e, "CLAUDEBOX")),
         ("claudebox-zai", lambda e: is_flag(e, "CLAUDEBOX_ZAI")),
         ("mcp",           lambda e: any(
-            is_flag(e, f) for f in ("HUGGINGFACE", "OPENAI", "SPEACHES", "CUDA", "SDCPP")
+            is_flag(e, f) for f in ("HUGGINGFACE", "OPENAI", "SPEACHES", "SPEACHES_CUDA", "QWEN_TTS_CUDA", "SDCPP", "SDCPP_CUDA")
         )),
     ]
     return [name for name, check in checks if check(env)]

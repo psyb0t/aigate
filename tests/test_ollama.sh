@@ -111,9 +111,9 @@ ALL_TESTS+=(
     test_ollama_gemma3_vision
 )
 
-# ── CUDA tests — only when CUDA=1 ────────────────────────────────────────
+# ── CUDA tests — only when OLLAMA_CUDA=1 ─────────────────────────────────
 
-if [ "${CUDA:-}" != "1" ]; then
+if [ "${OLLAMA_CUDA:-}" != "1" ]; then
     return 0 2>/dev/null || true
 fi
 

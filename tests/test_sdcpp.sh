@@ -319,9 +319,9 @@ ALL_TESTS+=(
     test_sdcpp_cpu_cleanup_unload
 )
 
-# ── CUDA variant (only when CUDA=1) ───────────────────────────────────────────
+# ── CUDA variant (only when SDCPP_CUDA=1) ─────────────────────────────────────
 
-if [ "${CUDA:-}" = "1" ]; then
+if [ "${SDCPP_CUDA:-}" = "1" ]; then
 
 SDCPP_CUDA_URL="http://sdcpp-cuda:7234"
 SDCPP_CUDA_PREFIX="local-sdcpp-cuda-"

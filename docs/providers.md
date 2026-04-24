@@ -161,7 +161,7 @@ Models are downloaded on first start and cached in `.data/ollama/`. No GPU requi
 | `local-ollama-cpu-bge-m3` | bge-m3 | embeddings, multilingual, 8192 ctx, ~570MB RAM |
 | `local-ollama-cpu-qwen3-embed-0.6b` | qwen3-embedding:0.6b | embeddings, ~500MB RAM |
 
-## Ollama CUDA (local NVIDIA — `CUDA=1`)
+## Ollama CUDA (local NVIDIA — `OLLAMA_CUDA=1`)
 
 Requires `nvidia-container-toolkit`. Flash attention + quantized KV cache enabled. Resource manager unloads the CUDA LLM before any CUDA TTS/STT request.
 
@@ -186,7 +186,7 @@ Transcription and TTS on CPU. Models auto-downloaded and cached in `.data/speach
 | `local-speaches-parakeet-tdt-0.6b` | istupakov/parakeet-tdt-0.6b-v2-onnx | transcription (English, ~3400× real-time) |
 | `local-speaches-kokoro-tts` | speaches-ai/Kokoro-82M-v1.0-ONNX-int8 | TTS — voices: af_heart, af_alloy, am_echo, bm_fable, and many more |
 
-## Speaches CUDA (local NVIDIA — `CUDA=1`)
+## Speaches CUDA (local NVIDIA — `SPEACHES_CUDA=1`)
 
 CUDA-accelerated STT. Shares model cache with CPU speaches (`.data/speaches/`) — no extra download.
 
@@ -195,7 +195,7 @@ CUDA-accelerated STT. Shares model cache with CPU speaches (`.data/speaches/`) �
 | `local-speaches-cuda-whisper-distil-large-v3` | Systran/faster-distil-whisper-large-v3 | transcription (CUDA, float16) |
 | `local-speaches-cuda-parakeet-tdt-0.6b` | istupakov/parakeet-tdt-0.6b-v2-onnx | transcription (CUDA) |
 
-## Qwen3 CUDA TTS (local NVIDIA — `CUDA=1`)
+## Qwen3 CUDA TTS (local NVIDIA — `QWEN_TTS_CUDA=1`)
 
 CUDA-accelerated TTS with voice cloning via [faster-qwen3-tts](https://github.com/andimarafioti/faster-qwen3-tts). Model cached in `.data/qwen3-tts/`.
 
@@ -212,7 +212,7 @@ Local CPU image generation via [stable-diffusion.cpp](https://github.com/leejet/
 | `local-sdcpp-cpu-sd-turbo` | stabilityai/sd-turbo | fastest, smallest (~1.7GB) |
 | `local-sdcpp-cpu-sdxl-turbo` | stabilityai/sdxl-turbo | better quality (~2.5GB) |
 
-## sd.cpp CUDA (local NVIDIA — `SDCPP=1` + `CUDA=1`)
+## sd.cpp CUDA (local NVIDIA — `SDCPP_CUDA=1`)
 
 CUDA-accelerated image generation. Same Go wrapper with CUDA backend. Non-blocking — rejects concurrent requests with 503 (resource manager handles scheduling via semaphore).
 

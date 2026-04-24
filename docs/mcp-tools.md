@@ -148,7 +148,7 @@ The z.ai instance routes through a separate claudebox container — workspaces b
 
 ## mcp_tools — 2 tools (auto-enabled with image/TTS providers)
 
-Media generation tools. Auto-enabled when any image or TTS provider is active (HuggingFace, OpenAI, Speaches, CUDA). Discovers available models dynamically from LiteLLM at startup — tool descriptions include the list of available models and defaults. Auth via `MCP_TOOLS_AUTH_TOKEN`.
+Media generation tools. Auto-enabled when any image or TTS provider is active (HuggingFace, OpenAI, Speaches, SDCPP). Discovers available models dynamically from LiteLLM at startup — tool descriptions include the list of available models and defaults. Auth via `MCP_TOOLS_AUTH_TOKEN`.
 
 Returns structured JSON with all parameters used and a persistent URL to the result file (uploaded to HybridS3). No base64 blobs are sent to the LLM.
 
