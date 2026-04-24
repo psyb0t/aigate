@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented here.
 
+## [v1.1.0] — 2026-04-24
+
+**Local model lineup overhaul: gemma4, abliterated, reasoning, better code models.**
+
+CPU (ollama):
+- Add: phi4-mini (3.8B reasoning), gemma4:e2b (multimodal), gemma3:4b (lightweight vision fallback), qwen3-embedding:0.6b
+- Drop: phi3.5 (superseded by phi4-mini), nomic-embed-text (bge-m3 is better)
+
+CUDA (ollama-cuda):
+- Add: gemma4:e4b + e2b (multimodal), deepseek-coder-v2:16b (MoE code), deepseek-r1:8b (reasoning), qwen3-abliterated:16b (uncensored chat), gemma4-abliterated:e4b (uncensored vision)
+- Drop: dolphin-mistral:7b (outdated), dolphin3:latest (redundant)
+
+- Fallback chains rewritten for all new/changed models
+- Tests and docs updated throughout
+
+### Patches
+
+- **v1.0.1** — recommend-limits.sh: OS memory reserve (2 GB or 5% RAM), CPU local services use max-of-active + idle overhead like CUDA group. Add CHANGELOG.md.
+
 ## [v1.0.0] — 2026-04-24
 
 **Breaking:** Global `CUDA=1` replaced with per-service flags.
