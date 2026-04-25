@@ -100,6 +100,7 @@ if [ "${OLLAMA:-}" = "1" ]; then
         "local-ollama-cpu-gemma4-e2b"
         "local-ollama-cpu-gemma3-4b"
         "local-ollama-cpu-dolphin-phi"
+        "local-ollama-cpu-nuextract-v1.5"
         "local-ollama-cpu-bge-m3"
         "local-ollama-cpu-qwen3-embed-0.6b"
     )
@@ -118,6 +119,16 @@ if [ "${OLLAMA_CUDA:-}" = "1" ]; then
         "local-ollama-cuda-gemma4-abliterated-e4b"
         "local-ollama-cuda-deepseek-r1-8b"
         "local-ollama-cuda-dolphin-phi"
+        "local-ollama-cuda-llama3.2-3b"
+        "local-ollama-cuda-qwen3-4b"
+        "local-ollama-cuda-smollm2-1.7b"
+        "local-ollama-cuda-qwen2.5-coder-1.5b"
+        "local-ollama-cuda-qwen2.5-coder-3b"
+        "local-ollama-cuda-phi4-mini"
+        "local-ollama-cuda-gemma3-4b"
+        "local-ollama-cuda-nuextract-v1.5"
+        "local-ollama-cuda-bge-m3"
+        "local-ollama-cuda-qwen3-embed-0.6b"
     )
 fi
 

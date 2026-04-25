@@ -77,3 +77,87 @@
     extra_body:
       options:
         num_gpu: 99
+
+- model_name: local-ollama-cuda-llama3.2-3b
+  litellm_params:
+    model: ollama/llama3.2:3b
+    api_base: http://ollama-cuda:11434
+    extra_body:
+      options:
+        num_gpu: 99
+
+- model_name: local-ollama-cuda-qwen3-4b
+  litellm_params:
+    model: ollama/qwen3:4b
+    api_base: http://ollama-cuda:11434
+    extra_body:
+      options:
+        num_gpu: 99
+
+- model_name: local-ollama-cuda-smollm2-1.7b
+  litellm_params:
+    model: ollama/smollm2:1.7b
+    api_base: http://ollama-cuda:11434
+    extra_body:
+      options:
+        num_gpu: 99
+
+- model_name: local-ollama-cuda-qwen2.5-coder-1.5b
+  litellm_params:
+    model: ollama/qwen2.5-coder:1.5b
+    api_base: http://ollama-cuda:11434
+    extra_body:
+      options:
+        num_gpu: 99
+
+- model_name: local-ollama-cuda-qwen2.5-coder-3b
+  litellm_params:
+    model: ollama/qwen2.5-coder:3b
+    api_base: http://ollama-cuda:11434
+    extra_body:
+      options:
+        num_gpu: 99
+
+- model_name: local-ollama-cuda-phi4-mini
+  litellm_params:
+    model: ollama/phi4-mini
+    api_base: http://ollama-cuda:11434
+    extra_body:
+      options:
+        num_gpu: 99
+
+- model_name: local-ollama-cuda-gemma3-4b
+  litellm_params:
+    model: ollama/gemma3:4b
+    api_base: http://ollama-cuda:11434
+    extra_body:
+      options:
+        num_gpu: 99
+
+- model_name: local-ollama-cuda-nuextract-v1.5
+  litellm_params:
+    model: ollama/iodose/nuextract-v1.5
+    api_base: http://ollama-cuda:11434
+    extra_body:
+      options:
+        num_gpu: 99
+
+- model_name: local-ollama-cuda-bge-m3
+  litellm_params:
+    model: ollama/bge-m3
+    api_base: http://ollama-cuda:11434
+    extra_body:
+      options:
+        num_gpu: 99
+  model_info:
+    mode: embedding
+
+- model_name: local-ollama-cuda-qwen3-embed-0.6b
+  litellm_params:
+    model: ollama/qwen3-embedding:0.6b
+    api_base: http://ollama-cuda:11434
+    extra_body:
+      options:
+        num_gpu: 99
+  model_info:
+    mode: embedding

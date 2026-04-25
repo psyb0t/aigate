@@ -436,6 +436,7 @@ services:
           pull phi4-mini &&
           pull gemma4:e2b &&
           pull gemma3:4b &&
+          pull iodose/nuextract-v1.5 &&
           pull dolphin-phi:latest;
         fi;
 
@@ -460,7 +461,8 @@ services:
           pull qwen2.5-coder:1.5b &&
           pull qwen2.5-coder:3b &&
           pull phi4-mini &&
-          pull gemma3:4b;
+          pull gemma3:4b &&
+          pull iodose/nuextract-v1.5;
         fi
       '
     environment:
@@ -738,7 +740,7 @@ services:
       DEBUG_LOGGING: ${LIBRECHAT_DEBUG_LOGGING:-true}
       DEBUG_CONSOLE: ${LIBRECHAT_DEBUG_CONSOLE:-false}
       ALLOW_EMAIL_LOGIN: ${LIBRECHAT_ALLOW_EMAIL_LOGIN:-true}
-      ALLOW_REGISTRATION: ${LIBRECHAT_ALLOW_REGISTRATION:-false}
+      ALLOW_REGISTRATION: ${LIBRECHAT_ALLOW_REGISTRATION:-true}
       ALLOW_SOCIAL_LOGIN: ${LIBRECHAT_ALLOW_SOCIAL_LOGIN:-false}
       ALLOW_SOCIAL_REGISTRATION: "false"
       ALLOW_UNVERIFIED_EMAIL_LOGIN: ${LIBRECHAT_ALLOW_UNVERIFIED_EMAIL_LOGIN:-true}

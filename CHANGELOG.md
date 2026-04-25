@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented here.
 
+## [v1.2.0] — 2026-04-25
+
+**nuextract-v1.5 for structured extraction; all CPU models available on CUDA.**
+
+- Add `iodose/nuextract-v1.5` to CPU ollama — fine-tuned Phi-3.5-mini for unstructured text → JSON extraction
+- All CPU models now also registered on CUDA ollama — every small model available GPU-accelerated when `OLLAMA_CUDA=1`
+- LibreChat registration enabled by default (`ALLOW_REGISTRATION=true`) — first user auto-promoted to admin
+- proxq bumped to v0.9.0 — fixes upstream timeout not applied to HTTP client
+- nginx proxq rate limit raised 120r/m → 600r/m
+- `PROXQ_UPSTREAM_TIMEOUT` raised 10m → 30m
+
+### Patches
+
+- **v1.1.1** — proxq v0.9.0, rate limit 600r/m, upstream timeout 30m
+
 ## [v1.1.0] — 2026-04-24
 
 **Local model lineup overhaul: gemma4, abliterated, reasoning, better code models.**

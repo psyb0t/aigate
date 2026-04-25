@@ -19,6 +19,7 @@ OLLAMA_EXPECTED_MODELS=(
     "local-ollama-cpu-gemma4-e2b"
     "local-ollama-cpu-gemma3-4b"
     "local-ollama-cpu-dolphin-phi"
+    "local-ollama-cpu-nuextract-v1.5"
     "local-ollama-cpu-bge-m3"
     "local-ollama-cpu-qwen3-embed-0.6b"
 )
@@ -105,11 +106,44 @@ test_ollama_gemma4_vision() {
     echo "OK: ollama_gemma4-e2b_vision"
 }
 
+# ── nuextract: unstructured text → structured JSON ────────────────────────
+
+test_ollama_nuextract() {
+    local out
+    out=$(curl -s --max-time 180 -X POST "$BASE_URL/chat/completions" \
+        -H "Content-Type: application/json" \
+        -H "$AUTH_HEADER" \
+        -d '{
+            "model": "local-ollama-cpu-nuextract-v1.5",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "Extract the following fields as JSON: name, age, city.\n\nText: John Smith is 34 years old and lives in Berlin.\n\nRespond with valid JSON only."
+                }
+            ]
+        }')
+
+    if echo "$out" | grep -qi "\"error\""; then
+        echo "  FAIL: nuextract error: $(echo "$out" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("error",{}).get("message","?"))' 2>/dev/null)"
+        return 1
+    fi
+
+    local content
+    content=$(echo "$out" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['choices'][0]['message']['content'])" 2>/dev/null)
+    echo "  nuextract says: $content"
+
+    assert_contains_icase "$content" "john" "nuextract extracts name" || return 1
+    assert_contains "$content" "34" "nuextract extracts age" || return 1
+    assert_contains_icase "$content" "berlin" "nuextract extracts city" || return 1
+    echo "OK: ollama_nuextract"
+}
+
 ALL_TESTS+=(
     test_ollama_models_registered
     test_ollama_chat_completion
     test_ollama_embedding
     test_ollama_gemma4_vision
+    test_ollama_nuextract
 )
 
 # ── CUDA tests — only when OLLAMA_CUDA=1 ─────────────────────────────────
@@ -121,14 +155,24 @@ fi
 OLLAMA_CUDA_EXPECTED_MODELS=(
     "local-ollama-cuda-qwen3-8b"
     "local-ollama-cuda-gemma4-e4b"
+    "local-ollama-cuda-gemma4-e2b"
     "local-ollama-cuda-qwen2.5-coder-7b"
     "local-ollama-cuda-deepseek-coder-v2-16b"
     "local-ollama-cuda-llama3.1-8b"
-    "local-ollama-cuda-gemma4-e2b"
     "local-ollama-cuda-qwen3-abliterated-16b"
     "local-ollama-cuda-gemma4-abliterated-e4b"
     "local-ollama-cuda-deepseek-r1-8b"
     "local-ollama-cuda-dolphin-phi"
+    "local-ollama-cuda-llama3.2-3b"
+    "local-ollama-cuda-qwen3-4b"
+    "local-ollama-cuda-smollm2-1.7b"
+    "local-ollama-cuda-qwen2.5-coder-1.5b"
+    "local-ollama-cuda-qwen2.5-coder-3b"
+    "local-ollama-cuda-phi4-mini"
+    "local-ollama-cuda-gemma3-4b"
+    "local-ollama-cuda-nuextract-v1.5"
+    "local-ollama-cuda-bge-m3"
+    "local-ollama-cuda-qwen3-embed-0.6b"
 )
 
 test_ollama_cuda_models_registered() {

@@ -43,6 +43,11 @@
     model: ollama/dolphin-phi:latest
     api_base: http://ollama:11434
 
+- model_name: local-ollama-cpu-nuextract-v1.5
+  litellm_params:
+    model: ollama/iodose/nuextract-v1.5
+    api_base: http://ollama:11434
+
 - model_name: local-ollama-cpu-bge-m3
   litellm_params:
     model: ollama/bge-m3

@@ -658,6 +658,12 @@
     ]
   },
   {
+    "local-ollama-cpu-nuextract-v1.5": [
+      "local-ollama-cpu-qwen3-4b",
+      "local-ollama-cpu-llama3.2-3b"
+    ]
+  },
+  {
     "local-ollama-cpu-dolphin-phi": [
       "local-ollama-cpu-llama3.2-3b"
     ]

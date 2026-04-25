@@ -158,6 +158,7 @@ Models are downloaded on first start and cached in `.data/ollama/`. No GPU requi
 | `local-ollama-cpu-gemma4-e2b` | gemma4:e2b | general chat + vision (Gemma 4), ~7.2GB RAM |
 | `local-ollama-cpu-gemma3-4b` | gemma3:4b | general chat + vision — lightweight, ~2.6GB RAM |
 | `local-ollama-cpu-dolphin-phi` | dolphin-phi:latest | uncensored, ~1.6GB RAM |
+| `local-ollama-cpu-nuextract-v1.5` | nuextract | structured extraction — unstructured text → JSON, ~2.3GB RAM |
 | `local-ollama-cpu-bge-m3` | bge-m3 | embeddings, multilingual, 8192 ctx, ~570MB RAM |
 | `local-ollama-cpu-qwen3-embed-0.6b` | qwen3-embedding:0.6b | embeddings, ~500MB RAM |
 
@@ -177,6 +178,16 @@ Requires `nvidia-container-toolkit`. Flash attention + quantized KV cache enable
 | `local-ollama-cuda-qwen3-abliterated-16b` | huihui_ai/qwen3-abliterated:16b | uncensored, ~9.8GB VRAM |
 | `local-ollama-cuda-gemma4-abliterated-e4b` | huihui_ai/gemma-4-abliterated:e4b | uncensored + vision, ~9.6GB VRAM |
 | `local-ollama-cuda-dolphin-phi` | dolphin-phi:latest | uncensored, tiny, ~1.6GB VRAM |
+| `local-ollama-cuda-llama3.2-3b` | llama3.2:3b | general chat, ~2.0GB VRAM |
+| `local-ollama-cuda-qwen3-4b` | qwen3:4b | general chat, thinking mode, ~2.6GB VRAM |
+| `local-ollama-cuda-smollm2-1.7b` | smollm2:1.7b | tiny general chat, ~1.0GB VRAM |
+| `local-ollama-cuda-qwen2.5-coder-1.5b` | qwen2.5-coder:1.5b | code completion, tiny, ~1.0GB VRAM |
+| `local-ollama-cuda-qwen2.5-coder-3b` | qwen2.5-coder:3b | code completion, small, ~2.0GB VRAM |
+| `local-ollama-cuda-phi4-mini` | phi4-mini | general chat + reasoning, ~2.5GB VRAM |
+| `local-ollama-cuda-gemma3-4b` | gemma3:4b | general chat + vision, lightweight, ~2.6GB VRAM |
+| `local-ollama-cuda-nuextract-v1.5` | iodose/nuextract-v1.5 | structured extraction — unstructured text → JSON, ~2.3GB VRAM |
+| `local-ollama-cuda-bge-m3` | bge-m3 | embeddings, multilingual, 8192 ctx, ~570MB VRAM |
+| `local-ollama-cuda-qwen3-embed-0.6b` | qwen3-embedding:0.6b | embeddings, ~500MB VRAM |
 
 ## Speaches CPU (local — `SPEACHES=1`)
 
