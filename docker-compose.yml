@@ -838,9 +838,6 @@ services:
       - litellm-internal
       - litellm-public
 
-  # ── Langfuse (LLM observability + tracing) ────────────────────────────────────
-
-
 configs:
   nginx_conf:
     content: |

@@ -440,49 +440,6 @@ Settings are in `searxng/settings.yml` (mounted read-only into the container). T
 
 ---
 
-## Langfuse (optional, `LANGFUSE=1`)
-
-LLM observability and tracing at `/langfuse/`. Tracks every LiteLLM request — latency, token usage, costs, model, prompt/response — and visualizes them in a web dashboard. When enabled, LiteLLM automatically sends `success_callback` and `failure_callback` events to Langfuse.
-
-| Endpoint   | URL              | Auth                        |
-| ---------- | ---------------- | --------------------------- |
-| Web UI     | `GET /langfuse/` | Langfuse email/password auth |
-| Public API | `/langfuse/api/public/*` | Langfuse public key |
-| Health     | `GET /langfuse/api/public/health` | none |
-
-### Setup
-
-On first start, Langfuse creates its database schema automatically. Log in at `/langfuse/` and create an account (first user becomes owner). Then:
-
-1. Go to **Settings → API Keys** and create a project key pair (`pk-lf-...` / `sk-lf-...`)
-2. Add them to `.env`:
-   ```env
-   LANGFUSE_PUBLIC_KEY=pk-lf-...
-   LANGFUSE_SECRET_KEY=sk-lf-...
-   ```
-3. Restart: `make restart`
-
-LiteLLM will now send all traces. The `LANGFUSE_HOST` env var on the LiteLLM container points to `http://langfuse:3000` by default — no external network call.
-
-### Environment variables
-
-| Variable                   | Default                              | Description                                         |
-| -------------------------- | ------------------------------------ | --------------------------------------------------- |
-| `LANGFUSE_NEXTAUTH_SECRET` | —                                    | NextAuth session secret (generate once, don't change) |
-| `LANGFUSE_SALT`            | —                                    | Password hashing salt (generate once, don't change) |
-| `LANGFUSE_PUBLIC_KEY`      | _(empty)_                            | LiteLLM → Langfuse tracing public key               |
-| `LANGFUSE_SECRET_KEY`      | _(empty)_                            | LiteLLM → Langfuse tracing secret key               |
-| `LANGFUSE_HOST`            | `http://langfuse:3000`               | Override if running Langfuse externally             |
-| `LANGFUSE_URL`             | `https://aigate.51k.eu/langfuse`     | Public URL (used as NextAuth callback base)         |
-| `RATELIMIT_LANGFUSE`       | `300r/m`                             | Nginx rate limit                                    |
-| `RATELIMIT_LANGFUSE_BURST` | `30`                                 | Burst allowance                                     |
-| `TIMEOUT_LANGFUSE`         | `600s`                               | Nginx proxy timeout                                 |
-| `LANGFUSE_MEM_LIMIT`       | `1g`                                 | Container memory limit                              |
-| `LANGFUSE_MEMSWAP_LIMIT`   | `2g`                                 | Container memory + swap limit                       |
-| `LANGFUSE_CPUS`            | `1.0`                                | CPU limit                                           |
-
----
-
 ## Cloudflared (optional, `CLOUDFLARED=1`)
 
 Disabled by default. Enable by setting `CLOUDFLARED=1` in `.env`.

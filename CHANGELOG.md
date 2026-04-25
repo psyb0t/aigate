@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here.
 
+## [v1.3.1] — 2026-04-25
+
+**Remove Langfuse v3 observability stack.**
+
+- Langfuse v3's event pipeline requires S3 ListObjectsV2, and the JS AWS SDK v3 signs the canonical URI differently than HybridS3 expects when the endpoint URL contains a path prefix (`/storage`). PUTs succeed but LIST operations fail auth verification, making the entire trace pipeline non-functional.
+- Remove langfuse-db-init, langfuse-clickhouse, langfuse, langfuse-worker services from docker-compose.yml
+- Remove nginx `/langfuse` location block and rate limit zone
+- Remove `LANGFUSE=1` profile detection from Makefile
+- Remove langfuse from `litellm/build-config.py` active_callbacks
+- Delete `litellm/config/callbacks/langfuse.yaml`
+- Remove all LANGFUSE env vars from `.env.example`
+- Remove langfuse-clickhouse data dir entries from `.gitignore`
+- Update README and docs to remove all Langfuse references
+
 ## [v1.3.0] — 2026-04-24
 
 **SearXNG self-hosted search + Langfuse LLM observability.**

@@ -1,6 +1,6 @@
 # aigate
 
-A self-hosted AI platform. 29 services, 99 models, 21 tools, one `docker-compose up`.
+A self-hosted AI platform. 28 services, 99 models, 21 tools, one `docker-compose up`.
 
 Everything an AI-powered workflow needs — inference, tool use, browser automation, image generation, speech synthesis, transcription, object storage, agentic code execution, an async job queue, and a web UI — behind a single OpenAI-compatible endpoint at `http://localhost:4000`. Point any existing client at it and it works.
 
@@ -26,13 +26,9 @@ Ask a Groq model to research something and it opens a browser, reads pages, scre
 
 LibreChat at `/librechat/` — pre-configured with all models and MCP tools, conversation history, file uploads, WebSocket streaming. Email/password auth, first user becomes admin.
 
-### Observability
-
-Langfuse at `/langfuse/` — LLM observability dashboard. Traces every LiteLLM request: latency, token usage, cost, model, prompt, response. Enable with `LANGFUSE=1` and add `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` from the Langfuse UI after first login.
-
 ### Infrastructure
 
-29 containers. Nginx reverse proxy with per-endpoint rate limiting. PostgreSQL + MongoDB for persistence. Two Redis instances (cache + browser session sync). Async job queue for long-running inference. Cloudflare Tunnel for public exposure with zero open ports.
+28 containers. Nginx reverse proxy with per-endpoint rate limiting. PostgreSQL + MongoDB for persistence. Two Redis instances (cache + browser session sync). Async job queue for long-running inference. Cloudflare Tunnel for public exposure with zero open ports.
 
 ### Security
 
@@ -59,7 +55,6 @@ nginx :4000                                          ┌────────
   ├─► /q/                    → proxq → LiteLLM (async, returns job ID)
   ├─► /librechat/            → LibreChat (web UI, LIBRECHAT=1)
   ├─► /searxng/              → SearXNG (meta-search, SEARXNG=1)
-  ├─► /langfuse/             → Langfuse (observability, LANGFUSE=1)
   └─► /                      → LiteLLM (sync)
                                   ├─ Groq              (free, GROQ=1)
                                   ├─ Cerebras           (free, CEREBRAS=1)
@@ -128,7 +123,6 @@ Default writable locations:
 | **MCP tools** _(auto-enabled)_ | Media generation and web search MCP server. Exposes `generate_image`, `generate_tts`, and `search_web` tools to any model with function calling. Discovers available models dynamically from LiteLLM. Returns structured JSON with persistent URLs (uploaded to HybridS3) — no base64 blobs. Auto-enabled when any image, TTS, or SearXNG provider is active. |
 | **[LibreChat](https://github.com/danny-avila/LibreChat)** _(optional, `LIBRECHAT=1`)_ | Web UI for LLM interaction at `/librechat/`. Pre-configured with all LiteLLM models and MCP tools. MongoDB-backed conversation storage. Email/password auth — first registered user becomes admin, then set `LIBRECHAT_ALLOW_REGISTRATION=false` and restart. WebSocket streaming. Configurable via `.env` (registration, rate limits, debug logging, JWT secrets). |
 | **[SearXNG](https://github.com/searxng/searxng)** _(optional, `SEARXNG=1`)_ | Self-hosted meta-search engine at `/searxng/`. Aggregates Google, Bing, DuckDuckGo, Wikipedia. No API key needed — runs entirely locally. Also powers the MCP `search_web` tool so any function-calling model can search the web autonomously. Protected by nginx admin auth. |
-| **[Langfuse](https://github.com/langfuse/langfuse)** _(optional, `LANGFUSE=1`)_ | LLM observability at `/langfuse/`. Traces every LiteLLM request — latency, tokens, cost, model, prompt, response. Dashboard with filtering, cost analysis, and session grouping. Uses the shared PostgreSQL instance (separate `langfuse` database). After first login, create API keys in Settings to activate LiteLLM → Langfuse tracing. |
 | **cloudflared** _(optional, `CLOUDFLARED=1`)_ | Cloudflare Tunnel. Disabled by default — enable with `CLOUDFLARED=1` in `.env`. Runs a quick tunnel (random `*.trycloudflare.com` URL, no account) or a named tunnel (fixed domain, requires config file and credentials). |
 
 ## Security and Exposure
@@ -333,7 +327,6 @@ Everything is opt-in via flags in `.env`. API keys are stored separately and nev
 | `BROWSER=1` | Stealth browser cluster + MCP server (5 replicas, ~1.3GB RAM) |
 | `LIBRECHAT=1` | LibreChat web UI at `/librechat/` with all models and MCP tools |
 | `SEARXNG=1` | SearXNG meta-search at `/searxng/` + MCP `search_web` tool |
-| `LANGFUSE=1` | Langfuse LLM observability dashboard at `/langfuse/` |
 | `CLOUDFLARED=1` | Cloudflare Tunnel |
 
 `make run` regenerates `litellm/config.yaml` before starting — only enabled providers are included, fallback chains are filtered to match.
@@ -370,7 +363,7 @@ make run-bg   # detached (background)
 make run      # foreground with logs
 ```
 
-Gateway is at `http://localhost:4000`. Admin UI at `http://localhost:4000/ui/`. LibreChat at `http://localhost:4000/librechat/` (if `LIBRECHAT=1`). SearXNG at `http://localhost:4000/searxng/` (if `SEARXNG=1`). Langfuse at `http://localhost:4000/langfuse/` (if `LANGFUSE=1`).
+Gateway is at `http://localhost:4000`. Admin UI at `http://localhost:4000/ui/`. LibreChat at `http://localhost:4000/librechat/` (if `LIBRECHAT=1`). SearXNG at `http://localhost:4000/searxng/` (if `SEARXNG=1`).
 
 On first start, Ollama will pull all local models in the background. Speaches models (whisper, parakeet, kokoro) are pre-downloaded automatically. Both cache to `.data/` and won't re-download on restart.
 
