@@ -1,6 +1,6 @@
 # aigate
 
-A self-hosted AI platform. 27 services, 99 models, 20 tools, one `docker-compose up`.
+A self-hosted AI platform. 29 services, 99 models, 21 tools, one `docker-compose up`.
 
 Everything an AI-powered workflow needs — inference, tool use, browser automation, image generation, speech synthesis, transcription, object storage, agentic code execution, an async job queue, and a web UI — behind a single OpenAI-compatible endpoint at `http://localhost:4000`. Point any existing client at it and it works.
 
@@ -10,7 +10,7 @@ Everything an AI-powered workflow needs — inference, tool use, browser automat
 
 ### Tools and capabilities
 
-20 MCP tools across 5 servers. Any model with function calling can invoke them autonomously — the model orchestrates, you just prompt.
+21 MCP tools across 5 servers. Any model with function calling can invoke them autonomously — the model orchestrates, you just prompt.
 
 - **Stealth browser cluster** — 5 Camoufox replicas behind HAProxy, real OS-level mouse and keyboard input, zero CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, and every other bot detector we've thrown at it.
 - **Agentic Claude Code ×2** — full shell access, persistent workspaces, file I/O, tool use. One instance on your Claude subscription or API key, one running GLM models through z.ai.
@@ -18,6 +18,7 @@ Everything an AI-powered workflow needs — inference, tool use, browser automat
 - **Image generation** — FLUX, DALL-E, Stable Diffusion (cloud + local CPU/CUDA via stable-diffusion.cpp) via MCP tools that return persistent URLs, not base64 blobs. Local models: sd-turbo, sdxl-turbo, sdxl-lightning, flux-schnell, juggernaut-xi.
 - **Text-to-speech** — Kokoro (CPU), Qwen3-TTS with voice cloning (CUDA), OpenAI TTS.
 - **Transcription** — Whisper (cloud + local CPU/CUDA), Parakeet (~3400× real-time on CPU).
+- **Web search** — SearXNG self-hosted meta-search (Google, Bing, DuckDuckGo, Wikipedia) via MCP `search_web` tool.
 
 Ask a Groq model to research something and it opens a browser, reads pages, screenshots them, uploads to storage, and comes back with a summary and links. The model decides what tools to use and in what order.
 
@@ -25,9 +26,13 @@ Ask a Groq model to research something and it opens a browser, reads pages, scre
 
 LibreChat at `/librechat/` — pre-configured with all models and MCP tools, conversation history, file uploads, WebSocket streaming. Email/password auth, first user becomes admin.
 
+### Observability
+
+Langfuse at `/langfuse/` — LLM observability dashboard. Traces every LiteLLM request: latency, token usage, cost, model, prompt, response. Enable with `LANGFUSE=1` and add `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` from the Langfuse UI after first login.
+
 ### Infrastructure
 
-27 containers. Nginx reverse proxy with per-endpoint rate limiting. PostgreSQL + MongoDB for persistence. Two Redis instances (cache + browser session sync). Async job queue for long-running inference. Cloudflare Tunnel for public exposure with zero open ports.
+29 containers. Nginx reverse proxy with per-endpoint rate limiting. PostgreSQL + MongoDB for persistence. Two Redis instances (cache + browser session sync). Async job queue for long-running inference. Cloudflare Tunnel for public exposure with zero open ports.
 
 ### Security
 
@@ -53,6 +58,8 @@ nginx :4000                                          ┌────────
   ├─► /storage/              → hybrids3
   ├─► /q/                    → proxq → LiteLLM (async, returns job ID)
   ├─► /librechat/            → LibreChat (web UI, LIBRECHAT=1)
+  ├─► /searxng/              → SearXNG (meta-search, SEARXNG=1)
+  ├─► /langfuse/             → Langfuse (observability, LANGFUSE=1)
   └─► /                      → LiteLLM (sync)
                                   ├─ Groq              (free, GROQ=1)
                                   ├─ Cerebras           (free, CEREBRAS=1)
@@ -72,12 +79,12 @@ nginx :4000                                          ┌────────
                                   ├─ Anthropic          (pay-per-token, ANTHROPIC=1)
                                   └─ OpenAI             (pay-per-token, OPENAI=1)
 
-MCP servers (up to 20 tools, all optional):
+MCP servers (up to 21 tools, all optional):
   ├─ stealthy_auto_browse  (1 tool)   — run_script: multi-step browser automation (BROWSER=1)
   ├─ hybrids3              (7 tools)  — file upload, download, list, delete, presign (HYBRIDS3=1)
   ├─ claudebox             (5 tools)  — agentic Claude Code via OAuth or API key (CLAUDEBOX=1)
   ├─ claudebox_zai         (5 tools)  — agentic Claude Code via z.ai/GLM (CLAUDEBOX_ZAI=1)
-  └─ mcp_tools             (2 tools)  — generate_image + generate_tts (auto-enabled with image/TTS providers)
+  └─ mcp_tools             (3 tools)  — generate_image + generate_tts + search_web (auto-enabled with image/TTS/SearXNG)
 ```
 
 All persistent data lives under `.data/` by default (bind mounts). Override the base with `DATA_DIR` or per-service with `DATA_DIR_*` env vars (e.g. `DATA_DIR_OLLAMA=/mnt/nas/ollama`) — see [`.env.example`](.env.example) for the full list. The default directory structure is tracked in git via `.gitkeep` files so the right directories exist on a fresh clone — contents are gitignored.
@@ -118,8 +125,10 @@ Default writable locations:
 | **Qwen3 CUDA TTS** _(optional, `QWEN_TTS_CUDA=1`)_ | CUDA-accelerated TTS via [faster-qwen3-tts](https://github.com/andimarafioti/faster-qwen3-tts). Runs `Qwen3-TTS-12Hz-0.6B-Base` with CUDA graphs. Voice cloning via reference audio. Models cached in `.data/qwen3-tts/`. Requires `nvidia-container-toolkit`. |
 | **sd.cpp CPU** _(optional, `SDCPP=1`)_ | Local CPU image generation via [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp). Go wrapper with OpenAI-compatible `/v1/images/generations` endpoint, model hot-swap, idle timeout auto-unload. Models: sd-turbo, sdxl-turbo. Models cached in `.data/sdcpp/models/`. |
 | **sd.cpp CUDA** _(optional, `SDCPP_CUDA=1`)_ | CUDA-accelerated image generation via stable-diffusion.cpp. Same wrapper as CPU with CUDA backend. Models: sd-turbo, sdxl-turbo, sdxl-lightning, flux-schnell, juggernaut-xi. Non-blocking — rejects concurrent requests with 503 instead of queuing (resource manager handles scheduling). Requires `nvidia-container-toolkit`. |
-| **MCP tools** _(auto-enabled)_ | Media generation MCP server. Exposes `generate_image` and `generate_tts` tools to any model with function calling. Discovers available models dynamically from LiteLLM. Returns structured JSON with persistent URLs (uploaded to HybridS3) — no base64 blobs. Auto-enabled when any image or TTS provider is active (HuggingFace, OpenAI, Speaches, SDCPP). |
+| **MCP tools** _(auto-enabled)_ | Media generation and web search MCP server. Exposes `generate_image`, `generate_tts`, and `search_web` tools to any model with function calling. Discovers available models dynamically from LiteLLM. Returns structured JSON with persistent URLs (uploaded to HybridS3) — no base64 blobs. Auto-enabled when any image, TTS, or SearXNG provider is active. |
 | **[LibreChat](https://github.com/danny-avila/LibreChat)** _(optional, `LIBRECHAT=1`)_ | Web UI for LLM interaction at `/librechat/`. Pre-configured with all LiteLLM models and MCP tools. MongoDB-backed conversation storage. Email/password auth — first registered user becomes admin, then set `LIBRECHAT_ALLOW_REGISTRATION=false` and restart. WebSocket streaming. Configurable via `.env` (registration, rate limits, debug logging, JWT secrets). |
+| **[SearXNG](https://github.com/searxng/searxng)** _(optional, `SEARXNG=1`)_ | Self-hosted meta-search engine at `/searxng/`. Aggregates Google, Bing, DuckDuckGo, Wikipedia. No API key needed — runs entirely locally. Also powers the MCP `search_web` tool so any function-calling model can search the web autonomously. Protected by nginx admin auth. |
+| **[Langfuse](https://github.com/langfuse/langfuse)** _(optional, `LANGFUSE=1`)_ | LLM observability at `/langfuse/`. Traces every LiteLLM request — latency, tokens, cost, model, prompt, response. Dashboard with filtering, cost analysis, and session grouping. Uses the shared PostgreSQL instance (separate `langfuse` database). After first login, create API keys in Settings to activate LiteLLM → Langfuse tracing. |
 | **cloudflared** _(optional, `CLOUDFLARED=1`)_ | Cloudflare Tunnel. Disabled by default — enable with `CLOUDFLARED=1` in `.env`. Runs a quick tunnel (random `*.trycloudflare.com` URL, no account) or a named tunnel (fixed domain, requires config file and credentials). |
 
 ## Security and Exposure
@@ -323,6 +332,8 @@ Everything is opt-in via flags in `.env`. API keys are stored separately and nev
 | `HYBRIDS3=1` | Object storage service + MCP server (S3-compatible, plain HTTP, auto-expiry) |
 | `BROWSER=1` | Stealth browser cluster + MCP server (5 replicas, ~1.3GB RAM) |
 | `LIBRECHAT=1` | LibreChat web UI at `/librechat/` with all models and MCP tools |
+| `SEARXNG=1` | SearXNG meta-search at `/searxng/` + MCP `search_web` tool |
+| `LANGFUSE=1` | Langfuse LLM observability dashboard at `/langfuse/` |
 | `CLOUDFLARED=1` | Cloudflare Tunnel |
 
 `make run` regenerates `litellm/config.yaml` before starting — only enabled providers are included, fallback chains are filtered to match.
@@ -359,7 +370,7 @@ make run-bg   # detached (background)
 make run      # foreground with logs
 ```
 
-Gateway is at `http://localhost:4000`. Admin UI at `http://localhost:4000/ui/`. LibreChat web UI at `http://localhost:4000/librechat/` (if `LIBRECHAT=1`).
+Gateway is at `http://localhost:4000`. Admin UI at `http://localhost:4000/ui/`. LibreChat at `http://localhost:4000/librechat/` (if `LIBRECHAT=1`). SearXNG at `http://localhost:4000/searxng/` (if `SEARXNG=1`). Langfuse at `http://localhost:4000/langfuse/` (if `LANGFUSE=1`).
 
 On first start, Ollama will pull all local models in the background. Speaches models (whisper, parakeet, kokoro) are pre-downloaded automatically. Both cache to `.data/` and won't re-download on restart.
 

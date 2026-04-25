@@ -77,30 +77,43 @@ ifeq ($(strip $(LIBRECHAT)),1)
   _PROFILES += librechat
 endif
 
-# mcp: auto-enabled when any image or TTS provider is active
-_HAS_IMAGE_OR_TTS :=
+# searxng: opt-in with SEARXNG=1
+ifeq ($(strip $(SEARXNG)),1)
+  _PROFILES += searxng
+endif
+
+# langfuse: opt-in with LANGFUSE=1
+ifeq ($(strip $(LANGFUSE)),1)
+  _PROFILES += langfuse
+endif
+
+# mcp: auto-enabled when any image, TTS, or search provider is active
+_HAS_MCP :=
 ifeq ($(strip $(HUGGINGFACE)),1)
-  _HAS_IMAGE_OR_TTS := 1
+  _HAS_MCP := 1
 endif
 ifeq ($(strip $(OPENAI)),1)
-  _HAS_IMAGE_OR_TTS := 1
+  _HAS_MCP := 1
 endif
 ifeq ($(strip $(SPEACHES)),1)
-  _HAS_IMAGE_OR_TTS := 1
+  _HAS_MCP := 1
 endif
 ifeq ($(strip $(SPEACHES_CUDA)),1)
-  _HAS_IMAGE_OR_TTS := 1
+  _HAS_MCP := 1
 endif
 ifeq ($(strip $(QWEN_TTS_CUDA)),1)
-  _HAS_IMAGE_OR_TTS := 1
+  _HAS_MCP := 1
 endif
 ifeq ($(strip $(SDCPP)),1)
-  _HAS_IMAGE_OR_TTS := 1
+  _HAS_MCP := 1
 endif
 ifeq ($(strip $(SDCPP_CUDA)),1)
-  _HAS_IMAGE_OR_TTS := 1
+  _HAS_MCP := 1
 endif
-ifeq ($(_HAS_IMAGE_OR_TTS),1)
+ifeq ($(strip $(SEARXNG)),1)
+  _HAS_MCP := 1
+endif
+ifeq ($(_HAS_MCP),1)
   _PROFILES += mcp
 endif
 
@@ -145,7 +158,7 @@ run-bg:
 	docker compose up -d --build
 
 down:
-	COMPOSE_PROFILES=claudebox,claudebox-zai,cloudflared,hybrids3,browser,ollama,cuda,sdcpp,sdcpp-cuda,speaches,mcp,librechat \
+	COMPOSE_PROFILES=claudebox,claudebox-zai,cloudflared,hybrids3,browser,ollama,ollama-cuda,sdcpp,sdcpp-cuda,speaches,speaches-cuda,qwen3-cuda-tts,mcp,librechat,searxng,langfuse \
 		docker compose down --remove-orphans
 
 restart: down run-bg
@@ -188,7 +201,9 @@ help:
 	@echo "  speaches-cuda set SPEACHES_CUDA=1 (NVIDIA GPU STT)"
 	@echo "  qwen-tts-cuda set QWEN_TTS_CUDA=1 (NVIDIA GPU TTS)"
 	@echo "  librechat     set LIBRECHAT=1"
-	@echo "  mcp           (auto: any image/TTS provider enabled)"
+	@echo "  searxng       set SEARXNG=1 (meta search engine + MCP tool)"
+	@echo "  langfuse      set LANGFUSE=1 (LLM observability + tracing)"
+	@echo "  mcp           (auto: any image/TTS/search provider enabled)"
 	@echo ""
 	@echo "Active profiles: $(if $(COMPOSE_PROFILES),$(COMPOSE_PROFILES),(none))"
 	@echo ""

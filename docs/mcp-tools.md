@@ -1,6 +1,6 @@
 # MCP Tool Ecosystem
 
-The [Model Context Protocol](https://modelcontextprotocol.io/) is what makes this gateway more than just an LLM router. Up to five MCP servers can be registered in LiteLLM (all optional, enabled via `.env` flags), exposing a total of 20 tools. Any model that supports tool use (function calling) can invoke these tools during a conversation — the model decides when and how to use them based on the user's request.
+The [Model Context Protocol](https://modelcontextprotocol.io/) is what makes this gateway more than just an LLM router. Up to five MCP servers can be registered in LiteLLM (all optional, enabled via `.env` flags), exposing a total of 21 tools. Any model that supports tool use (function calling) can invoke these tools during a conversation — the model decides when and how to use them based on the user's request.
 
 This means you can ask a Groq model to browse a website, take a screenshot, upload it to object storage, and return the public URL ��� and it will orchestrate all of that autonomously through MCP tool calls.
 
@@ -146,16 +146,17 @@ Same 5 tools as above, but backed by GLM models through [z.ai](https://z.ai)'s A
 
 The z.ai instance routes through a separate claudebox container — workspaces between the two instances are not shared.
 
-## mcp_tools — 2 tools (auto-enabled with image/TTS providers)
+## mcp_tools — 3 tools (auto-enabled with image/TTS/search providers)
 
-Media generation tools. Auto-enabled when any image or TTS provider is active (HuggingFace, OpenAI, Speaches, SDCPP). Discovers available models dynamically from LiteLLM at startup — tool descriptions include the list of available models and defaults. Auth via `MCP_TOOLS_AUTH_TOKEN`.
+Media generation and web search tools. Auto-enabled when any image, TTS, or search provider is active (HuggingFace, OpenAI, Speaches, SDCPP, SearXNG). Discovers available models dynamically from LiteLLM at startup — tool descriptions include the list of available models and defaults. Auth via `MCP_TOOLS_AUTH_TOKEN`.
 
-Returns structured JSON with all parameters used and a persistent URL to the result file (uploaded to HybridS3). No base64 blobs are sent to the LLM.
+Image and TTS tools return structured JSON with all parameters used and a persistent URL to the result file (uploaded to HybridS3). No base64 blobs are sent to the LLM.
 
 | Tool             | Description                                                                                                  |
 | ---------------- | ------------------------------------------------------------------------------------------------------------ |
 | `generate_image` | Generate an image from a text prompt. Returns JSON with `prompt`, `model`, `size`, and `url` (or `urls` + `revised_prompt` for OpenAI models). |
 | `generate_tts`   | Generate speech audio from text. Returns JSON with `text`, `model`, `voice`, `speed`, and `url`.             |
+| `search_web`     | Search the web via SearXNG (aggregates Google, Bing, DuckDuckGo, Wikipedia). Returns JSON with a `results` array of `title`, `url`, `snippet`, `engine`. Only available when `SEARXNG=1`. |
 
 ### generate_image parameters
 
@@ -173,6 +174,13 @@ Returns structured JSON with all parameters used and a persistent URL to the res
 | `model`   | string | Which TTS model to use (listed in tool description)  | first available (prefers local-speaches-kokoro-tts) |
 | `voice`   | string | Voice to use                                         | `af_heart`                                      |
 | `speed`   | number | Speech speed multiplier                              | `1.0`                                           |
+
+### search_web parameters
+
+| Parameter     | Type   | Description                                          | Default |
+| ------------- | ------ | ---------------------------------------------------- | ------- |
+| `query`       | string | Search query                                         | _(required)_ |
+| `num_results` | int    | Maximum number of results to return                  | `10`    |
 
 ### Error handling
 

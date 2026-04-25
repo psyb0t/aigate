@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here.
 
+## [v1.3.0] — 2026-04-24
+
+**SearXNG self-hosted search + Langfuse LLM observability.**
+
+- Add SearXNG (`SEARXNG=1`) — self-hosted meta-search (Google, Bing, DuckDuckGo, Wikipedia) at `/searxng/`
+- Add `search_web` MCP tool — auto-enabled when `SEARXNG=1`; any function-calling model can search the web
+- Add Langfuse (`LANGFUSE=1`) — LLM observability at `/langfuse/`; traces all LiteLLM requests (latency, tokens, cost, prompt, response)
+- Langfuse uses the shared PostgreSQL instance (separate `langfuse` database, auto-created on first start)
+- LiteLLM Langfuse integration via `success_callback`/`failure_callback` — injected by build-config when `LANGFUSE=1`
+- mcp_tools auto-enable condition expanded to include SearXNG
+- `.env.example` documented with SEARXNG/LANGFUSE flags and Langfuse credential generation instructions
+
 ## [v1.2.0] — 2026-04-25
 
 **nuextract-v1.5 for structured extraction; all CPU models available on CUDA.**

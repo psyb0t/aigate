@@ -1,0 +1,28 @@
+use_default_settings: true
+
+server:
+  # Replace with a long random string. Never share this key.
+  secret_key: "4052052048ca5873b9eeaa2a6c8e196393ad1dfde3fdc7ad4b2fb497e95b2634"
+  # Disable per-IP rate limiting — nginx handles it upstream
+  limiter: false
+  image_proxy: false
+
+search:
+  # Enable JSON API for programmatic access (MCP tool)
+  formats:
+    - html
+    - json
+
+engines:
+  - name: google
+    engine: google
+    disabled: false
+  - name: bing
+    engine: bing
+    disabled: false
+  - name: duckduckgo
+    engine: duckduckgo
+    disabled: false
+  - name: wikipedia
+    engine: wikipedia
+    disabled: false

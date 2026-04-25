@@ -107,7 +107,7 @@ def active_mcp_servers(env):
         ("claudebox",     lambda e: is_flag(e, "CLAUDEBOX")),
         ("claudebox-zai", lambda e: is_flag(e, "CLAUDEBOX_ZAI")),
         ("mcp",           lambda e: any(
-            is_flag(e, f) for f in ("HUGGINGFACE", "OPENAI", "SPEACHES", "SPEACHES_CUDA", "QWEN_TTS_CUDA", "SDCPP", "SDCPP_CUDA")
+            is_flag(e, f) for f in ("HUGGINGFACE", "OPENAI", "SPEACHES", "SPEACHES_CUDA", "QWEN_TTS_CUDA", "SDCPP", "SDCPP_CUDA", "SEARXNG")
         )),
     ]
     return [name for name, check in checks if check(env)]
@@ -227,6 +227,18 @@ def main():
 
     # ── base settings (general_settings, litellm_settings, router_settings) ──
     base_block = "\n" + read_file(BASE_PATH).rstrip("\n") + "\n"
+
+    # ── Langfuse callbacks (injected into litellm_settings when LANGFUSE=1) ──
+    if is_flag(env, "LANGFUSE"):
+        langfuse_lines = (
+            '  success_callback: ["langfuse"]\n'
+            '  failure_callback: ["langfuse"]\n'
+        )
+        base_block = base_block.replace(
+            '\nrouter_settings:',
+            '\n' + langfuse_lines + '\nrouter_settings:',
+        )
+        log("Langfuse callbacks: enabled")
 
     # ── fallbacks ─────────────────────────────────────────────────────────────
     fallbacks_raw = load_fallbacks()

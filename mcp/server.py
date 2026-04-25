@@ -20,6 +20,7 @@ LITELLM_URL = os.environ.get("LITELLM_URL", "http://litellm:4000")
 LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "")
 HF_TOKEN = os.environ.get("HF_TOKEN", "")
 PORT = int(os.environ.get("PORT", "8000"))
+SEARXNG_URL = os.environ.get("SEARXNG_URL", "")
 
 HYBRIDS3_URL = os.environ.get("HYBRIDS3_URL", "http://hybrids3:8080")
 HYBRIDS3_KEY = os.environ.get("HYBRIDS3_UPLOAD_KEY", "")
@@ -164,9 +165,10 @@ tts_names = sorted(tts_models.keys())
 log(f"Image models: {image_names or '(none)'}")
 log(f"TTS models:   {tts_names or '(none)'}")
 log(f"Defaults:     image={image_default}, tts={tts_default}")
+log(f"SearXNG:      {SEARXNG_URL or '(disabled)'}")
 
-if not image_models and not tts_models:
-    log("ERROR: no image or TTS models available " "— nothing to serve")
+if not image_models and not tts_models and not SEARXNG_URL:
+    log("ERROR: no image/TTS models and no SearXNG — nothing to serve")
     sys.exit(1)
 
 
@@ -397,6 +399,64 @@ if tts_models:
 
 else:
     log("No TTS models — generate_tts tool disabled")
+
+
+# ── Tool: search_web ────────────────────────────────────────────
+
+if SEARXNG_URL:
+    @mcp.tool(
+        name="search_web",
+        description=(
+            "Search the web using SearXNG (aggregates Google, Bing, DuckDuckGo, Wikipedia). "
+            "Returns a list of results with title, url, and snippet. "
+            "Use this to find current information, verify facts, or research topics. "
+            "Returns JSON with a 'results' array."
+        ),
+    )
+    async def search_web(
+        query: str,
+        num_results: int = 10,
+    ) -> list[TextContent]:
+        params = {
+            "q": query,
+            "format": "json",
+            "pageno": "1",
+        }
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.get(
+                    f"{SEARXNG_URL}/search",
+                    params=params,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+        except Exception as exc:
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps({"error": str(exc)}),
+                )
+            ]
+
+        raw = data.get("results", [])[:num_results]
+        results = [
+            {
+                "title": r.get("title", ""),
+                "url": r.get("url", ""),
+                "snippet": r.get("content", ""),
+                "engine": r.get("engine", ""),
+            }
+            for r in raw
+        ]
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps({"query": query, "results": results}),
+            )
+        ]
+
+else:
+    log("SEARXNG_URL not set — search_web tool disabled")
 
 
 # ── Main ────────────────────────────────────────────────────────
