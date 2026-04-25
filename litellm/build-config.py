@@ -19,6 +19,7 @@ WORKSPACE_ROOT = os.path.dirname(SCRIPT_DIR)
 CONFIG_DIR = os.path.join(SCRIPT_DIR, "config")
 PROVIDERS_DIR = os.path.join(CONFIG_DIR, "providers")
 MCP_DIR = os.path.join(CONFIG_DIR, "mcp")
+CALLBACKS_DIR = os.path.join(CONFIG_DIR, "callbacks")
 OUTPUT_PATH = os.path.join(SCRIPT_DIR, "config.yaml")
 ENV_PATH = os.path.join(WORKSPACE_ROOT, ".env")
 BASE_PATH = os.path.join(CONFIG_DIR, "base.yaml")
@@ -97,6 +98,11 @@ def active_providers(env):
         ("sdcpp",          lambda e: is_flag(e, "SDCPP")),
         ("sdcpp-cuda",     lambda e: is_flag(e, "SDCPP_CUDA")),
     ]
+    return [name for name, check in checks if check(env)]
+
+
+def active_callbacks(env):
+    checks = []
     return [name for name, check in checks if check(env)]
 
 
@@ -194,9 +200,11 @@ def main():
 
     providers = active_providers(env)
     mcp_names = active_mcp_servers(env)
+    callback_names = active_callbacks(env)
 
     log(f"Active providers: {', '.join(providers) if providers else '(none)'}")
     log(f"Active MCP servers: {', '.join(mcp_names) if mcp_names else '(none)'}")
+    log(f"Active callbacks: {', '.join(callback_names) if callback_names else '(none)'}")
 
     # ── model_list ────────────────────────────────────────────────────────────
     model_list_parts = []
@@ -228,17 +236,14 @@ def main():
     # ── base settings (general_settings, litellm_settings, router_settings) ──
     base_block = "\n" + read_file(BASE_PATH).rstrip("\n") + "\n"
 
-    # ── Langfuse callbacks (injected into litellm_settings when LANGFUSE=1) ──
-    if is_flag(env, "LANGFUSE"):
-        langfuse_lines = (
-            '  success_callback: ["langfuse"]\n'
-            '  failure_callback: ["langfuse"]\n'
-        )
+    # ── litellm_settings callbacks (injected from callbacks/*.yaml) ──────────
+    for cb_name in callback_names:
+        path = os.path.join(CALLBACKS_DIR, f"{cb_name}.yaml")
+        cb_text = read_file(path)
         base_block = base_block.replace(
             '\nrouter_settings:',
-            '\n' + langfuse_lines + '\nrouter_settings:',
+            '\n' + indent_block(cb_text.rstrip("\n")) + '\n\nrouter_settings:',
         )
-        log("Langfuse callbacks: enabled")
 
     # ── fallbacks ─────────────────────────────────────────────────────────────
     fallbacks_raw = load_fallbacks()

@@ -82,10 +82,6 @@ ifeq ($(strip $(SEARXNG)),1)
   _PROFILES += searxng
 endif
 
-# langfuse: opt-in with LANGFUSE=1
-ifeq ($(strip $(LANGFUSE)),1)
-  _PROFILES += langfuse
-endif
 
 # mcp: auto-enabled when any image, TTS, or search provider is active
 _HAS_MCP :=
@@ -158,7 +154,7 @@ run-bg:
 	docker compose up -d --build
 
 down:
-	COMPOSE_PROFILES=claudebox,claudebox-zai,cloudflared,hybrids3,browser,ollama,ollama-cuda,sdcpp,sdcpp-cuda,speaches,speaches-cuda,qwen3-cuda-tts,mcp,librechat,searxng,langfuse \
+	COMPOSE_PROFILES=claudebox,claudebox-zai,cloudflared,hybrids3,browser,ollama,ollama-cuda,sdcpp,sdcpp-cuda,speaches,speaches-cuda,qwen3-cuda-tts,mcp,librechat,searxng \
 		docker compose down --remove-orphans
 
 restart: down run-bg
@@ -202,7 +198,7 @@ help:
 	@echo "  qwen-tts-cuda set QWEN_TTS_CUDA=1 (NVIDIA GPU TTS)"
 	@echo "  librechat     set LIBRECHAT=1"
 	@echo "  searxng       set SEARXNG=1 (meta search engine + MCP tool)"
-	@echo "  langfuse      set LANGFUSE=1 (LLM observability + tracing)"
+
 	@echo "  mcp           (auto: any image/TTS/search provider enabled)"
 	@echo ""
 	@echo "Active profiles: $(if $(COMPOSE_PROFILES),$(COMPOSE_PROFILES),(none))"

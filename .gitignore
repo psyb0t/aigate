@@ -41,6 +41,5 @@ litellm/config.yaml
 !.data/ollama-gpu/.gitkeep
 !.data/speaches/
 !.data/speaches/.gitkeep
-!.data/langfuse-clickhouse/
-!.data/langfuse-clickhouse/.gitkeep
+
 ANUSTIMES.md

@@ -83,9 +83,6 @@ services:
       COHERE_API_KEY: ${COHERE_API_KEY:-}
       UI_USERNAME: ${LITELLM_USERNAME:-}
       UI_PASSWORD: ${LITELLM_PASSWORD:-}
-      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
-      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
-      LANGFUSE_HOST: ${LANGFUSE_HOST:-http://langfuse:3000}
     depends_on:
       redis:
         condition: service_healthy
@@ -843,94 +840,6 @@ services:
 
   # ── Langfuse (LLM observability + tracing) ────────────────────────────────────
 
-  langfuse-db-init:
-    profiles: ["langfuse"]
-    image: postgres:16.13-alpine
-    restart: "no"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    entrypoint: ["sh", "-c"]
-    command:
-      - |
-        until pg_isready -h postgres -U $$POSTGRES_USER; do sleep 1; done
-        PGPASSWORD=$$POSTGRES_PASSWORD psql -h postgres -U $$POSTGRES_USER -d $$POSTGRES_DB \
-          -c "CREATE DATABASE langfuse" 2>/dev/null || true
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-litellm}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Pgx9mK2vLqRt7nWc}
-      POSTGRES_DB: ${POSTGRES_DB:-litellm}
-    security_opt:
-      - no-new-privileges:true
-    networks:
-      - litellm-internal
-
-  langfuse-clickhouse:
-    profiles: ["langfuse"]
-    image: clickhouse/clickhouse-server:25.4-alpine
-    restart: unless-stopped
-    mem_limit: ${LANGFUSE_CLICKHOUSE_MEM_LIMIT:-1g}
-    memswap_limit: ${LANGFUSE_CLICKHOUSE_MEMSWAP_LIMIT:-2g}
-    cpus: ${LANGFUSE_CLICKHOUSE_CPUS:-0.5}
-    environment:
-      CLICKHOUSE_USER: langfuse
-      CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD:-langfuse-ch-pw}
-      CLICKHOUSE_DB: langfuse
-    volumes:
-      - ${DATA_DIR_LANGFUSE_CLICKHOUSE:-${DATA_DIR:-.data}/langfuse-clickhouse}:/var/lib/clickhouse
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8123/ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-    security_opt:
-      - no-new-privileges:true
-    networks:
-      - litellm-internal
-
-  langfuse:
-    profiles: ["langfuse"]
-    image: langfuse/langfuse:3.170.0
-    restart: unless-stopped
-    mem_limit: ${LANGFUSE_MEM_LIMIT:-2g}
-    memswap_limit: ${LANGFUSE_MEMSWAP_LIMIT:-4g}
-    cpus: ${LANGFUSE_CPUS:-1.0}
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-Pgx9mK2vLqRt7nWc}@postgres:5432/langfuse
-      NEXTAUTH_URL: ${LANGFUSE_URL:-https://aigate.51k.eu/langfuse}
-      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET}
-      SALT: ${LANGFUSE_SALT}
-      LANGFUSE_BASE_PATH: /langfuse
-      TELEMETRY_ENABLED: "false"
-      LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
-      CLICKHOUSE_MIGRATION_URL: clickhouse://langfuse:${LANGFUSE_CLICKHOUSE_PASSWORD:-langfuse-ch-pw}@langfuse-clickhouse:9000/langfuse
-      CLICKHOUSE_URL: http://langfuse:${LANGFUSE_CLICKHOUSE_PASSWORD:-langfuse-ch-pw}@langfuse-clickhouse:8123/langfuse
-      CLICKHOUSE_USER: langfuse
-      CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD:-langfuse-ch-pw}
-      CLICKHOUSE_CLUSTER_ENABLED: "false"
-      REDIS_CONNECTION_STRING: redis://:${REDIS_PASSWORD}@redis:6379/2
-      LANGFUSE_S3_EVENT_UPLOAD_ENABLED: "false"
-      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: "langfuse-events"
-      LANGFUSE_S3_MEDIA_UPLOAD_ENABLED: "false"
-      BLOB_STORAGE_S3_ENABLED: "false"
-    depends_on:
-      langfuse-db-init:
-        condition: service_completed_successfully
-      langfuse-clickhouse:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://$(hostname):3000/api/public/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    security_opt:
-      - no-new-privileges:true
-    networks:
-      - litellm-internal
 
 configs:
   nginx_conf:
@@ -1074,23 +983,6 @@ configs:
               proxy_cache off;
           }
 
-          # Langfuse — LLM observability (admin auth)
-          location /langfuse {
-              limit_req zone=langfuse burst=${RATELIMIT_LANGFUSE_BURST:-30} nodelay;
-              include /etc/nginx/auth/auth.conf;
-              proxy_pass http://langfuse:3000;
-              proxy_set_header Host $$http_host;
-              proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
-              proxy_http_version 1.1;
-              proxy_set_header Upgrade $$http_upgrade;
-              proxy_set_header Connection "upgrade";
-              proxy_read_timeout ${TIMEOUT_LANGFUSE:-600s};
-              proxy_send_timeout ${TIMEOUT_LANGFUSE:-600s};
-              proxy_buffering off;
-              proxy_cache off;
-          }
 
           # block root — don't expose LiteLLM swagger
           location = / {
@@ -1185,7 +1077,7 @@ configs:
       limit_req_zone $$binary_remote_addr zone=proxq:10m rate=${RATELIMIT_PROXQ:-600r/m};
       limit_req_zone $$binary_remote_addr zone=librechat:10m rate=${RATELIMIT_LIBRECHAT:-500r/m};
       limit_req_zone $$binary_remote_addr zone=searxng:10m rate=${RATELIMIT_SEARXNG:-60r/m};
-      limit_req_zone $$binary_remote_addr zone=langfuse:10m rate=${RATELIMIT_LANGFUSE:-300r/m};
+
 
   proxq_config:
     content: |
@@ -1241,6 +1133,7 @@ configs:
           public_key: "uploads"
           ttl: "${HYBRIDS3_UPLOADS_TTL:-168h}"
           max_file_size: "${HYBRIDS3_UPLOADS_MAX_SIZE:-100MB}"
+
 
 networks:
   litellm-internal:
