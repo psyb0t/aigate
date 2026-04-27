@@ -145,13 +145,13 @@ run:
 	$(check_file_vars)
 	$(MAKE) build-config
 	@echo "Active profiles: $(if $(COMPOSE_PROFILES),$(COMPOSE_PROFILES),(none))"
-	docker compose up --build
+	docker compose up --build --force-recreate
 
 run-bg:
 	$(check_file_vars)
 	$(MAKE) build-config
 	@echo "Active profiles: $(if $(COMPOSE_PROFILES),$(COMPOSE_PROFILES),(none))"
-	docker compose up -d --build
+	docker compose up -d --build --force-recreate
 
 down:
 	COMPOSE_PROFILES=claudebox,claudebox-zai,cloudflared,hybrids3,browser,ollama,ollama-cuda,sdcpp,sdcpp-cuda,speaches,speaches-cuda,qwen3-cuda-tts,mcp,librechat,searxng \
