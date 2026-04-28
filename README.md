@@ -1,16 +1,16 @@
 # aigate
 
-A self-hosted AI platform. 28 services, 99 models, 21 tools, one `docker-compose up`.
+A self-hosted AI platform. One `docker-compose up`.
 
 Everything an AI-powered workflow needs — inference, tool use, browser automation, image generation, speech synthesis, transcription, object storage, agentic code execution, an async job queue, and a web UI — behind a single OpenAI-compatible endpoint at `http://localhost:4000`. Point any existing client at it and it works.
 
 ### Models and routing
 
-99 models across 15 providers. Six providers are completely free (Groq, Cerebras, OpenRouter, HuggingFace, Mistral, Cohere). Five run locally on your own hardware — CPU or NVIDIA GPU — with no network calls, no rate limits, and no usage costs (Ollama, Speaches, Qwen3 TTS, stable-diffusion.cpp CPU, stable-diffusion.cpp CUDA). The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
+Models across multiple providers. Six providers are completely free (Groq, Cerebras, OpenRouter, HuggingFace, Mistral, Cohere). Five run locally on your own hardware — CPU or NVIDIA GPU — with no network calls, no rate limits, and no usage costs (Ollama, Speaches, Qwen3 TTS, stable-diffusion.cpp CPU, stable-diffusion.cpp CUDA). The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
 
 ### Tools and capabilities
 
-21 MCP tools across 5 servers. Any model with function calling can invoke them autonomously — the model orchestrates, you just prompt.
+MCP tools across multiple servers. Any model with function calling can invoke them autonomously — the model orchestrates, you just prompt.
 
 - **Stealth browser cluster** — 5 Camoufox replicas behind HAProxy, real OS-level mouse and keyboard input, zero CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, and every other bot detector we've thrown at it.
 - **Agentic Claude Code ×2** — full shell access, persistent workspaces, file I/O, tool use. One instance on your Claude subscription or API key, one running GLM models through z.ai.
@@ -28,7 +28,7 @@ LibreChat at `/librechat/` — pre-configured with all models and MCP tools, con
 
 ### Infrastructure
 
-28 containers. Nginx reverse proxy with per-endpoint rate limiting. PostgreSQL + MongoDB for persistence. Two Redis instances (cache + browser session sync). Async job queue for long-running inference. Cloudflare Tunnel for public exposure with zero open ports.
+Multiple containers. Nginx reverse proxy with per-endpoint rate limiting. PostgreSQL + MongoDB for persistence. Two Redis instances (cache + browser session sync). Async job queue for long-running inference. Cloudflare Tunnel for public exposure with zero open ports.
 
 ### Security
 
@@ -74,12 +74,12 @@ nginx :4000                                          ┌────────
                                   ├─ Anthropic          (pay-per-token, ANTHROPIC=1)
                                   └─ OpenAI             (pay-per-token, OPENAI=1)
 
-MCP servers (up to 21 tools, all optional):
-  ├─ stealthy_auto_browse  (1 tool)   — run_script: multi-step browser automation (BROWSER=1)
-  ├─ hybrids3              (7 tools)  — file upload, download, list, delete, presign (HYBRIDS3=1)
-  ├─ claudebox             (5 tools)  — agentic Claude Code via OAuth or API key (CLAUDEBOX=1)
-  ├─ claudebox_zai         (5 tools)  — agentic Claude Code via z.ai/GLM (CLAUDEBOX_ZAI=1)
-  └─ mcp_tools             (3 tools)  — generate_image + generate_tts + search_web (auto-enabled with image/TTS/SearXNG)
+MCP servers (all optional):
+  ├─ stealthy_auto_browse  — run_script: multi-step browser automation (BROWSER=1)
+  ├─ hybrids3              — file upload, download, list, delete, presign (HYBRIDS3=1)
+  ├─ claudebox             — agentic Claude Code via OAuth or API key (CLAUDEBOX=1)
+  ├─ claudebox_zai         — agentic Claude Code via z.ai/GLM (CLAUDEBOX_ZAI=1)
+  └─ mcp_tools             — generate_image + generate_tts + search_web (auto-enabled with image/TTS/SearXNG)
 ```
 
 All persistent data lives under `.data/` by default (bind mounts). Override the base with `DATA_DIR` or per-service with `DATA_DIR_*` env vars (e.g. `DATA_DIR_OLLAMA=/mnt/nas/ollama`) — see [`.env.example`](.env.example) for the full list. The default directory structure is tracked in git via `.gitkeep` files so the right directories exist on a fresh clone — contents are gitignored.
@@ -141,13 +141,13 @@ Default writable locations:
 
 ## MCP Tools
 
-Up to 20 tools across 5 optional servers. Any model that supports function calling can invoke them — the model decides when and how to use them based on the prompt.
+Tools across optional servers. Any model that supports function calling can invoke them — the model decides when and how to use them based on the prompt.
 
 → [Full MCP tool reference with parameters](docs/mcp-tools.md)
 
 ## Providers and Models
 
-99 models across 15 providers. Six are free tier with no credit card required. Five run locally on your own hardware — CPU or NVIDIA GPU — with no rate limits. Per-model fallback chains route automatically through alternative providers when one fails or rate-limits.
+Models across multiple providers. Six are free tier with no credit card required. Five run locally on your own hardware — CPU or NVIDIA GPU — with no rate limits. Per-model fallback chains route automatically through alternative providers when one fails or rate-limits.
 
 ### Routing philosophy
 
@@ -324,7 +324,7 @@ Everything is opt-in via flags in `.env`. API keys are stored separately and nev
 | `SDCPP=1` | Local stable-diffusion.cpp CPU image generation |
 | `SDCPP_CUDA=1` | Local stable-diffusion.cpp CUDA image generation (requires `nvidia-container-toolkit`) |
 | `HYBRIDS3=1` | Object storage service + MCP server (S3-compatible, plain HTTP, auto-expiry) |
-| `BROWSER=1` | Stealth browser cluster + MCP server (5 replicas, ~1.3GB RAM) |
+| `BROWSER=1` | Stealth browser cluster + MCP server (~1.3GB RAM) |
 | `LIBRECHAT=1` | LibreChat web UI at `/librechat/` with all models and MCP tools |
 | `SEARXNG=1` | SearXNG meta-search at `/searxng/` + MCP `search_web` tool |
 | `CLOUDFLARED=1` | Cloudflare Tunnel |
@@ -497,7 +497,7 @@ make test          # run test suite (stack must be running)
 make test
 ```
 
-121 tests covering health, routing, auth, MCP, MCP media tools, storage CRUD, browser automation, claudebox, proxq async job lifecycle, local TTS/STT round-trips, CUDA audio, resource manager unload verification, local image generation (CPU/CUDA), MCP-to-sdcpp integration, LLM-to-MCP e2e tool calling, and security. Designed for zero/minimal token usage.
+Tests covering health, routing, auth, MCP, MCP media tools, storage CRUD, browser automation, claudebox, proxq async job lifecycle, local TTS/STT round-trips, CUDA audio, resource manager unload verification, local image generation (CPU/CUDA), MCP-to-sdcpp integration, LLM-to-MCP e2e tool calling, and security. Designed for zero/minimal token usage.
 
 → [Testing guide](docs/testing.md)
 

@@ -19,8 +19,8 @@ bash test.sh --help
 
 - **Health** — all service health endpoints, docker compose service status, browser replica count, cloudflared tunnel reachability (skipped if not running)
 - **LiteLLM** — API endpoints, model registration (base models always, plus optional Ollama/CUDA/Speaches models when enabled), authentication (valid/invalid/missing keys), chat completions, SSE streaming
-- **Nginx** — routing to all 5 backends, root path blocked (404), admin UI basic auth (no creds → 401, bad creds → 401, correct creds → 200, no-auth mode → 200), admin rate limiting (503/429 under rapid fire)
-- **MCP** — all 20 tools loaded across 5 servers, per-server tool counts, specific tool presence, authentication
+- **Nginx** — routing to all backends, root path blocked (404), admin UI basic auth (no creds → 401, bad creds → 401, correct creds → 200, no-auth mode → 200), admin rate limiting (503/429 under rapid fire)
+- **MCP** — all tools loaded across servers, per-server tool counts, specific tool presence, authentication
 - **MCP Media** — image generation tool (via mcp_tools-generate_image), TTS tool (via mcp_tools-generate_tts), tool presence based on enabled providers, invalid model error handling, tool descriptions contain expected model names, sdcpp-cuda image generation through MCP, e2e LLM tool calling (qwen3-8b → tool_call → MCP generate_image → sdcpp-cuda → upload → LLM responds with link)
 - **sd.cpp** _(SDCPP=1)_ — wrapper health, model listing, status fields, load/unload/double-load/double-unload, auto-load on generate, image generation, model swap (sd-turbo ↔ sdxl-turbo), cleanup unload. Both CPU and CUDA variants.
 - **HybridS3** — full CRUD lifecycle (upload, download, list, delete, verify deletion), public read without auth, write rejection without auth, presigned URL generation and download

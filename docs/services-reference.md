@@ -143,7 +143,7 @@ Note: `temperature`, `max_tokens`, `tools`, and other standard OpenAI fields are
 
 ### MCP server
 
-Claudebox exposes an MCP server at `/claudebox/mcp/`. 5 tools: `claude_run`, `read_file`, `write_file`, `list_files`, `delete_file`. See [mcp-tools.md](mcp-tools.md) for full parameter reference.
+Claudebox exposes an MCP server at `/claudebox/mcp/`. Tools: `claude_run`, `read_file`, `write_file`, `list_files`, `delete_file`. See [mcp-tools.md](mcp-tools.md) for full parameter reference.
 
 ### Workspace isolation
 
