@@ -440,6 +440,48 @@ Settings are in `searxng/settings.yml` (mounted read-only into the container). T
 
 ---
 
+## Telethon (optional, `TELETHON=1`)
+
+Telegram client at `/telethon/`. Backed by [Telethon](https://github.com/LonamiWebs/Telethon) — exposes a REST API and MCP server for sending/reading messages, managing dialogs, forwarding content, and group operations.
+
+| Endpoint        | URL                        | Auth         |
+| --------------- | -------------------------- | ------------ |
+| Health          | `GET /telethon/healthz`    | none         |
+| REST API        | `/telethon/api/*`          | Bearer token |
+| MCP server      | `/telethon/mcp`            | Bearer token |
+
+### Setup
+
+1. Get API credentials at [my.telegram.org/apps](https://my.telegram.org/apps)
+2. Generate a string session:
+   ```bash
+   docker run -it --rm \
+     -e TELETHON_API_ID=your_id \
+     -e TELETHON_API_HASH=your_hash \
+     psyb0t/telethon:v0.1.1 python login.py
+   ```
+3. Add to `.env`: `TELETHON=1`, `TELETHON_API_ID`, `TELETHON_API_HASH`, `TELETHON_SESSION`, `TELETHON_AUTH_KEY`
+
+### Environment variables
+
+| Variable                        | Default        | Description                              |
+| ------------------------------- | -------------- | ---------------------------------------- |
+| `TELETHON_API_ID`               | —              | Telegram app ID (required)               |
+| `TELETHON_API_HASH`             | —              | Telegram app hash (required)             |
+| `TELETHON_SESSION`              | —              | String session from login.py (required)  |
+| `TELETHON_AUTH_KEY`             | `lulz-4-security` | Bearer token for REST + MCP auth      |
+| `TELETHON_PROXY`                | —              | SOCKS5 proxy (`socks5://user:pass@host:port`) |
+| `TELETHON_REQUEST_TIMEOUT`      | `60`           | Telegram API request timeout (seconds)   |
+| `TELETHON_FLOOD_SLEEP_THRESHOLD`| `60`           | Auto-sleep on flood wait up to this many seconds |
+| `RATELIMIT_TELETHON`            | `30r/m`        | Nginx rate limit                         |
+| `RATELIMIT_TELETHON_BURST`      | `10`           | Burst allowance                          |
+| `TIMEOUT_TELETHON`              | `60s`          | Nginx proxy timeout                      |
+| `TELETHON_MEM_LIMIT`            | `256m`         | Container memory limit                   |
+| `TELETHON_MEMSWAP_LIMIT`        | `512m`         | Container memory + swap limit            |
+| `TELETHON_CPUS`                 | `0.2`          | CPU limit                                |
+
+---
+
 ## Cloudflared (optional, `CLOUDFLARED=1`)
 
 Disabled by default. Enable by setting `CLOUDFLARED=1` in `.env`.

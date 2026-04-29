@@ -82,6 +82,11 @@ ifeq ($(strip $(SEARXNG)),1)
   _PROFILES += searxng
 endif
 
+# telethon: opt-in with TELETHON=1
+ifeq ($(strip $(TELETHON)),1)
+  _PROFILES += telethon
+endif
+
 
 # mcp: auto-enabled when any image, TTS, or search provider is active
 _HAS_MCP :=
@@ -154,7 +159,7 @@ run-bg:
 	docker compose up -d --build --force-recreate
 
 down:
-	COMPOSE_PROFILES=claudebox,claudebox-zai,cloudflared,hybrids3,browser,ollama,ollama-cuda,sdcpp,sdcpp-cuda,speaches,speaches-cuda,qwen3-cuda-tts,mcp,librechat,searxng \
+	COMPOSE_PROFILES=claudebox,claudebox-zai,cloudflared,hybrids3,browser,ollama,ollama-cuda,sdcpp,sdcpp-cuda,speaches,speaches-cuda,qwen3-cuda-tts,mcp,librechat,searxng,telethon \
 		docker compose down --remove-orphans
 
 restart: down run-bg

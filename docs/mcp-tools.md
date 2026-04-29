@@ -189,3 +189,33 @@ If an invalid model is requested, the tool returns an error JSON with the list o
 ```json
 {"error": "Model 'nonexistent' not available", "available_models": ["hf-flux-schnell"]}
 ```
+
+---
+
+## telethon — Telegram client (`TELETHON=1`)
+
+MCP server backed by [docker-telethon](https://github.com/psyb0t/docker-telethon). Gives any function-calling model full Telegram client access — read and send messages, manage groups, forward files.
+
+Requires `TELETHON_API_ID`, `TELETHON_API_HASH`, and `TELETHON_SESSION` in `.env`. See [services-reference.md](services-reference.md#telethon-optional-telethon1) for setup.
+
+All chat references accept: `@username`, phone number, `t.me/...` link, or numeric ID as a string.
+
+### Tools
+
+| Tool                | Description |
+| ------------------- | ----------- |
+| `get_me`            | Return the authorized account profile |
+| `get_entity`        | Resolve a chat reference to a profile |
+| `send_message`      | Send a text message to a chat |
+| `get_messages`      | Read recent messages from a chat (newest first) |
+| `get_dialogs`       | List your dialogs (chats, groups, channels) |
+| `forward_messages`  | Forward one or more messages between chats |
+| `delete_messages`   | Delete messages by ID |
+| `edit_message`      | Edit a message you sent |
+| `mark_read`         | Mark messages in a chat as read |
+| `send_file`         | Download a file from an HTTPS URL and send it to a chat |
+| `get_participants`  | List members of a group or channel |
+| `create_group`      | Create a new supergroup or broadcast channel |
+| `delete_chat`       | Delete a supergroup or channel you own |
+| `join_chat`         | Join a public channel or supergroup |
+| `leave_chat`        | Leave a channel or supergroup |

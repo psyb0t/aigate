@@ -108,7 +108,7 @@ services:
 
   claudebox:
     profiles: ["claudebox"]
-    image: psyb0t/claudebox:v1.4.0-minimal
+    image: psyb0t/claudebox:v1.8.0-minimal
     restart: unless-stopped
     mem_limit: ${CLAUDEBOX_MEM_LIMIT:-1g}
     memswap_limit: ${CLAUDEBOX_MEMSWAP_LIMIT:-2g}
@@ -134,7 +134,7 @@ services:
 
   claudebox-zai:
     profiles: ["claudebox-zai"]
-    image: psyb0t/claudebox:v1.4.0-minimal
+    image: psyb0t/claudebox:v1.8.0-minimal
     restart: unless-stopped
     mem_limit: ${CLAUDEBOX_ZAI_MEM_LIMIT:-1g}
     memswap_limit: ${CLAUDEBOX_ZAI_MEMSWAP_LIMIT:-2g}
@@ -817,6 +817,34 @@ services:
 
   # ── SearXNG (self-hosted meta search engine) ─────────────────────────────────
 
+  telethon:
+    profiles: ["telethon"]
+    image: psyb0t/telethon:v0.1.1
+    restart: unless-stopped
+    mem_limit: ${TELETHON_MEM_LIMIT:-256m}
+    memswap_limit: ${TELETHON_MEMSWAP_LIMIT:-512m}
+    cpus: ${TELETHON_CPUS:-0.2}
+    environment:
+      TELETHON_API_ID: "${TELETHON_API_ID}"
+      TELETHON_API_HASH: "${TELETHON_API_HASH}"
+      TELETHON_SESSION: "${TELETHON_SESSION}"
+      TELETHON_AUTH_KEY: "${TELETHON_AUTH_KEY:-lulz-4-security}"
+      TELETHON_LOG_LEVEL: "${TELETHON_LOG_LEVEL:-INFO}"
+      TELETHON_REQUEST_TIMEOUT: "${TELETHON_REQUEST_TIMEOUT:-60}"
+      TELETHON_FLOOD_SLEEP_THRESHOLD: "${TELETHON_FLOOD_SLEEP_THRESHOLD:-60}"
+      TELETHON_PROXY: "${TELETHON_PROXY:-}"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - litellm-internal
+      - litellm-public
+
   searxng:
     profiles: ["searxng"]
     image: searxng/searxng:2026.4.24-a7ac696b4
@@ -987,6 +1015,22 @@ configs:
           }
 
 
+          # Telethon — Telegram client REST API + MCP
+          location /telethon/ {
+              limit_req zone=telethon burst=${RATELIMIT_TELETHON_BURST:-10} nodelay;
+              set $$upstream_telethon http://telethon:8080;
+              rewrite ^/telethon/(.*) /$$1 break;
+              proxy_pass $$upstream_telethon;
+              proxy_set_header Host $$http_host;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_read_timeout ${TIMEOUT_TELETHON:-60s};
+              proxy_send_timeout ${TIMEOUT_TELETHON:-60s};
+              proxy_buffering off;
+              proxy_cache off;
+          }
+
           # block root — don't expose LiteLLM swagger
           location = / {
               return 404;
@@ -1082,6 +1126,7 @@ configs:
       limit_req_zone $$binary_remote_addr zone=proxq:10m rate=${RATELIMIT_PROXQ:-600r/m};
       limit_req_zone $$binary_remote_addr zone=librechat:10m rate=${RATELIMIT_LIBRECHAT:-500r/m};
       limit_req_zone $$binary_remote_addr zone=searxng:10m rate=${RATELIMIT_SEARXNG:-60r/m};
+      limit_req_zone $$binary_remote_addr zone=telethon:10m rate=${RATELIMIT_TELETHON:-30r/m};
 
   proxq_config:
     content: |

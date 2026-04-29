@@ -1,0 +1,6 @@
+telethon:
+  url: "http://telethon:8080/mcp"
+  transport: "http"
+  auth_type: "bearer_token"
+  auth_value: os.environ/TELETHON_AUTH_KEY
+  description: "Telegram client via Telethon — send/read/edit/delete messages, list dialogs, forward messages, send files, manage group membership."

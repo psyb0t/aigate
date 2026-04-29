@@ -50,13 +50,14 @@ cloudflared (CLOUDFLARED=1)
 nginx :4000                                          ┌──────────── always on ────────────┐
   ├─► /claudebox/            → claudebox             │ nginx, LiteLLM, PostgreSQL, Redis │
   ├─► /claudebox-zai/        → claudebox-zai         │ proxq — everything else is opt-in │
-  ├─► /stealthy-auto-browse/ → HAProxy → [browser ×5]└─────────────────────────────────────┘
+  ├─► /stealthy-auto-browse/ → HAProxy → [browser ×5]└───────────────────────────────────┘
   ├─► /storage/              → hybrids3
   ├─► /q/                    → proxq → LiteLLM (async, returns job ID)
   ├─► /librechat/            → LibreChat (web UI, LIBRECHAT=1)
   ├─► /searxng/              → SearXNG (meta-search, SEARXNG=1)
+  ├─► /telethon/             → Telethon (Telegram client, TELETHON=1)
   └─► /                      → LiteLLM (sync)
-                                  ├─ Groq              (free, GROQ=1)
+                                  ├─ Groq               (free, GROQ=1)
                                   ├─ Cerebras           (free, CEREBRAS=1)
                                   ├─ OpenRouter         (free tier, OPENROUTER=1)
                                   ├─ HuggingFace        (free, HUGGINGFACE=1)
@@ -79,51 +80,53 @@ MCP servers (all optional):
   ├─ hybrids3              — file upload, download, list, delete, presign (HYBRIDS3=1)
   ├─ claudebox             — agentic Claude Code via OAuth or API key (CLAUDEBOX=1)
   ├─ claudebox_zai         — agentic Claude Code via z.ai/GLM (CLAUDEBOX_ZAI=1)
-  └─ mcp_tools             — generate_image + generate_tts + search_web (auto-enabled with image/TTS/SearXNG)
+  ├─ mcp_tools             — generate_image + generate_tts + search_web (auto-enabled with image/TTS/SearXNG)
+  └─ telethon              — Telegram send/read/edit messages, dialogs, files, group management (TELETHON=1)
 ```
 
 All persistent data lives under `.data/` by default (bind mounts). Override the base with `DATA_DIR` or per-service with `DATA_DIR_*` env vars (e.g. `DATA_DIR_OLLAMA=/mnt/nas/ollama`) — see [`.env.example`](.env.example) for the full list. The default directory structure is tracked in git via `.gitkeep` files so the right directories exist on a fresh clone — contents are gitignored.
 
 Default writable locations:
 
-| Path | Used by | Notes |
-| ---- | ------- | ----- |
-| `.data/claudebox/config/.always-skills/` | claudebox | Drop `<name>/SKILL.md` files here — injected into every Claude session automatically |
-| `.data/claudebox-zai/config/.always-skills/` | claudebox-zai | Same, for the z.ai instance |
-| `.data/claudebox/workspaces/` | claudebox | Persistent task workspaces |
-| `.data/claudebox-zai/workspaces/` | claudebox-zai | Persistent task workspaces |
-| `.data/hybrids3/` | hybrids3 | Object storage data |
-| `.data/nginx/` | nginx-auth-init | Generated htpasswd (from `LITELLM_UI_BASIC_AUTH`) |
-| `.data/ollama/` | ollama, ollama-cuda | Downloaded model weights (shared — CPU and CUDA instances read the same blobs) |
-| `.data/speaches/` | speaches, speaches-cuda | Downloaded Whisper and Parakeet model weights (HuggingFace cache, shared between CPU/CUDA) |
-| `.data/qwen3-tts/` | qwen3-cuda-tts | Downloaded Qwen3-TTS model weights (HuggingFace cache) |
-| `.data/sdcpp/models/` | sdcpp, sdcpp-cuda | Downloaded stable-diffusion model weights (shared between CPU and CUDA) |
-| `.data/librechat/` | librechat, librechat-mongodb | Conversation data (MongoDB), file uploads |
-| `.data/cloudflared/` | cloudflared | Tunnel config and credentials (if using named tunnel) |
+| Path                                         | Used by                      | Notes                                                                                      |
+| -------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------ |
+| `.data/claudebox/config/.always-skills/`     | claudebox                    | Drop `<name>/SKILL.md` files here — injected into every Claude session automatically       |
+| `.data/claudebox-zai/config/.always-skills/` | claudebox-zai                | Same, for the z.ai instance                                                                |
+| `.data/claudebox/workspaces/`                | claudebox                    | Persistent task workspaces                                                                 |
+| `.data/claudebox-zai/workspaces/`            | claudebox-zai                | Persistent task workspaces                                                                 |
+| `.data/hybrids3/`                            | hybrids3                     | Object storage data                                                                        |
+| `.data/nginx/`                               | nginx-auth-init              | Generated htpasswd (from `LITELLM_UI_BASIC_AUTH`)                                          |
+| `.data/ollama/`                              | ollama, ollama-cuda          | Downloaded model weights (shared — CPU and CUDA instances read the same blobs)             |
+| `.data/speaches/`                            | speaches, speaches-cuda      | Downloaded Whisper and Parakeet model weights (HuggingFace cache, shared between CPU/CUDA) |
+| `.data/qwen3-tts/`                           | qwen3-cuda-tts               | Downloaded Qwen3-TTS model weights (HuggingFace cache)                                     |
+| `.data/sdcpp/models/`                        | sdcpp, sdcpp-cuda            | Downloaded stable-diffusion model weights (shared between CPU and CUDA)                    |
+| `.data/librechat/`                           | librechat, librechat-mongodb | Conversation data (MongoDB), file uploads                                                  |
+| `.data/cloudflared/`                         | cloudflared                  | Tunnel config and credentials (if using named tunnel)                                      |
 
 ## Services
 
-| Service | Description |
-| ------- | ----------- |
-| **Nginx** | Single entry point on port 4000. Routes by URL path, enforces per-endpoint rate limits (configurable via `RATELIMIT_*` env vars), configurable proxy timeouts (`TIMEOUT_*`), restores real client IP behind Cloudflare, and optionally adds HTTP basic auth on the admin UI. All config is embedded inline. |
-| **LiteLLM** | OpenAI-compatible API proxy. Latency-based routing, Redis response caching (10-minute TTL), automatic retries, per-model fallback chains, and client-side JSON schema validation. Manages API keys and usage via PostgreSQL. |
-| **[proxq](https://github.com/psyb0t/docker-proxq)** | Async HTTP job queue proxy. Sits in front of LiteLLM at `/q/` — queues inference requests in Redis, returns a job ID instantly, forwards to upstream in the background. Poll `/__jobs/{id}` for status, `/__jobs/{id}/content` for the raw response. Only OpenAI API paths are queued (chat/completions, embeddings, audio, images); everything else passes through directly. |
-| **PostgreSQL** | Key management, budget tracking, usage analytics for LiteLLM. |
-| **Redis** | LiteLLM response cache and rate limiting. Also used by proxq (DB 1) for job queue storage. |
-| **[claudebox](https://github.com/psyb0t/docker-claudebox) ×2** _(optional, `CLAUDEBOX=1` / `CLAUDEBOX_ZAI=1`)_ | Claude Code CLI in API mode. Full agentic loop — shell access, file I/O, tool use, persistent workspaces. One instance uses your OAuth token or Anthropic API key; the other points at z.ai for GLM models. Both expose REST API, OpenAI-compatible endpoint, and MCP server. |
-| **[hybrids3](https://github.com/psyb0t/docker-hybrids3)** _(optional, `HYBRIDS3=1`)_ | S3-compatible object storage. Plain HTTP upload/download, boto3-compatible, bearer token auth, auto-expiry, MCP server. The `uploads` bucket is public-read — files are accessible by direct URL without signing. |
-| **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** _(optional, `BROWSER=1`)_ | 5 Camoufox (hardened Firefox) replicas behind HAProxy. Real OS-level mouse and keyboard input via PyAutoGUI — no CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan. Redis cookie sync across replicas. REST API and MCP server. |
-| **Ollama** _(optional, `OLLAMA=1`)_ | Local CPU inference. Runs llama3.2:3b, qwen3:4b, smollm2:1.7b, qwen2.5-coder:1.5b, qwen2.5-coder:3b, phi4-mini, gemma4:e2b, gemma3:4b (vision), nuextract-v1.5 (structured extraction), bge-m3, qwen3-embedding:0.6b (embeddings), dolphin-phi. Models are downloaded automatically on first start and cached in `.data/ollama/`. No GPU required. |
-| **Ollama CUDA** _(optional, `OLLAMA_CUDA=1`)_ | Local NVIDIA GPU inference. Runs all CPU models on GPU plus: qwen3:8b, gemma4:e4b, qwen2.5-coder:7b, deepseek-coder-v2:16b, llama3.1:8b, qwen3-abliterated:16b, gemma4-abliterated:e4b (uncensored vision), deepseek-r1:8b. Flash attention and KV cache enabled. Shares model storage with CPU ollama — no duplicate downloads. Requires `nvidia-container-toolkit`. |
-| **Speaches** _(optional, `SPEACHES=1`)_ | Local CPU audio via [speaches-ai/speaches](https://github.com/speaches-ai/speaches). Transcription: `faster-distil-whisper-large-v3` (multilingual) and `parakeet-tdt-0.6b-v2` (English, ~3400× real-time on CPU). Text-to-speech: `Kokoro-82M` int8 (high-quality, multiple voices). Models cached in `.data/speaches/`. |
-| **Speaches CUDA** _(optional, `SPEACHES_CUDA=1`)_ | CUDA-accelerated Whisper STT via speaches. Uses the same model cache as CPU speaches. Shares `.data/speaches/` — no separate download. Requires `nvidia-container-toolkit`. |
-| **Qwen3 CUDA TTS** _(optional, `QWEN_TTS_CUDA=1`)_ | CUDA-accelerated TTS via [faster-qwen3-tts](https://github.com/andimarafioti/faster-qwen3-tts). Runs `Qwen3-TTS-12Hz-0.6B-Base` with CUDA graphs. Voice cloning via reference audio. Models cached in `.data/qwen3-tts/`. Requires `nvidia-container-toolkit`. |
-| **sd.cpp CPU** _(optional, `SDCPP=1`)_ | Local CPU image generation via [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp). Go wrapper with OpenAI-compatible `/v1/images/generations` endpoint, model hot-swap, idle timeout auto-unload. Models: sd-turbo, sdxl-turbo. Models cached in `.data/sdcpp/models/`. |
-| **sd.cpp CUDA** _(optional, `SDCPP_CUDA=1`)_ | CUDA-accelerated image generation via stable-diffusion.cpp. Same wrapper as CPU with CUDA backend. Models: sd-turbo, sdxl-turbo, sdxl-lightning, flux-schnell, juggernaut-xi. Non-blocking — rejects concurrent requests with 503 instead of queuing (resource manager handles scheduling). Requires `nvidia-container-toolkit`. |
-| **MCP tools** _(auto-enabled)_ | Media generation and web search MCP server. Exposes `generate_image`, `generate_tts`, and `search_web` tools to any model with function calling. Discovers available models dynamically from LiteLLM. Returns structured JSON with persistent URLs (uploaded to HybridS3) — no base64 blobs. Auto-enabled when any image, TTS, or SearXNG provider is active. |
-| **[LibreChat](https://github.com/danny-avila/LibreChat)** _(optional, `LIBRECHAT=1`)_ | Web UI for LLM interaction at `/librechat/`. Pre-configured with all LiteLLM models and MCP tools. MongoDB-backed conversation storage. Email/password auth — first registered user becomes admin, then set `LIBRECHAT_ALLOW_REGISTRATION=false` and restart. WebSocket streaming. Configurable via `.env` (registration, rate limits, debug logging, JWT secrets). |
-| **[SearXNG](https://github.com/searxng/searxng)** _(optional, `SEARXNG=1`)_ | Self-hosted meta-search engine at `/searxng/`. Aggregates Google, Bing, DuckDuckGo, Wikipedia. No API key needed — runs entirely locally. Also powers the MCP `search_web` tool so any function-calling model can search the web autonomously. Protected by nginx admin auth. |
-| **cloudflared** _(optional, `CLOUDFLARED=1`)_ | Cloudflare Tunnel. Disabled by default — enable with `CLOUDFLARED=1` in `.env`. Runs a quick tunnel (random `*.trycloudflare.com` URL, no account) or a named tunnel (fixed domain, requires config file and credentials). |
+| Service                                                                                                        | Description                                                                                                                                                                                                                                                                                                                                                                   |
+| -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Nginx**                                                                                                      | Single entry point on port 4000. Routes by URL path, enforces per-endpoint rate limits (configurable via `RATELIMIT_*` env vars), configurable proxy timeouts (`TIMEOUT_*`), restores real client IP behind Cloudflare, and optionally adds HTTP basic auth on the admin UI. All config is embedded inline.                                                                   |
+| **LiteLLM**                                                                                                    | OpenAI-compatible API proxy. Latency-based routing, Redis response caching (10-minute TTL), automatic retries, per-model fallback chains, and client-side JSON schema validation. Manages API keys and usage via PostgreSQL.                                                                                                                                                  |
+| **[proxq](https://github.com/psyb0t/docker-proxq)**                                                            | Async HTTP job queue proxy. Sits in front of LiteLLM at `/q/` — queues inference requests in Redis, returns a job ID instantly, forwards to upstream in the background. Poll `/__jobs/{id}` for status, `/__jobs/{id}/content` for the raw response. Only OpenAI API paths are queued (chat/completions, embeddings, audio, images); everything else passes through directly. |
+| **PostgreSQL**                                                                                                 | Key management, budget tracking, usage analytics for LiteLLM.                                                                                                                                                                                                                                                                                                                 |
+| **Redis**                                                                                                      | LiteLLM response cache and rate limiting. Also used by proxq (DB 1) for job queue storage.                                                                                                                                                                                                                                                                                    |
+| **[claudebox](https://github.com/psyb0t/docker-claudebox) ×2** _(optional, `CLAUDEBOX=1` / `CLAUDEBOX_ZAI=1`)_ | Claude Code CLI in API mode. Full agentic loop — shell access, file I/O, tool use, persistent workspaces. One instance uses your OAuth token or Anthropic API key; the other points at z.ai for GLM models. Both expose REST API, OpenAI-compatible endpoint, and MCP server.                                                                                                 |
+| **[hybrids3](https://github.com/psyb0t/docker-hybrids3)** _(optional, `HYBRIDS3=1`)_                           | S3-compatible object storage. Plain HTTP upload/download, boto3-compatible, bearer token auth, auto-expiry, MCP server. The `uploads` bucket is public-read — files are accessible by direct URL without signing.                                                                                                                                                             |
+| **[stealthy-auto-browse](https://github.com/psyb0t/docker-stealthy-auto-browse)** _(optional, `BROWSER=1`)_    | 5 Camoufox (hardened Firefox) replicas behind HAProxy. Real OS-level mouse and keyboard input via PyAutoGUI — no CDP exposure. Passes Cloudflare, CreepJS, BrowserScan, Pixelscan. Redis cookie sync across replicas. REST API and MCP server.                                                                                                                                |
+| **Ollama** _(optional, `OLLAMA=1`)_                                                                            | Local CPU inference. Runs llama3.2:3b, qwen3:4b, smollm2:1.7b, qwen2.5-coder:1.5b, qwen2.5-coder:3b, phi4-mini, gemma4:e2b, gemma3:4b (vision), nuextract-v1.5 (structured extraction), bge-m3, qwen3-embedding:0.6b (embeddings), dolphin-phi. Models are downloaded automatically on first start and cached in `.data/ollama/`. No GPU required.                            |
+| **Ollama CUDA** _(optional, `OLLAMA_CUDA=1`)_                                                                  | Local NVIDIA GPU inference. Runs all CPU models on GPU plus: qwen3:8b, gemma4:e4b, qwen2.5-coder:7b, deepseek-coder-v2:16b, llama3.1:8b, qwen3-abliterated:16b, gemma4-abliterated:e4b (uncensored vision), deepseek-r1:8b. Flash attention and KV cache enabled. Shares model storage with CPU ollama — no duplicate downloads. Requires `nvidia-container-toolkit`.         |
+| **Speaches** _(optional, `SPEACHES=1`)_                                                                        | Local CPU audio via [speaches-ai/speaches](https://github.com/speaches-ai/speaches). Transcription: `faster-distil-whisper-large-v3` (multilingual) and `parakeet-tdt-0.6b-v2` (English, ~3400× real-time on CPU). Text-to-speech: `Kokoro-82M` int8 (high-quality, multiple voices). Models cached in `.data/speaches/`.                                                     |
+| **Speaches CUDA** _(optional, `SPEACHES_CUDA=1`)_                                                              | CUDA-accelerated Whisper STT via speaches. Uses the same model cache as CPU speaches. Shares `.data/speaches/` — no separate download. Requires `nvidia-container-toolkit`.                                                                                                                                                                                                   |
+| **Qwen3 CUDA TTS** _(optional, `QWEN_TTS_CUDA=1`)_                                                             | CUDA-accelerated TTS via [faster-qwen3-tts](https://github.com/andimarafioti/faster-qwen3-tts). Runs `Qwen3-TTS-12Hz-0.6B-Base` with CUDA graphs. Voice cloning via reference audio. Models cached in `.data/qwen3-tts/`. Requires `nvidia-container-toolkit`.                                                                                                                |
+| **sd.cpp CPU** _(optional, `SDCPP=1`)_                                                                         | Local CPU image generation via [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp). Go wrapper with OpenAI-compatible `/v1/images/generations` endpoint, model hot-swap, idle timeout auto-unload. Models: sd-turbo, sdxl-turbo. Models cached in `.data/sdcpp/models/`.                                                                                   |
+| **sd.cpp CUDA** _(optional, `SDCPP_CUDA=1`)_                                                                   | CUDA-accelerated image generation via stable-diffusion.cpp. Same wrapper as CPU with CUDA backend. Models: sd-turbo, sdxl-turbo, sdxl-lightning, flux-schnell, juggernaut-xi. Non-blocking — rejects concurrent requests with 503 instead of queuing (resource manager handles scheduling). Requires `nvidia-container-toolkit`.                                              |
+| **MCP tools** _(auto-enabled)_                                                                                 | Media generation and web search MCP server. Exposes `generate_image`, `generate_tts`, and `search_web` tools to any model with function calling. Discovers available models dynamically from LiteLLM. Returns structured JSON with persistent URLs (uploaded to HybridS3) — no base64 blobs. Auto-enabled when any image, TTS, or SearXNG provider is active.                 |
+| **[LibreChat](https://github.com/danny-avila/LibreChat)** _(optional, `LIBRECHAT=1`)_                          | Web UI for LLM interaction at `/librechat/`. Pre-configured with all LiteLLM models and MCP tools. MongoDB-backed conversation storage. Email/password auth — first registered user becomes admin, then set `LIBRECHAT_ALLOW_REGISTRATION=false` and restart. WebSocket streaming. Configurable via `.env` (registration, rate limits, debug logging, JWT secrets).           |
+| **[SearXNG](https://github.com/searxng/searxng)** _(optional, `SEARXNG=1`)_                                    | Self-hosted meta-search engine at `/searxng/`. Aggregates Google, Bing, DuckDuckGo, Wikipedia. No API key needed — runs entirely locally. Also powers the MCP `search_web` tool so any function-calling model can search the web autonomously. Protected by nginx admin auth.                                                                                                 |
+| **[Telethon](https://github.com/psyb0t/docker-telethon)** _(optional, `TELETHON=1`)_                           | Telegram client at `/telethon/`. REST API and MCP server — send/read/edit/delete messages, list dialogs, forward messages, send files from URL, manage group membership. Requires a Telegram API ID/hash and a string session (see [my.telegram.org/apps](https://my.telegram.org/apps)). Bearer token auth.                                                                  |
+| **cloudflared** _(optional, `CLOUDFLARED=1`)_                                                                  | Cloudflare Tunnel. Disabled by default — enable with `CLOUDFLARED=1` in `.env`. Runs a quick tunnel (random `*.trycloudflare.com` URL, no account) or a named tunnel (fixed domain, requires config file and credentials).                                                                                                                                                    |
 
 ## Security and Exposure
 
@@ -151,12 +154,12 @@ Models across multiple providers. Six are free tier with no credit card required
 
 ### Routing philosophy
 
-| Priority | Tier | Providers |
-| -------- | ---- | --------- |
-| 1st | Free cloud | Groq, Cerebras, OpenRouter, HuggingFace, Mistral, Cohere |
-| 2nd | Flat-rate | claudebox (Max sub), claudebox-zai (z.ai) |
-| 3rd | Pay-per-token | Anthropic, OpenAI |
-| Last resort | Local (CPU/CUDA) | Ollama, Speaches, Qwen3 CUDA TTS, sd.cpp |
+| Priority    | Tier             | Providers                                                |
+| ----------- | ---------------- | -------------------------------------------------------- |
+| 1st         | Free cloud       | Groq, Cerebras, OpenRouter, HuggingFace, Mistral, Cohere |
+| 2nd         | Flat-rate        | claudebox (Max sub), claudebox-zai (z.ai)                |
+| 3rd         | Pay-per-token    | Anthropic, OpenAI                                        |
+| Last resort | Local (CPU/CUDA) | Ollama, Speaches, Qwen3 CUDA TTS, sd.cpp                 |
 
 ### Fallback chains
 
@@ -180,90 +183,90 @@ Chains are filtered at startup — `make run` regenerates the LiteLLM config and
 
 All local CPU models are last in fallback chains — used when cloud providers are rate-limited or unavailable. Ollama unloads models after 5 minutes of inactivity.
 
-| Model name | Description | RAM |
-| ---------- | ----------- | --- |
-| `local-ollama-cpu-llama3.2-3b` | General chat — smallest/fastest | ~2GB |
-| `local-ollama-cpu-qwen3-4b` | General chat — better quality, thinking mode | ~2.6GB |
-| `local-ollama-cpu-smollm2-1.7b` | General chat — absolute tiniest | ~1GB |
-| `local-ollama-cpu-qwen2.5-coder-1.5b` | Code — smallest | ~1GB |
-| `local-ollama-cpu-qwen2.5-coder-3b` | Code — better quality | ~2GB |
-| `local-ollama-cpu-phi4-mini` | General chat (Microsoft Phi 4, 128K ctx) | ~2.5GB |
-| `local-ollama-cpu-gemma4-e2b` | General chat + vision (Google Gemma 4, 2.3B effective) | ~7.2GB |
-| `local-ollama-cpu-gemma3-4b` | General chat + vision — lightweight (Google Gemma 3) | ~2.6GB |
-| `local-ollama-cpu-dolphin-phi` | Uncensored assistant (Microsoft Phi) | ~1.6GB |
-| `local-ollama-cpu-nuextract-v1.5` | Structured data extraction — unstructured text → JSON | ~2.3GB |
-| `local-ollama-cpu-bge-m3` | Text embeddings — long docs, multilingual (8192 token context) | ~570MB |
-| `local-ollama-cpu-qwen3-embed-0.6b` | Text embeddings — modern, efficient | ~500MB |
+| Model name                            | Description                                                    | RAM    |
+| ------------------------------------- | -------------------------------------------------------------- | ------ |
+| `local-ollama-cpu-llama3.2-3b`        | General chat — smallest/fastest                                | ~2GB   |
+| `local-ollama-cpu-qwen3-4b`           | General chat — better quality, thinking mode                   | ~2.6GB |
+| `local-ollama-cpu-smollm2-1.7b`       | General chat — absolute tiniest                                | ~1GB   |
+| `local-ollama-cpu-qwen2.5-coder-1.5b` | Code — smallest                                                | ~1GB   |
+| `local-ollama-cpu-qwen2.5-coder-3b`   | Code — better quality                                          | ~2GB   |
+| `local-ollama-cpu-phi4-mini`          | General chat (Microsoft Phi 4, 128K ctx)                       | ~2.5GB |
+| `local-ollama-cpu-gemma4-e2b`         | General chat + vision (Google Gemma 4, 2.3B effective)         | ~7.2GB |
+| `local-ollama-cpu-gemma3-4b`          | General chat + vision — lightweight (Google Gemma 3)           | ~2.6GB |
+| `local-ollama-cpu-dolphin-phi`        | Uncensored assistant (Microsoft Phi)                           | ~1.6GB |
+| `local-ollama-cpu-nuextract-v1.5`     | Structured data extraction — unstructured text → JSON          | ~2.3GB |
+| `local-ollama-cpu-bge-m3`             | Text embeddings — long docs, multilingual (8192 token context) | ~570MB |
+| `local-ollama-cpu-qwen3-embed-0.6b`   | Text embeddings — modern, efficient                            | ~500MB |
 
 ### Local models (Ollama CUDA — `OLLAMA_CUDA=1`)
 
 CUDA models run with flash attention and quantized KV cache. See [Resource management](#resource-management) below for how VRAM is shared across services.
 
-| Model name | Description | VRAM |
-| ---------- | ----------- | ---- |
-| `local-ollama-cuda-qwen3-8b` | General chat — thinking mode | ~5GB |
-| `local-ollama-cuda-llama3.1-8b` | General chat | ~5GB |
-| `local-ollama-cuda-gemma4-e2b` | General chat + vision (Gemma 4, 2.3B effective) | ~7.2GB |
-| `local-ollama-cuda-gemma4-e4b` | General chat + vision — higher quality (Gemma 4, 4.5B effective) | ~9.6GB |
-| `local-ollama-cuda-qwen2.5-coder-7b` | Code | ~5GB |
-| `local-ollama-cuda-deepseek-coder-v2-16b` | Code — MoE, 2.4B active, 160K ctx | ~8.9GB |
-| `local-ollama-cuda-deepseek-r1-8b` | Reasoning / thinking model | ~5.2GB |
-| `local-ollama-cuda-qwen3-abliterated-16b` | Uncensored — abliterated Qwen3 | ~9.8GB |
-| `local-ollama-cuda-gemma4-abliterated-e4b` | Uncensored + vision — abliterated Gemma 4 | ~9.6GB |
-| `local-ollama-cuda-dolphin-phi` | Uncensored assistant (tiny) | ~1.6GB |
-| `local-ollama-cuda-llama3.2-3b` | General chat (Meta Llama 3.2) | ~2.0GB |
-| `local-ollama-cuda-qwen3-4b` | General chat (Qwen3, thinking mode) | ~2.6GB |
-| `local-ollama-cuda-smollm2-1.7b` | Tiny general chat (HuggingFace SmolLM2) | ~1.0GB |
-| `local-ollama-cuda-qwen2.5-coder-1.5b` | Code completion (tiny) | ~1.0GB |
-| `local-ollama-cuda-qwen2.5-coder-3b` | Code completion (small) | ~2.0GB |
-| `local-ollama-cuda-phi4-mini` | General chat / reasoning (Microsoft Phi 4) | ~2.5GB |
-| `local-ollama-cuda-gemma3-4b` | General chat + vision — lightweight (Google Gemma 3) | ~2.6GB |
-| `local-ollama-cuda-nuextract-v1.5` | Structured data extraction — unstructured text → JSON | ~2.3GB |
-| `local-ollama-cuda-bge-m3` | Text embeddings — long docs, multilingual (8192 ctx) | ~570MB |
-| `local-ollama-cuda-qwen3-embed-0.6b` | Text embeddings — modern, efficient | ~500MB |
+| Model name                                 | Description                                                      | VRAM   |
+| ------------------------------------------ | ---------------------------------------------------------------- | ------ |
+| `local-ollama-cuda-qwen3-8b`               | General chat — thinking mode                                     | ~5GB   |
+| `local-ollama-cuda-llama3.1-8b`            | General chat                                                     | ~5GB   |
+| `local-ollama-cuda-gemma4-e2b`             | General chat + vision (Gemma 4, 2.3B effective)                  | ~7.2GB |
+| `local-ollama-cuda-gemma4-e4b`             | General chat + vision — higher quality (Gemma 4, 4.5B effective) | ~9.6GB |
+| `local-ollama-cuda-qwen2.5-coder-7b`       | Code                                                             | ~5GB   |
+| `local-ollama-cuda-deepseek-coder-v2-16b`  | Code — MoE, 2.4B active, 160K ctx                                | ~8.9GB |
+| `local-ollama-cuda-deepseek-r1-8b`         | Reasoning / thinking model                                       | ~5.2GB |
+| `local-ollama-cuda-qwen3-abliterated-16b`  | Uncensored — abliterated Qwen3                                   | ~9.8GB |
+| `local-ollama-cuda-gemma4-abliterated-e4b` | Uncensored + vision — abliterated Gemma 4                        | ~9.6GB |
+| `local-ollama-cuda-dolphin-phi`            | Uncensored assistant (tiny)                                      | ~1.6GB |
+| `local-ollama-cuda-llama3.2-3b`            | General chat (Meta Llama 3.2)                                    | ~2.0GB |
+| `local-ollama-cuda-qwen3-4b`               | General chat (Qwen3, thinking mode)                              | ~2.6GB |
+| `local-ollama-cuda-smollm2-1.7b`           | Tiny general chat (HuggingFace SmolLM2)                          | ~1.0GB |
+| `local-ollama-cuda-qwen2.5-coder-1.5b`     | Code completion (tiny)                                           | ~1.0GB |
+| `local-ollama-cuda-qwen2.5-coder-3b`       | Code completion (small)                                          | ~2.0GB |
+| `local-ollama-cuda-phi4-mini`              | General chat / reasoning (Microsoft Phi 4)                       | ~2.5GB |
+| `local-ollama-cuda-gemma3-4b`              | General chat + vision — lightweight (Google Gemma 3)             | ~2.6GB |
+| `local-ollama-cuda-nuextract-v1.5`         | Structured data extraction — unstructured text → JSON            | ~2.3GB |
+| `local-ollama-cuda-bge-m3`                 | Text embeddings — long docs, multilingual (8192 ctx)             | ~570MB |
+| `local-ollama-cuda-qwen3-embed-0.6b`       | Text embeddings — modern, efficient                              | ~500MB |
 
 ### Local transcription (Speaches, CPU — `SPEACHES=1`)
 
-| Model name | Description |
-| ---------- | ----------- |
-| `local-speaches-whisper-distil-large-v3` | Multilingual, high accuracy |
-| `local-speaches-parakeet-tdt-0.6b` | English-only, ~3400× real-time on CPU |
+| Model name                               | Description                           |
+| ---------------------------------------- | ------------------------------------- |
+| `local-speaches-whisper-distil-large-v3` | Multilingual, high accuracy           |
+| `local-speaches-parakeet-tdt-0.6b`       | English-only, ~3400× real-time on CPU |
 
 ### Local text-to-speech (Speaches, CPU — `SPEACHES=1`)
 
-| Model name | Description |
-| ---------- | ----------- |
+| Model name                  | Description                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------ |
 | `local-speaches-kokoro-tts` | Kokoro 82M int8 — high-quality, multiple voices (af_heart, af_alloy, af_bella, etc.) |
 
 ### Local transcription (CUDA — `SPEACHES_CUDA=1`)
 
-| Model name | Description |
-| ---------- | ----------- |
+| Model name                                    | Description                                                    |
+| --------------------------------------------- | -------------------------------------------------------------- |
 | `local-speaches-cuda-whisper-distil-large-v3` | CUDA-accelerated Whisper — same model as CPU, faster inference |
-| `local-speaches-cuda-parakeet-tdt-0.6b` | CUDA-accelerated Parakeet TDT |
+| `local-speaches-cuda-parakeet-tdt-0.6b`       | CUDA-accelerated Parakeet TDT                                  |
 
 ### Local text-to-speech (CUDA — `QWEN_TTS_CUDA=1`)
 
-| Model name | Description |
-| ---------- | ----------- |
+| Model name             | Description                                                                                   |
+| ---------------------- | --------------------------------------------------------------------------------------------- |
 | `local-qwen3-cuda-tts` | Qwen3-TTS 0.6B via faster-qwen3-tts — CUDA graphs, voice cloning (voices: alloy, echo, fable) |
 
 ### Local image generation (sd.cpp, CPU — `SDCPP=1`)
 
-| Model name | Description |
-| ---------- | ----------- |
-| `local-sdcpp-cpu-sd-turbo` | SD Turbo — fastest, smallest (~1.7GB) |
+| Model name                   | Description                                  |
+| ---------------------------- | -------------------------------------------- |
+| `local-sdcpp-cpu-sd-turbo`   | SD Turbo — fastest, smallest (~1.7GB)        |
 | `local-sdcpp-cpu-sdxl-turbo` | SDXL Turbo — better quality, larger (~2.5GB) |
 
 ### Local image generation (sd.cpp, CUDA — `SDCPP_CUDA=1`)
 
-| Model name | Description |
-| ---------- | ----------- |
-| `local-sdcpp-cuda-sd-turbo` | SD Turbo — fastest on GPU (~1.7GB VRAM) |
-| `local-sdcpp-cuda-sdxl-turbo` | SDXL Turbo — better quality (~2.5GB VRAM) |
-| `local-sdcpp-cuda-sdxl-lightning` | SDXL Lightning — fast, high quality (~2.5GB VRAM) |
-| `local-sdcpp-cuda-flux-schnell` | FLUX Schnell — best quality, largest (~7GB VRAM) |
-| `local-sdcpp-cuda-juggernaut-xi` | Juggernaut XI — photorealistic SDXL fine-tune (~2.5GB VRAM) |
+| Model name                        | Description                                                 |
+| --------------------------------- | ----------------------------------------------------------- |
+| `local-sdcpp-cuda-sd-turbo`       | SD Turbo — fastest on GPU (~1.7GB VRAM)                     |
+| `local-sdcpp-cuda-sdxl-turbo`     | SDXL Turbo — better quality (~2.5GB VRAM)                   |
+| `local-sdcpp-cuda-sdxl-lightning` | SDXL Lightning — fast, high quality (~2.5GB VRAM)           |
+| `local-sdcpp-cuda-flux-schnell`   | FLUX Schnell — best quality, largest (~7GB VRAM)            |
+| `local-sdcpp-cuda-juggernaut-xi`  | Juggernaut XI — photorealistic SDXL fine-tune (~2.5GB VRAM) |
 
 Models auto-download on first use and cache in `.data/sdcpp/models/`.
 
@@ -304,30 +307,31 @@ Fill in the values — every variable is documented with comments in [`.env.exam
 
 Everything is opt-in via flags in `.env`. API keys are stored separately and never activate anything on their own — set the flag to `1` to enable:
 
-| Flag | What it enables |
-| ---- | --------------- |
-| `OPENAI=1` | OpenAI models (gpt-4o, o3, DALL-E, Whisper, TTS) |
-| `ANTHROPIC=1` | Direct Anthropic API models |
-| `CLAUDEBOX=1` | claudebox service + models + MCP server (Claude Code via OAuth or API key) |
-| `CLAUDEBOX_ZAI=1` | claudebox-zai service + GLM models + MCP server (via z.ai) |
-| `CEREBRAS=1` | Cerebras models (free tier) |
-| `OPENROUTER=1` | OpenRouter models (free tier) |
-| `HUGGINGFACE=1` | HuggingFace models (free tier) |
-| `MISTRAL=1` | Mistral AI models (free: 1B tokens/month) |
-| `COHERE=1` | Cohere models (free: 1K req/day) |
-| `GROQ=1` | Groq models (free tier) |
-| `OLLAMA=1` | Local Ollama CPU inference (~6GB+ RAM) |
-| `OLLAMA_CUDA=1` | Local Ollama NVIDIA GPU inference (requires `nvidia-container-toolkit`) |
-| `SPEACHES=1` | Local Speaches CPU transcription/TTS (~4GB RAM) |
-| `SPEACHES_CUDA=1` | Local CUDA-accelerated STT (requires `nvidia-container-toolkit`) |
+| Flag              | What it enables                                                                           |
+| ----------------- | ----------------------------------------------------------------------------------------- |
+| `OPENAI=1`        | OpenAI models (gpt-4o, o3, DALL-E, Whisper, TTS)                                          |
+| `ANTHROPIC=1`     | Direct Anthropic API models                                                               |
+| `CLAUDEBOX=1`     | claudebox service + models + MCP server (Claude Code via OAuth or API key)                |
+| `CLAUDEBOX_ZAI=1` | claudebox-zai service + GLM models + MCP server (via z.ai)                                |
+| `CEREBRAS=1`      | Cerebras models (free tier)                                                               |
+| `OPENROUTER=1`    | OpenRouter models (free tier)                                                             |
+| `HUGGINGFACE=1`   | HuggingFace models (free tier)                                                            |
+| `MISTRAL=1`       | Mistral AI models (free: 1B tokens/month)                                                 |
+| `COHERE=1`        | Cohere models (free: 1K req/day)                                                          |
+| `GROQ=1`          | Groq models (free tier)                                                                   |
+| `OLLAMA=1`        | Local Ollama CPU inference (~6GB+ RAM)                                                    |
+| `OLLAMA_CUDA=1`   | Local Ollama NVIDIA GPU inference (requires `nvidia-container-toolkit`)                   |
+| `SPEACHES=1`      | Local Speaches CPU transcription/TTS (~4GB RAM)                                           |
+| `SPEACHES_CUDA=1` | Local CUDA-accelerated STT (requires `nvidia-container-toolkit`)                          |
 | `QWEN_TTS_CUDA=1` | Local CUDA-accelerated TTS via Qwen3 (voice cloning, requires `nvidia-container-toolkit`) |
-| `SDCPP=1` | Local stable-diffusion.cpp CPU image generation |
-| `SDCPP_CUDA=1` | Local stable-diffusion.cpp CUDA image generation (requires `nvidia-container-toolkit`) |
-| `HYBRIDS3=1` | Object storage service + MCP server (S3-compatible, plain HTTP, auto-expiry) |
-| `BROWSER=1` | Stealth browser cluster + MCP server (~1.3GB RAM) |
-| `LIBRECHAT=1` | LibreChat web UI at `/librechat/` with all models and MCP tools |
-| `SEARXNG=1` | SearXNG meta-search at `/searxng/` + MCP `search_web` tool |
-| `CLOUDFLARED=1` | Cloudflare Tunnel |
+| `SDCPP=1`         | Local stable-diffusion.cpp CPU image generation                                           |
+| `SDCPP_CUDA=1`    | Local stable-diffusion.cpp CUDA image generation (requires `nvidia-container-toolkit`)    |
+| `HYBRIDS3=1`      | Object storage service + MCP server (S3-compatible, plain HTTP, auto-expiry)              |
+| `BROWSER=1`       | Stealth browser cluster + MCP server (~1.3GB RAM)                                         |
+| `LIBRECHAT=1`     | LibreChat web UI at `/librechat/` with all models and MCP tools                           |
+| `SEARXNG=1`       | SearXNG meta-search at `/searxng/` + MCP `search_web` tool                                |
+| `TELETHON=1`      | Telegram client at `/telethon/` + MCP Telegram tools                                      |
+| `CLOUDFLARED=1`   | Cloudflare Tunnel                                                                         |
 
 `make run` regenerates `litellm/config.yaml` before starting — only enabled providers are included, fallback chains are filtered to match.
 
@@ -456,18 +460,18 @@ Only OpenAI API paths (`/v1/chat/completions`, `/v1/embeddings`, `/v1/audio/*`, 
 
 Configurable via `.env`:
 
-| Variable | Default | What it does |
-| -------- | ------- | ------------ |
-| `PROXQ_CONCURRENCY` | `10` | How many workers process jobs simultaneously |
-| `PROXQ_TASK_RETENTION` | `1h` | How long completed jobs stay in Redis |
-| `PROXQ_UPSTREAM_TIMEOUT` | `10m` | Max time to wait for LiteLLM to respond |
-| `PROXQ_MAX_RETRIES` | `0` | Retry failed upstream calls (0 = no retries) |
-| `PROXQ_RETRY_DELAY` | `30s` | Delay between retries (0 = exponential backoff) |
-| `PROXQ_MAX_BODY_SIZE` | `10MB` | Max request body size for queued requests |
-| `PROXQ_DIRECT_PROXY_THRESHOLD` | `10MB` | Bodies larger than this bypass the queue |
-| `PROXQ_CACHE_MODE` | `none` | `none`, `memory` (LRU), or `redis` — cache upstream responses |
-| `PROXQ_CACHE_TTL` | `5m` | How long cached responses stay fresh |
-| `PROXQ_CACHE_MAX_ENTRIES` | `10000` | Max entries for in-memory LRU cache |
+| Variable                       | Default | What it does                                                  |
+| ------------------------------ | ------- | ------------------------------------------------------------- |
+| `PROXQ_CONCURRENCY`            | `10`    | How many workers process jobs simultaneously                  |
+| `PROXQ_TASK_RETENTION`         | `1h`    | How long completed jobs stay in Redis                         |
+| `PROXQ_UPSTREAM_TIMEOUT`       | `10m`   | Max time to wait for LiteLLM to respond                       |
+| `PROXQ_MAX_RETRIES`            | `0`     | Retry failed upstream calls (0 = no retries)                  |
+| `PROXQ_RETRY_DELAY`            | `30s`   | Delay between retries (0 = exponential backoff)               |
+| `PROXQ_MAX_BODY_SIZE`          | `10MB`  | Max request body size for queued requests                     |
+| `PROXQ_DIRECT_PROXY_THRESHOLD` | `10MB`  | Bodies larger than this bypass the queue                      |
+| `PROXQ_CACHE_MODE`             | `none`  | `none`, `memory` (LRU), or `redis` — cache upstream responses |
+| `PROXQ_CACHE_TTL`              | `5m`    | How long cached responses stay fresh                          |
+| `PROXQ_CACHE_MAX_ENTRIES`      | `10000` | Max entries for in-memory LRU cache                           |
 
 → [Full usage guide](docs/usage.md) — browser automation, object storage, agentic claudebox tasks, vision, streaming, Python SDK examples
 
@@ -513,11 +517,11 @@ LiteLLM logs every request with the model name, provider, latency, and token usa
 
 Per-service debug options:
 
-| Variable | Default | What it does |
-| -------- | ------- | ------------ |
-| `SDCPP_VERBOSE` / `SDCPP_CUDA_VERBOSE` | `false` | sd.cpp wrapper debug logging |
-| `SDCPP_LOG_LEVEL` / `SDCPP_CUDA_LOG_LEVEL` | `info` | sd.cpp wrapper log level |
-| `LIBRECHAT_DEBUG_LOGGING` | `true` | LibreChat verbose logging |
+| Variable                                   | Default | What it does                 |
+| ------------------------------------------ | ------- | ---------------------------- |
+| `SDCPP_VERBOSE` / `SDCPP_CUDA_VERBOSE`     | `false` | sd.cpp wrapper debug logging |
+| `SDCPP_LOG_LEVEL` / `SDCPP_CUDA_LOG_LEVEL` | `info`  | sd.cpp wrapper log level     |
+| `LIBRECHAT_DEBUG_LOGGING`                  | `true`  | LibreChat verbose logging    |
 
 Ollama and Speaches log to stdout by default — visible in `docker compose logs`.
 

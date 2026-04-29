@@ -112,6 +112,7 @@ def active_mcp_servers(env):
         ("browser",       lambda e: is_flag(e, "BROWSER")),
         ("claudebox",     lambda e: is_flag(e, "CLAUDEBOX")),
         ("claudebox-zai", lambda e: is_flag(e, "CLAUDEBOX_ZAI")),
+        ("telethon",      lambda e: is_flag(e, "TELETHON")),
         ("mcp",           lambda e: any(
             is_flag(e, f) for f in ("HUGGINGFACE", "OPENAI", "SPEACHES", "SPEACHES_CUDA", "QWEN_TTS_CUDA", "SDCPP", "SDCPP_CUDA", "SEARXNG")
         )),
