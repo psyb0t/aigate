@@ -194,7 +194,7 @@ If an invalid model is requested, the tool returns an error JSON with the list o
 
 ## telethon — Telegram client (`TELETHON=1`)
 
-MCP server backed by [docker-telethon](https://github.com/psyb0t/docker-telethon). Gives any function-calling model full Telegram client access — read and send messages, manage groups, forward files.
+MCP server backed by [docker-telethon-plus](https://github.com/psyb0t/docker-telethon-plus). Gives any function-calling model full Telegram client access — read and send messages, manage groups, forward files.
 
 Requires `TELETHON_API_ID`, `TELETHON_API_HASH`, and `TELETHON_SESSION` in `.env`. See [services-reference.md](services-reference.md#telethon-optional-telethon1) for setup.
 

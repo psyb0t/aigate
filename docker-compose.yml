@@ -819,7 +819,7 @@ services:
 
   telethon:
     profiles: ["telethon"]
-    image: psyb0t/telethon:v0.1.1
+    image: psyb0t/telethon-plus:v0.2.0
     restart: unless-stopped
     mem_limit: ${TELETHON_MEM_LIMIT:-256m}
     memswap_limit: ${TELETHON_MEMSWAP_LIMIT:-512m}

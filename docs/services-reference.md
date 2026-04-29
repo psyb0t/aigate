@@ -440,9 +440,9 @@ Settings are in `searxng/settings.yml` (mounted read-only into the container). T
 
 ---
 
-## Telethon (optional, `TELETHON=1`)
+## Telethon Plus (optional, `TELETHON=1`)
 
-Telegram client at `/telethon/`. Backed by [Telethon](https://github.com/LonamiWebs/Telethon) — exposes a REST API and MCP server for sending/reading messages, managing dialogs, forwarding content, and group operations.
+Telegram client at `/telethon/`. Backed by [docker-telethon-plus](https://github.com/psyb0t/docker-telethon-plus) — exposes a REST API and MCP server for sending/reading messages, managing dialogs, forwarding content, and group operations.
 
 | Endpoint        | URL                        | Auth         |
 | --------------- | -------------------------- | ------------ |
@@ -458,7 +458,7 @@ Telegram client at `/telethon/`. Backed by [Telethon](https://github.com/LonamiW
    docker run -it --rm \
      -e TELETHON_API_ID=your_id \
      -e TELETHON_API_HASH=your_hash \
-     psyb0t/telethon:v0.1.1 python login.py
+     psyb0t/telethon-plus:v0.2.0 login
    ```
 3. Add to `.env`: `TELETHON=1`, `TELETHON_API_ID`, `TELETHON_API_HASH`, `TELETHON_SESSION`, `TELETHON_AUTH_KEY`
 
