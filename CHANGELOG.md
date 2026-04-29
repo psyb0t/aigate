@@ -2,6 +2,40 @@
 
 All notable changes to this project are documented here.
 
+## [v1.4.2] — 2026-04-29
+
+**Bump claudebox to v1.9.0-minimal.**
+
+- `psyb0t/claudebox:v1.8.0-minimal` → `v1.9.0-minimal` for both claudebox and claudebox-zai
+
+## [v1.4.1] — 2026-04-29
+
+**Upgrade Telethon to telethon-plus v0.2.0.**
+
+- Switch image from `psyb0t/telethon:v0.1.1` to `psyb0t/telethon-plus:v0.2.0`
+- Update repo links and login command in README and docs to point at docker-telethon-plus
+
+## [v1.4.0] — 2026-04-29
+
+**Add Telethon Telegram client service + MCP integration.**
+
+- Add optional `TELETHON=1` service backed by `psyb0t/telethon-plus` — REST API at `/telethon/` and MCP server with 15 Telegram tools (send/read/edit/delete messages, dialogs, forward, files, group management)
+- Add nginx `/telethon/` location block with rewrite rule to strip location prefix before proxying (fix: nginx does not strip prefix when `proxy_pass` uses a variable)
+- Add `litellm/config/mcp/telethon.yaml` MCP config pointing at `http://telethon:8080/mcp`
+- Add telethon to `litellm/build-config.py` active MCP servers
+- Add `--force-recreate` to `make run`, `make run-bg`, `make restart` — baked-in Docker config blocks require full container recreate to pick up env changes
+- Add `tests/test_telethon.sh` — health check via MCP `get_me`, tool count assertion, LLM-driven send/verify/delete test (model autonomously calls get_me, send_message, get_messages, delete_messages; post-run check confirms message actually gone)
+- Update README, docs, `.env.example` with Telethon service details
+- Bump claudebox and claudebox-zai to `v1.8.0-minimal`
+
+## [v1.3.2] — 2026-04-29
+
+**Fix nginx crash when optional services are disabled; always force-recreate.**
+
+- nginx was crash-looping with `host not found in upstream` when optional services (claudebox, hybrids3, searxng, etc.) were not running — fixed by adding Docker DNS resolver (`resolver 127.0.0.11`) and switching all optional upstreams to variable-based `proxy_pass` (defers hostname resolution to request time)
+- `make run` / `make run-bg` / `make restart` now pass `--force-recreate` so env var changes always take effect (Docker config blocks are baked in at deploy time)
+- Remove remaining hardcoded counts from README and docs
+
 ## [v1.3.1] — 2026-04-25
 
 **Remove Langfuse v3 observability stack.**
