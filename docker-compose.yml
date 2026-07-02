@@ -1896,6 +1896,29 @@ configs:
               return 404;
           }
 
+          # speech passthrough — LiteLLM's /v1/audio/speech handler
+          # only forwards {model, input, voice, response_format, speed,
+          # instructions} matching OpenAI's official TTS API. Richer
+          # backends like qwen3-tts accept additional sampling knobs
+          # (temperature, top_k, top_p, repetition_penalty,
+          # max_new_tokens, do_sample) that LiteLLM silently drops.
+          # mcp intercepts this route BEFORE LiteLLM and forwards the
+          # full body to talkies (for local-talkies-* aliases) or
+          # LiteLLM (for cloud TTS routes) so no field is dropped.
+          # 300s timeout covers cold-load of the qwen3-tts weights.
+          location = /v1/audio/speech {
+              limit_req zone=api burst=${RATELIMIT_API_BURST:-30} nodelay;
+              proxy_pass http://mcp:8000;
+              proxy_set_header Host $$http_host;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_read_timeout 300s;
+              proxy_send_timeout 300s;
+              proxy_buffering off;
+              proxy_cache off;
+          }
+
           # talkies merged voices — upstream /v1/audio/voices is not
           # OpenAI-standard, so LiteLLM doesn't route it. mcp aggregates
           # CPU + CUDA upstreams and annotates each voice with the

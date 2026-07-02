@@ -718,6 +718,140 @@ async def list_voices(_request: StarletteRequest) -> JSONResponse:
     return JSONResponse(payload)
 
 
+# ── Custom HTTP route: POST /v1/audio/speech (full-param passthrough) ────────
+#
+# LiteLLM's /v1/audio/speech handler (litellm/main.py::speech()) only
+# forwards {model, input, voice, response_format, speed, instructions}
+# — matching OpenAI's official TTS API. qwen3-tts and other richer
+# backends accept additional sampling knobs (temperature, top_k, top_p,
+# repetition_penalty, max_new_tokens, do_sample) that LiteLLM silently
+# drops from **kwargs before dispatch.
+#
+# This route intercepts /v1/audio/speech BEFORE LiteLLM (nginx routes
+# it here rather than to litellm) and:
+#   - for `local-talkies-*` model aliases: resolves the alias to its
+#     upstream model name via LiteLLM's /v1/model/info map, picks the
+#     right talkies host (CPU vs CUDA), and forwards the ENTIRE request
+#     body verbatim so every knob talkies accepts reaches it.
+#   - for anything else (openai / groq / etc.): proxies to LiteLLM
+#     untouched so the standard fallback chain still applies for cloud
+#     TTS routes.
+
+from starlette.responses import Response  # noqa: E402
+
+
+async def _resolve_talkies_target(
+    client: httpx.AsyncClient, alias: str,
+) -> tuple[str, str] | None:
+    """Look up (upstream_model, base_url) for a local-talkies-* alias.
+
+    Returns None if the alias isn't a local-talkies route (caller
+    should fall back to LiteLLM). Uses /v1/model/info to translate
+    the alias into its upstream model name — same mechanism as
+    list_voices.
+    """
+    if not alias.startswith("local-talkies-"):
+        return None
+    is_cuda = alias.startswith("local-talkies-cuda-")
+    base = TALKIES_CUDA_URL if is_cuda else TALKIES_URL
+    if not base:
+        return None
+    try:
+        info = await client.get(
+            f"{LITELLM_URL}/v1/model/info",
+            headers={"Authorization": f"Bearer {LITELLM_KEY}"},
+        )
+        info.raise_for_status()
+        for m in info.json().get("data", []):
+            if m.get("model_name") != alias:
+                continue
+            upstream = (
+                (m.get("litellm_params") or {}).get("model", "")
+                .split("/", 1)[-1]
+            )
+            if upstream:
+                return upstream, base
+    except Exception:
+        return None
+    return None
+
+
+async def _proxy_response(r: httpx.Response) -> Response:
+    """Wrap an httpx response as a Starlette Response preserving body
+    bytes + content-type + status."""
+    return Response(
+        content=r.content,
+        status_code=r.status_code,
+        media_type=r.headers.get("content-type"),
+    )
+
+
+@mcp.custom_route("/v1/audio/speech", methods=["POST"])
+async def speech(request: StarletteRequest) -> Response:
+    """Passthrough /v1/audio/speech that forwards every body field to
+    the resolved backend.
+
+    - local-talkies-* aliases → direct to talkies (CPU or CUDA),
+      alias rewritten to its upstream model name, all body fields
+      preserved (temperature, top_k, top_p, repetition_penalty,
+      max_new_tokens, do_sample, ...).
+    - anything else → proxy to LiteLLM untouched (cloud TTS keeps
+      the standard fallback chain).
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse(
+            {"error": "invalid JSON body"}, status_code=400,
+        )
+
+    model = body.get("model", "")
+    if not model:
+        return JSONResponse(
+            {"error": "model is required"}, status_code=400,
+        )
+
+    inbound_auth = request.headers.get("authorization", "")
+
+    async with httpx.AsyncClient(timeout=300) as client:
+        target = await _resolve_talkies_target(client, model)
+        if target is not None:
+            upstream_model, base = target
+            body_out = {**body, "model": upstream_model}
+            headers: dict[str, str] = {"Content-Type": "application/json"}
+            if inbound_auth:
+                headers["Authorization"] = inbound_auth
+            try:
+                r = await client.post(
+                    f"{base}/v1/audio/speech",
+                    json=body_out,
+                    headers=headers,
+                )
+            except Exception as exc:
+                return JSONResponse(
+                    {"error": f"talkies unreachable: {exc}"},
+                    status_code=502,
+                )
+            return await _proxy_response(r)
+
+        proxy_headers: dict[str, str] = {
+            "Content-Type": "application/json",
+            "Authorization": inbound_auth or f"Bearer {LITELLM_KEY}",
+        }
+        try:
+            r = await client.post(
+                f"{LITELLM_URL}/v1/audio/speech",
+                json=body,
+                headers=proxy_headers,
+            )
+        except Exception as exc:
+            return JSONResponse(
+                {"error": f"litellm unreachable: {exc}"},
+                status_code=502,
+            )
+        return await _proxy_response(r)
+
+
 # ── Unload endpoints ────────────────────────────────────────────
 #
 # POST /v1/unload/cuda + POST /v1/unload/cpu + POST /v1/unload
