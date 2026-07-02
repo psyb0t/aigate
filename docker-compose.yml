@@ -373,7 +373,7 @@ services:
   # downloads. Upstream: github.com/psyb0t/docker-flickies.
   flickies:
     profiles: ["flickies"]
-    image: psyb0t/flickies:v0.3.0
+    image: psyb0t/flickies:v0.3.1
     restart: unless-stopped
     mem_limit: ${FLICKIES_MEM_LIMIT:-8g}
     memswap_limit: ${FLICKIES_MEMSWAP_LIMIT:-16g}
@@ -424,7 +424,7 @@ services:
 
   flickies-cuda:
     profiles: ["flickies-cuda"]
-    image: psyb0t/flickies:v0.3.0-cuda
+    image: psyb0t/flickies:v0.3.1-cuda
     restart: unless-stopped
     mem_limit: ${FLICKIES_CUDA_MEM_LIMIT:-16g}
     memswap_limit: ${FLICKIES_CUDA_MEMSWAP_LIMIT:-32g}
@@ -619,7 +619,7 @@ services:
 
   talkies:
     profiles: ["talkies"]
-    image: psyb0t/talkies:v0.9.0
+    image: psyb0t/talkies:v0.10.0
     restart: unless-stopped
     mem_limit: ${TALKIES_MEM_LIMIT:-8g}
     memswap_limit: ${TALKIES_MEMSWAP_LIMIT:-16g}
@@ -661,7 +661,7 @@ services:
 
   talkies-cuda:
     profiles: ["talkies-cuda"]
-    image: psyb0t/talkies:v0.9.0-cuda
+    image: psyb0t/talkies:v0.10.0-cuda
     restart: unless-stopped
     mem_limit: ${TALKIES_CUDA_MEM_LIMIT:-12g}
     memswap_limit: ${TALKIES_CUDA_MEMSWAP_LIMIT:-24g}

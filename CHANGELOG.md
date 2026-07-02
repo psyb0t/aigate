@@ -2,6 +2,38 @@
 
 All notable changes to this project are documented here.
 
+## [v3.14.6] — 2026-07-02
+
+**Bump talkies v0.9.0 → v0.10.0 (CPU + CUDA) and flickies v0.3.0 → v0.3.1 (CPU + CUDA). Image-tag bump only. Both upstream releases are wire-compatible with their prior versions — no aigate-side changes required.**
+
+### Talkies v0.9.0 → v0.10.0 (CPU + CUDA)
+
+- `psyb0t/talkies:v0.9.0` → `v0.10.0`
+- `psyb0t/talkies:v0.9.0-cuda` → `v0.10.0-cuda`
+
+Upstream notes:
+- **Configurable log level.** New `TALKIES_LOG_LEVEL` env var (falls back to `LOG_LEVEL`); case-insensitive `debug` / `info` / `warn` / `error` / `fatal`. Default `info`; an unrecognized value fails fast at startup.
+- **Opt-in full-request DEBUG logging.** At `debug`, the HTTP boundary logs full request + response bodies as structured JSON. That's PII — TTS input text, cloned-voice reference transcripts, ASR transcripts all land in the log. A one-time WARNING fires at startup when `debug` is active; at `info` and above body content is never logged.
+- **Housekeeping.** Repo-wide `black + isort` format pass plus committed `flake8` + `mypy` config.
+- Wire-compatible with v0.9.0 — no API or request-shape change.
+
+Note for aigate operators: this repo's `.env` already sets `TALKIES_LOG_LEVEL=DEBUG` + `TALKIES_CUDA_LOG_LEVEL=DEBUG`, so the new body logging is active out of the box. Flip both to `INFO` and recreate the containers to suppress the body dumps.
+
+### Flickies v0.3.0 → v0.3.1 (CPU + CUDA)
+
+- `psyb0t/flickies:v0.3.0` → `v0.3.1`
+- `psyb0t/flickies:v0.3.0-cuda` → `v0.3.1-cuda`
+
+Upstream notes:
+- **Engine-unload memory-leak fix.** Applies to `wav2lip`, `wav2lip-gan`, `latentsync-1.5`, `gfpgan`. Previously weights stayed resident after eviction because Python's cyclic model graph wasn't collected before `torch.cuda.empty_cache()`. v0.3.1 runs `gc.collect()` first so the graph gets reclaimed. Fixes: idle sweep, `DELETE /v1/engines/{slug}` (the endpoint the aigate resource_manager + `POST /v1/unload/*` uses), and hot-swap between engines. Directly improves the v3.14.5 competing-group eviction path — before, evicting flickies-cuda released the Python object but VRAM stayed resident.
+- **Opt-in DEBUG observability** (`FLICKIES_LOG_LEVEL=DEBUG`): ffmpeg commands + results, transform decisions (`stream_copy` vs `precise_reencode`), inference wall_secs, URL byte counts, job lifecycle, HTTP 4xx/5xx rejections.
+- **Security.** Logged URLs are query-stripped so presigned credentials never hit the logs.
+- No API surface change. `openapi.yaml info.version` → `0.3.1`.
+
+### Heads-up
+
+`psyb0t/talkies:v0.10.0` + `-cuda` and `psyb0t/flickies:v0.3.1` + `-cuda` may not be on Docker Hub at this tag's cut moment. Fresh pulls will fail until the upstream tags get pushed.
+
 ## [v3.14.5] — 2026-07-02
 
 **Cross-service GPU eviction hardening: closes the resource_manager gap that let audiolla / flickies OOM-kill talkies / ollama by hoarding VRAM. Ships new `POST /v1/unload/{cuda,cpu}` endpoints. Bundles flickies v0.3.0 bump.**
