@@ -55,7 +55,37 @@ Each service has its own unload API:
 | sd.cpp | `POST /sdcpp/v1/unload` |
 | Speaches | `DELETE /api/ps/{model_id}` |
 | Qwen3 CUDA TTS | `POST /unload` |
-| talkies / vllm-cuda | `DELETE /api/ps/{model_id}` (per model) or `POST /unload` (kill any loaded) |
+| talkies / vllm-cuda / llamacpp-cuda | `DELETE /api/ps/{model_id}` (per model) or `POST /unload` (kill any loaded) |
+| audiolla | `POST /v1/unload` (bulk evict every loaded engine) |
+| flickies | `GET /v1/engines` + `DELETE /v1/engines/{slug}` (per loaded engine) |
+
+### Direct-HTTP services in the competing-group unload
+
+Audiolla and flickies expose their own HTTP APIs through nginx rather than routing through LiteLLM completions. No `local-audiolla-*` / `local-flickies-*` model aliases exist, so the resource manager never resolves a request to them as own-group. They participate ONLY as COMPETING groups — every LiteLLM-routed call (ollama / sdcpp / talkies / vllm / llamacpp) will evict them before allocating VRAM. Without this coupling a LatentSync or Wav2Lip session hoarding 7+ GiB of VRAM would OOM-kill talkies-cuda or ollama-cuda the moment they tried to load a model.
+
+### Operator-facing unload endpoints
+
+For manual VRAM cleanup — after a bad run, before running a benchmark, or from an oncall runbook — three HTTP endpoints fan out the eviction across every service:
+
+| Method + path | Effect |
+| ------------- | ------ |
+| `POST /v1/unload/cuda` | Concurrent fan-out to `ollama-cuda`, `sdcpp-cuda`, `talkies-cuda`, `vllm-cuda`, `llamacpp-cuda`, `audiolla-cuda`, `flickies-cuda`. |
+| `POST /v1/unload/cpu` | CPU counterpart — same 7 services. |
+| `POST /v1/unload` | Convenience — runs both in sequence. |
+
+Response shape:
+```json
+{
+  "class": "cuda",
+  "results": {
+    "ollama-cuda":   {"status": "empty", "unloaded": []},
+    "audiolla-cuda": {"status": "ok",    "unloaded": ["htdemucs"]},
+    "flickies-cuda": {"status": "ok",    "unloaded": ["latentsync-1.5"]}
+  }
+}
+```
+
+Per-service errors do not fail the whole call (`status: "error"` on the offending entry, others still evict). Auth: same bearer as the rest of aigate. Implemented in `mcp/server.py` via `@mcp.custom_route`; nginx proxies `/v1/unload/{cuda,cpu,''}` to `mcp:8000` with a 120s timeout since some unloads take a few seconds to actually release VRAM.
 
 ### Non-blocking rejection
 

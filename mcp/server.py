@@ -718,6 +718,195 @@ async def list_voices(_request: StarletteRequest) -> JSONResponse:
     return JSONResponse(payload)
 
 
+# ── Unload endpoints ────────────────────────────────────────────
+#
+# POST /v1/unload/cuda + POST /v1/unload/cpu + POST /v1/unload
+# fan out to every service on the given hardware class and evict
+# whatever's loaded. Same eviction contract as
+# litellm/callbacks/resource_manager.py's competing-group unload —
+# but exposed as a plain HTTP endpoint so operators / scripts /
+# oncall can free VRAM without piggybacking on a fake LLM call.
+#
+# The endpoint set was added because resource_manager only fires
+# from inside LiteLLM's async_pre_call_hook — direct-HTTP services
+# (audiolla, flickies) or manual VRAM cleanup after a bad run
+# needed a first-class way in.
+#
+# Auth: gated at the nginx layer via the same bearer as /mcp/.
+# Each downstream call carries its own bearer where required
+# (audiolla + flickies read AIGATE_TOKEN).
+
+OLLAMA_CUDA_URL = os.environ.get("OLLAMA_CUDA_URL", "http://ollama-cuda:11434")
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://ollama:11434")
+SDCPP_CUDA_URL = os.environ.get("SDCPP_CUDA_URL", "http://sdcpp-cuda:7234")
+SDCPP_URL = os.environ.get("SDCPP_URL", "http://sdcpp:7234")
+VLLM_CUDA_URL = os.environ.get("VLLM_CUDA_URL", "http://vllm-cuda:8000")
+VLLM_URL = os.environ.get("VLLM_URL", "http://vllm:8000")
+LLAMACPP_CUDA_URL = os.environ.get("LLAMACPP_CUDA_URL", "http://llamacpp-cuda:8000")
+LLAMACPP_URL = os.environ.get("LLAMACPP_URL", "http://llamacpp:8000")
+AUDIOLLA_CUDA_URL = os.environ.get("AUDIOLLA_CUDA_URL", "http://audiolla-cuda:8000")
+AUDIOLLA_URL = os.environ.get("AUDIOLLA_URL", "http://audiolla:8000")
+FLICKIES_CUDA_URL = os.environ.get("FLICKIES_CUDA_URL", "http://flickies-cuda:8000")
+FLICKIES_URL = os.environ.get("FLICKIES_URL", "http://flickies:8000")
+AIGATE_TOKEN = os.environ.get("AIGATE_TOKEN", "")
+
+
+def _bearer_headers() -> dict:
+    return {"Authorization": f"Bearer {AIGATE_TOKEN}"} if AIGATE_TOKEN else {}
+
+
+async def _unload_ollama(client: httpx.AsyncClient, base: str) -> dict:
+    """Ollama: GET /api/ps, POST /api/generate {keep_alive:0} per model."""
+    try:
+        r = await client.get(f"{base}/api/ps")
+        r.raise_for_status()
+        models = r.json().get("models", [])
+        if not models:
+            return {"status": "empty", "unloaded": []}
+        unloaded = []
+        for m in models:
+            name = m["name"]
+            await client.post(
+                f"{base}/api/generate",
+                json={"model": name, "keep_alive": 0, "stream": False},
+            )
+            unloaded.append(name)
+        return {"status": "ok", "unloaded": unloaded}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+async def _unload_sdcpp(client: httpx.AsyncClient, base: str) -> dict:
+    """sd.cpp: POST /sdcpp/v1/unload (single-slot, one-shot)."""
+    try:
+        r = await client.post(f"{base}/sdcpp/v1/unload")
+        return {"status": "ok", "http": r.status_code}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+async def _unload_api_ps(
+    client: httpx.AsyncClient, base: str,
+) -> dict:
+    """talkies / vllm / llamacpp: GET /api/ps, DELETE /api/ps/{model}."""
+    try:
+        r = await client.get(f"{base}/api/ps")
+        r.raise_for_status()
+        models = r.json().get("models", [])
+        if not models:
+            return {"status": "empty", "unloaded": []}
+        unloaded = []
+        for m in models:
+            mid = m if isinstance(m, str) else m.get("id") or m.get("name")
+            if not mid:
+                continue
+            encoded = mid.replace("/", "%2F")
+            await client.delete(f"{base}/api/ps/{encoded}")
+            unloaded.append(mid)
+        return {"status": "ok", "unloaded": unloaded}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+async def _unload_audiolla(client: httpx.AsyncClient, base: str) -> dict:
+    """audiolla: POST /v1/unload evicts every loaded engine."""
+    try:
+        r = await client.post(f"{base}/v1/unload", headers=_bearer_headers())
+        if r.status_code != 200:
+            return {"status": "error", "http": r.status_code}
+        return {"status": "ok", "unloaded": r.json().get("unloaded", [])}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+async def _unload_flickies(client: httpx.AsyncClient, base: str) -> dict:
+    """flickies: enumerate GET /v1/engines, DELETE loaded ones."""
+    try:
+        headers = _bearer_headers()
+        r = await client.get(f"{base}/v1/engines", headers=headers)
+        r.raise_for_status()
+        engines = r.json().get("engines", [])
+        loaded = [e["slug"] for e in engines if e.get("loaded")]
+        if not loaded:
+            return {"status": "empty", "unloaded": []}
+        unloaded = []
+        for slug in loaded:
+            dr = await client.delete(
+                f"{base}/v1/engines/{slug}", headers=headers,
+            )
+            if dr.status_code == 200:
+                unloaded.append(slug)
+        return {"status": "ok", "unloaded": unloaded}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+# Per-hardware-class fan-out plan. (label, url, unload_fn).
+_UNLOAD_PLAN_CUDA = [
+    ("ollama-cuda", OLLAMA_CUDA_URL, _unload_ollama),
+    ("sdcpp-cuda", SDCPP_CUDA_URL, _unload_sdcpp),
+    ("talkies-cuda", TALKIES_CUDA_URL, _unload_api_ps),
+    ("vllm-cuda", VLLM_CUDA_URL, _unload_api_ps),
+    ("llamacpp-cuda", LLAMACPP_CUDA_URL, _unload_api_ps),
+    ("audiolla-cuda", AUDIOLLA_CUDA_URL, _unload_audiolla),
+    ("flickies-cuda", FLICKIES_CUDA_URL, _unload_flickies),
+]
+_UNLOAD_PLAN_CPU = [
+    ("ollama", OLLAMA_URL, _unload_ollama),
+    ("sdcpp", SDCPP_URL, _unload_sdcpp),
+    ("talkies", TALKIES_URL, _unload_api_ps),
+    ("vllm", VLLM_URL, _unload_api_ps),
+    ("llamacpp", LLAMACPP_URL, _unload_api_ps),
+    ("audiolla", AUDIOLLA_URL, _unload_audiolla),
+    ("flickies", FLICKIES_URL, _unload_flickies),
+]
+
+
+async def _run_unload_plan(plan: list) -> dict:
+    """Fan out concurrent unloads across a plan; return per-service outcome."""
+    results: dict = {}
+    async with httpx.AsyncClient(timeout=30) as client:
+        async def _one(label: str, url: str, fn) -> None:
+            if not url:
+                results[label] = {"status": "skipped", "reason": "no url"}
+                return
+            results[label] = await fn(client, url)
+        import asyncio as _asyncio
+        await _asyncio.gather(
+            *(_one(label, url, fn) for label, url, fn in plan),
+            return_exceptions=True,
+        )
+    return results
+
+
+@mcp.custom_route("/v1/unload/cuda", methods=["POST"])
+async def unload_cuda(_request: StarletteRequest) -> JSONResponse:
+    """Evict every model / engine loaded on any CUDA service.
+
+    Fans out concurrently to ollama-cuda, sdcpp-cuda, talkies-cuda,
+    vllm-cuda, llamacpp-cuda, audiolla-cuda, flickies-cuda. Returns
+    a per-service outcome map. Services with an empty URL env are
+    skipped. Per-service errors do not fail the whole call.
+    """
+    return JSONResponse({"class": "cuda",
+                         "results": await _run_unload_plan(_UNLOAD_PLAN_CUDA)})
+
+
+@mcp.custom_route("/v1/unload/cpu", methods=["POST"])
+async def unload_cpu(_request: StarletteRequest) -> JSONResponse:
+    """CPU counterpart of /v1/unload/cuda — same fan-out shape."""
+    return JSONResponse({"class": "cpu",
+                         "results": await _run_unload_plan(_UNLOAD_PLAN_CPU)})
+
+
+@mcp.custom_route("/v1/unload", methods=["POST"])
+async def unload_all(_request: StarletteRequest) -> JSONResponse:
+    """Convenience — evict both CPU and CUDA in one call."""
+    cuda = await _run_unload_plan(_UNLOAD_PLAN_CUDA)
+    cpu = await _run_unload_plan(_UNLOAD_PLAN_CPU)
+    return JSONResponse({"cuda": cuda, "cpu": cpu})
+
+
 # ── Main ────────────────────────────────────────────────────────
 
 if __name__ == "__main__":

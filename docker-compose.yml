@@ -151,7 +151,7 @@ services:
 
   pibox-zai:
     profiles: ["pibox-zai"]
-    image: psyb0t/pibox:v0.11.2
+    image: psyb0t/pibox:v0.11.3
     restart: unless-stopped
     mem_limit: ${PIBOX_ZAI_MEM_LIMIT:-1g}
     memswap_limit: ${PIBOX_ZAI_MEMSWAP_LIMIT:-2g}
@@ -373,7 +373,7 @@ services:
   # downloads. Upstream: github.com/psyb0t/docker-flickies.
   flickies:
     profiles: ["flickies"]
-    image: psyb0t/flickies:v0.2.0
+    image: psyb0t/flickies:v0.3.0
     restart: unless-stopped
     mem_limit: ${FLICKIES_MEM_LIMIT:-8g}
     memswap_limit: ${FLICKIES_MEMSWAP_LIMIT:-16g}
@@ -424,7 +424,7 @@ services:
 
   flickies-cuda:
     profiles: ["flickies-cuda"]
-    image: psyb0t/flickies:v0.2.0-cuda
+    image: psyb0t/flickies:v0.3.0-cuda
     restart: unless-stopped
     mem_limit: ${FLICKIES_CUDA_MEM_LIMIT:-16g}
     memswap_limit: ${FLICKIES_CUDA_MEMSWAP_LIMIT:-32g}
@@ -1315,6 +1315,12 @@ services:
       # aigate-internal, talkies-* containers are on aigate-internal).
       TALKIES_URL: ${MCP_TALKIES_URL:-http://talkies:8000}
       TALKIES_CUDA_URL: ${MCP_TALKIES_CUDA_URL:-http://talkies-cuda:8000}
+      # Bearer token used by /v1/unload/{cuda,cpu} to authenticate
+      # against downstream services that gate their APIs (audiolla +
+      # flickies both default to AIGATE_TOKEN if no service-specific
+      # token is set). Other unload endpoints (ollama / sdcpp / talkies
+      # / vllm / llamacpp) are on-network with no auth wall.
+      AIGATE_TOKEN: ${AIGATE_TOKEN}
     depends_on:
       litellm:
         condition: service_healthy
@@ -1905,6 +1911,27 @@ configs:
               proxy_set_header X-Forwarded-Proto $$scheme;
               proxy_read_timeout 30s;
               proxy_send_timeout 30s;
+              proxy_buffering off;
+              proxy_cache off;
+          }
+
+          # Force-unload endpoints — evict every model / engine loaded on
+          # any CUDA (or CPU) service in one call. Same fan-out shape as
+          # the resource_manager competing-group unload, but exposed as
+          # a plain HTTP endpoint for operators / oncall / scripts.
+          # Not LiteLLM-routable (LiteLLM only understands chat / audio /
+          # images) so nginx routes these directly at mcp. Longer timeout
+          # since some upstream unload calls (ollama, sdcpp) can take a
+          # few seconds to fully release VRAM.
+          location ~ ^/v1/unload(/(cuda|cpu))?$ {
+              limit_req zone=api burst=${RATELIMIT_API_BURST:-30} nodelay;
+              proxy_pass http://mcp:8000;
+              proxy_set_header Host $$http_host;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_read_timeout 120s;
+              proxy_send_timeout 120s;
               proxy_buffering off;
               proxy_cache off;
           }

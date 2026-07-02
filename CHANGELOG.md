@@ -2,6 +2,42 @@
 
 All notable changes to this project are documented here.
 
+## [v3.14.5] — 2026-07-02
+
+**Cross-service GPU eviction hardening: closes the resource_manager gap that let audiolla / flickies OOM-kill talkies / ollama by hoarding VRAM. Ships new `POST /v1/unload/{cuda,cpu}` endpoints. Bundles flickies v0.3.0 bump.**
+
+### Cross-service eviction — closes the audiolla / flickies gap
+
+`litellm/callbacks/resource_manager.py` `async_pre_call_hook` unloads every competing hardware-class service before allocating VRAM for a LiteLLM-routed call. Prior to this release only 5 CUDA groups were registered — `cuda-llm` (ollama), `cuda-img` (sdcpp), `cuda-stt-talkies`, `cuda-vllm`, `cuda-llamacpp`. Direct-HTTP services (audiolla, flickies) were NOT registered, so a Wav2Lip / LatentSync / Demucs session hoarding 7+ GiB of VRAM could OOM-kill talkies-cuda or ollama-cuda the moment they tried to load a model.
+
+- Added groups `cuda-audiolla`, `cuda-flickies`, `cpu-audiolla`, `cpu-flickies` to `_ALL_CUDA_GROUPS` / `_ALL_CPU_GROUPS`.
+- Added `_unload_cuda_audiolla` / `_unload_cpu_audiolla` — issue `POST /v1/unload` (audiolla's bulk-evict-every-loaded-engine endpoint).
+- Added `_unload_cuda_flickies` / `_unload_cpu_flickies` — enumerate `GET /v1/engines`, `DELETE /v1/engines/{slug}` for every engine with `loaded: true`. Slug list is discovered live so new engines auto-participate.
+- Injected `Authorization: Bearer $AIGATE_TOKEN` on downstream requests since audiolla and flickies both gate their APIs.
+- No `_get_group()` mapping for `local-audiolla-*` / `local-flickies-*` — these services are not LiteLLM-routed, so the groups only ever appear as COMPETING groups (never as own-group), which is the intended behavior.
+
+Verified live: a `POST /v1/chat/completions` targeting an ollama-cuda model triggers `[resource_manager] group=cuda-llm unloading competing: {cuda-audiolla, cuda-flickies, ...}` and each downstream unload logs its outcome.
+
+### New endpoints — `POST /v1/unload/{cuda,cpu}` + `POST /v1/unload`
+
+Same fan-out shape as the resource_manager competing-group unload, but exposed as plain HTTP endpoints for operators / oncall / scripts that need to free VRAM without piggybacking on a fake LLM call.
+
+- `POST /v1/unload/cuda` — fans out concurrently to `ollama-cuda`, `sdcpp-cuda`, `talkies-cuda`, `vllm-cuda`, `llamacpp-cuda`, `audiolla-cuda`, `flickies-cuda`.
+- `POST /v1/unload/cpu` — CPU counterpart, same 7 services.
+- `POST /v1/unload` — convenience, runs both in sequence.
+- Response shape: `{"class": "<class>", "results": {"<service>": {"status": "ok|empty|error|skipped", "unloaded": [...]}}}`. Per-service errors do not fail the whole call.
+- Implemented in `mcp/server.py` as three `@mcp.custom_route(...)` handlers. Each downstream unload shape lives in a small per-service helper (`_unload_ollama`, `_unload_sdcpp`, `_unload_api_ps`, `_unload_audiolla`, `_unload_flickies`).
+- Auth: same bearer as the rest of aigate (nginx enforces via the standard MCP_TOOLS_AUTH_TOKEN / AIGATE_TOKEN fallback). Downstream calls to auth-gated services carry the token via the new `AIGATE_TOKEN` env var on the mcp container.
+- `nginx` routes: `location ~ ^/v1/unload(/(cuda|cpu))?$` proxies to `mcp:8000` with a 120s read/send timeout (some unloads take a few seconds to actually release VRAM). Same rate-limit zone as `/v1/audio/voices`.
+
+### Flickies bump v0.2.0 → v0.3.0 (CPU + CUDA)
+
+Image-tag bump only. Upstream v0.3.0 adds an optional `precise: bool` (default `false`) field on `POST /v1/video/trim` and `POST /v1/video/concat` (plus the matching MCP tools). `precise: false` keeps the existing `-c copy` stream-copy fast path (zero behavior change for current callers). `precise: true` re-encodes to libx264 CRF 18 + AAC 192k for frame-accurate boundaries — fixes `start_sec` snapping to the nearest keyframe and concat of mismatched codec / timebase / SAR inputs. Pure additive change upstream; defaults preserve prior behavior exactly. nginx + litellm proxy the new body field transparently — no aigate-side wiring.
+
+### Heads-up
+
+`psyb0t/flickies:v0.3.0` + `psyb0t/flickies:v0.3.0-cuda` may not be on Docker Hub at this tag's cut moment. Fresh pulls will fail until the upstream tags get pushed.
+
 ## [v3.14.4] — 2026-06-29
 
 **Expose all 8 z.ai GLM models. Adds `glm-5.2` (new flagship), `glm-5-turbo`, `glm-5`, `glm-4.6`, `glm-4.5`. No removals.**

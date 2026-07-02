@@ -38,6 +38,7 @@ auto-reloads.
 
 import asyncio
 import logging
+import os
 from typing import Optional
 
 import httpx
@@ -77,6 +78,16 @@ _ALL_CUDA_GROUPS = {
     "cuda-stt-talkies",
     "cuda-vllm",
     "cuda-llamacpp",
+    # Direct-HTTP CUDA services (not routed via LiteLLM completions):
+    # audiolla + flickies expose their own HTTP APIs through nginx.
+    # No `local-audiolla-*` / `local-flickies-*` model_name is defined
+    # so `_get_group()` never returns these — they only appear here as
+    # COMPETING groups so LiteLLM-routed calls (talkies / ollama / vllm /
+    # llamacpp / sdcpp) evict them before allocating VRAM. Without this
+    # a LatentSync or Wav2Lip session hoarding 7+ GiB of VRAM OOM-kills
+    # talkies-cuda the moment it tries to load a Whisper model.
+    "cuda-audiolla",
+    "cuda-flickies",
 }
 _ALL_CPU_GROUPS = {
     "cpu-llm",
@@ -84,6 +95,8 @@ _ALL_CPU_GROUPS = {
     "cpu-stt-talkies",
     "cpu-vllm",
     "cpu-llamacpp",
+    "cpu-audiolla",
+    "cpu-flickies",
 }
 
 
@@ -397,17 +410,147 @@ async def _unload_cpu_llamacpp():
     )
 
 
+# audiolla — POST /v1/unload evicts every loaded engine at once. Same
+# contract on CPU and CUDA image. No enumeration needed — audiolla
+# handles the walk internally and returns {"unloaded": [<slugs>]}.
+_AUDIOLLA_CUDA_URL = "http://audiolla-cuda:8000"
+_AUDIOLLA_CPU_URL = "http://audiolla:8000"
+
+
+def _aigate_bearer_headers() -> dict:
+    """Bearer token for services that gate their APIs behind AIGATE_TOKEN
+    (audiolla, flickies). Absent env → no header, upstream returns 401
+    which we log and move on."""
+    tok = os.environ.get("AIGATE_TOKEN", "")
+    return {"Authorization": f"Bearer {tok}"} if tok else {}
+
+
+async def _unload_via_bulk(base_url: str, group: str) -> None:
+    """Unload every engine via POST /v1/unload (audiolla contract)."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            r = await client.post(
+                f"{base_url}/v1/unload", headers=_aigate_bearer_headers()
+            )
+            if r.status_code == 200:
+                unloaded = r.json().get("unloaded", [])
+                if unloaded:
+                    logger.warning(
+                        "[resource_manager] %s: unloaded %s", group, unloaded
+                    )
+                else:
+                    logger.warning(
+                        "[resource_manager] %s: no engines were loaded", group
+                    )
+            else:
+                logger.warning(
+                    "[resource_manager] %s: unload status=%s", group, r.status_code
+                )
+        except Exception as e:
+            logger.warning("[resource_manager] %s unload error: %s", group, e)
+
+
+async def _unload_cuda_audiolla():
+    """Evict every engine loaded on audiolla-cuda to free VRAM."""
+    logger.warning("[resource_manager] unloading cuda-audiolla engines")
+    await _unload_via_bulk(_AUDIOLLA_CUDA_URL, "cuda-audiolla")
+
+
+async def _unload_cpu_audiolla():
+    """Evict every engine loaded on audiolla to free RAM."""
+    logger.warning("[resource_manager] unloading cpu-audiolla engines")
+    await _unload_via_bulk(_AUDIOLLA_CPU_URL, "cpu-audiolla")
+
+
+# flickies — no bulk unload endpoint. Enumerate loaded engines via
+# GET /v1/engines then DELETE /v1/engines/{slug} for each with
+# `loaded: true`. Slugs match the engine catalog: wav2lip, wav2lip-gan,
+# latentsync-1.5, gfpgan (as of flickies v0.3.0). When new engines land
+# upstream they'll appear automatically since we enumerate live rather
+# than hard-code slugs.
+_FLICKIES_CUDA_URL = "http://flickies-cuda:8000"
+_FLICKIES_CPU_URL = "http://flickies:8000"
+
+
+async def _unload_via_engines_delete(base_url: str, group: str) -> None:
+    """Enumerate GET /v1/engines, DELETE the ones marked loaded."""
+    headers = _aigate_bearer_headers()
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            r = await client.get(f"{base_url}/v1/engines", headers=headers)
+            if r.status_code != 200:
+                logger.warning(
+                    "[resource_manager] %s: list engines status=%s",
+                    group,
+                    r.status_code,
+                )
+                return
+            engines = r.json().get("engines", [])
+            loaded = [e["slug"] for e in engines if e.get("loaded")]
+            if not loaded:
+                logger.warning(
+                    "[resource_manager] %s: no engines were loaded", group
+                )
+                return
+
+            async def _one(slug: str) -> None:
+                try:
+                    dr = await client.delete(
+                        f"{base_url}/v1/engines/{slug}", headers=headers
+                    )
+                    if dr.status_code == 200:
+                        logger.warning(
+                            "[resource_manager] %s: unloaded %s", group, slug
+                        )
+                    else:
+                        logger.warning(
+                            "[resource_manager] %s: unload %s status=%s",
+                            group,
+                            slug,
+                            dr.status_code,
+                        )
+                except Exception as inner:
+                    logger.warning(
+                        "[resource_manager] %s: unload error for %s: %s",
+                        group,
+                        slug,
+                        inner,
+                    )
+
+            await asyncio.gather(
+                *(_one(slug) for slug in loaded), return_exceptions=True
+            )
+        except Exception as e:
+            logger.warning("[resource_manager] %s unload error: %s", group, e)
+
+
+async def _unload_cuda_flickies():
+    """Evict every engine loaded on flickies-cuda to free VRAM."""
+    logger.warning("[resource_manager] unloading cuda-flickies engines")
+    await _unload_via_engines_delete(_FLICKIES_CUDA_URL, "cuda-flickies")
+
+
+async def _unload_cpu_flickies():
+    """Evict every engine loaded on flickies to free RAM."""
+    logger.warning("[resource_manager] unloading cpu-flickies engines")
+    await _unload_via_engines_delete(_FLICKIES_CPU_URL, "cpu-flickies")
+
+
 _UNLOAD_FNS = {
     "cuda-llm": _unload_cuda_llm,
     "cuda-img": _unload_cuda_img,
     "cuda-stt-talkies": _unload_cuda_stt_talkies,
     "cuda-vllm": _unload_cuda_vllm,
     "cuda-llamacpp": _unload_cuda_llamacpp,
+    "cuda-audiolla": _unload_cuda_audiolla,
+    "cuda-flickies": _unload_cuda_flickies,
     "cpu-llm": _unload_cpu_llm,
     "cpu-img": _unload_cpu_img,
     "cpu-stt-talkies": _unload_cpu_stt_talkies,
     "cpu-vllm": _unload_cpu_vllm,
     "cpu-llamacpp": _unload_cpu_llamacpp,
+    "cpu-audiolla": _unload_cpu_audiolla,
+    "cpu-flickies": _unload_cpu_flickies,
 }
 
 # ---------------------------------------------------------------------------
