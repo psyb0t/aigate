@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here.
 
+## [v3.14.7] — 2026-07-09
+
+**Bump pibox v0.11.3 → v0.12.0. Image-tag bump only. Upstream now surfaces provider rejections as HTTP 400 instead of `200 + empty text`.**
+
+- `psyb0t/pibox:v0.11.3` → `v0.12.0`. Base image tracked to `psyb0t/aicodebox:v0.11.0`.
+- **Upstream behavior change:** when the upstream model rejects a request (content-safety filter / rate limit / auth failure), `/pibox-zai/openai/v1/chat/completions` now returns **HTTP 400** with the provider's error message instead of `200` with an empty completion body. The `PiAdapter` forwards the provider-error detail on `RunResult.provider_error` (pi reports it as `stopReason=error + errorMessage` on the assistant turn).
+- **Aigate impact:** LiteLLM's proxy now sees a real `4xx` from pibox on filter / rate-limit / auth failures and treats it as retryable per its `num_retries: 3` + fallback chain — the standard recovery path. Previously a content-filter block became a phantom `200 + empty completion` that reached the caller as ambiguous silence. Callers who correctly check status will now get the real reason surfaced; anyone treating a `200 + empty text` as success needs to check the completion length or fall back appropriately.
+- No API surface, env-var, or config change on the aigate side. Container recreated and verified healthy against the freshly-built local image.
+
+### Heads-up
+
+`psyb0t/pibox:v0.12.0` + `psyb0t/aicodebox:v0.11.0` may not be on Docker Hub at this tag's cut moment. Fresh pulls will fail until the upstream tags get pushed.
+
 ## [v3.14.6] — 2026-07-02
 
 **Bump talkies v0.9.0 → v0.10.0 (CPU + CUDA) and flickies v0.3.0 → v0.3.1 (CPU + CUDA). Image-tag bump only. Both upstream releases are wire-compatible with their prior versions — no aigate-side changes required.**

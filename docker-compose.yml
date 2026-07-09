@@ -151,7 +151,7 @@ services:
 
   pibox-zai:
     profiles: ["pibox-zai"]
-    image: psyb0t/pibox:v0.11.3
+    image: psyb0t/pibox:v0.12.0
     restart: unless-stopped
     mem_limit: ${PIBOX_ZAI_MEM_LIMIT:-1g}
     memswap_limit: ${PIBOX_ZAI_MEMSWAP_LIMIT:-2g}
