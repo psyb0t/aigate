@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented here.
 
+## [v3.14.8] — 2026-07-19
+
+**Cap LiteLLM container memory — plug the last unbounded-memory service in the stack. Fixes host-tanking crashes under sustained load.**
+
+The `litellm` service in `docker-compose.yml` had no `mem_limit`, `memswap_limit`, or `pids_limit` — every other long-running service in the stack had memory caps set (via `.env.limits` or explicit compose defaults), but the LLM gateway itself was the one gap. Under sustained voidalpha traffic (LiteLLM Router state + connection pool retention + response body buffering on long streams + fallback context accumulation) the container was drifting from ~800 MiB idle to 3+ GiB over hours — with no ceiling, it would eventually starve the host on machines without enough headroom.
+
+- `docker-compose.yml`: added the following env-var-tunable defaults to the `litellm` service block:
+  - `mem_limit: ${LITELLM_MEM_LIMIT:-4g}`
+  - `memswap_limit: ${LITELLM_MEMSWAP_LIMIT:-8g}`
+  - `pids_limit: ${LITELLM_PIDS_LIMIT:-512}`
+- Sizing rationale: 4 GiB matches the 4 workers (`LITELLM_WORKERS: 4`) at ~1 GiB per worker plus master overhead — enough headroom for connection pools and long-stream buffering without silently absorbing a real leak. Swap at 2× mem to match the compose convention already used for pibox-zai and other services. PIDs at 512 covers the async worker + subprocess pool with room to spare.
+- Operators can override via `.env` if they want to tighten or loosen based on observed usage: `LITELLM_MEM_LIMIT=6g` (or whatever the host actually has room for). No default change; existing installations pick up the cap on next recreate.
+- **Outcome:** if LiteLLM drifts up under load, it OOM-kills only the LiteLLM container (which auto-restarts under `restart: unless-stopped`) — the host stays alive. Contained failure instead of host-wide crash.
+
+Full-stack sweep: every remaining service in `docker-compose.yml` has `mem_limit` + `cpus` set. The lone exception is `postgres-init`, a one-shot init container that runs at boot and exits — negligible blast radius. `pids_limit` project-wide coverage is still a defense-in-depth gap (only `litellm` has it as of this release) but not related to the memory-crash symptom this release addresses.
+
 ## [v3.14.7] — 2026-07-09
 
 **Bump pibox v0.11.3 → v0.12.0. Image-tag bump only. Upstream now surfaces provider rejections as HTTP 400 instead of `200 + empty text`.**

@@ -60,7 +60,10 @@ services:
   litellm:
     build: ./litellm
     restart: unless-stopped
+    mem_limit: ${LITELLM_MEM_LIMIT:-4g}
+    memswap_limit: ${LITELLM_MEMSWAP_LIMIT:-8g}
     cpus: ${LITELLM_CPUS:-4.0}
+    pids_limit: ${LITELLM_PIDS_LIMIT:-512}
     command:
       [
         "--config",
