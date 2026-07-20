@@ -2,6 +2,29 @@
 
 All notable changes to this project are documented here.
 
+## [v3.14.9] — 2026-07-20
+
+**Bump claudebox v1.14.0-minimal → v2.0.13 and pibox-zai v0.12.0 → v0.14.0. Restores the claudebox v2 API-mode migration that had drifted out of `docker-compose.yml`, enables claudebox's MCP server, and fixes the file-ops 500s the drift caused.**
+
+### Claudebox v1.14.0-minimal → v2.0.13
+
+- `psyb0t/claudebox:v1.14.0-minimal` → `v2.0.13`.
+- **Breaking (compose-file only, no external API change).** The claudebox service block now matches the v2 image contract:
+  - `CLAUDE_MODE_API` / `CLAUDE_MODE_API_PORT` / `CLAUDE_MODE_API_TOKEN` env vars → `CLAUDEBOX_API_MODE` / `CLAUDEBOX_API_MODE_PORT` / `CLAUDEBOX_API_MODE_TOKEN`.
+  - Config volume target `/home/claude/.claude` → `/home/aicode/.aicodebox`.
+  - Workspace volume target `/workspaces` → `/workspace` (singular).
+  - Healthcheck path `/health` → `/healthz`.
+- **New:** `CLAUDEBOX_MCP_MODE=1` + `CLAUDEBOX_MCP_MODE_TOKEN` added to the service block. The v2 image gates its MCP server behind this separate mode flag (API mode alone doesn't mount it) — `/claudebox/mcp/` now answers `initialize` instead of 404.
+- **Fixed:** `PUT /claudebox/files/*` was returning 500 because `.data/claudebox/workspace` on the host was root-owned while the v2 image's API process runs as uid 1000 (`aicode`). Re-chowned to match; file upload/download/list/delete all verified working.
+- Operators running an older checkout of `docker-compose.yml` need `docker compose up -d --force-recreate claudebox` after pulling this release — the old env-var names and volume paths no longer match what the v2 image expects. If `.data/claudebox/workspace` predates this release, `chown -R 1000:1000` (or your `aicode` host UID) it once after pulling.
+- `tests/test_claudebox.sh`: the `/claudebox/health` direct-API test case pointed at a path the v2 image dropped in favor of `/healthz` — updated to match.
+
+### Pibox-zai v0.12.0 → v0.14.0
+
+- `psyb0t/pibox:v0.12.0` → `v0.14.0`. No aigate-side config change — image-tag bump only.
+
+Both services recreated and smoke-tested live through the LiteLLM proxy (`claudebox-sonnet`, `pibox-zai-glm-4.7`) and the full `tests/test_claudebox.sh` suite (chat, direct API health/status, file ops, OpenAI-compatible models — 4/4 passing).
+
 ## [v3.14.8] — 2026-07-19
 
 **Cap LiteLLM container memory — plug the last unbounded-memory service in the stack. Fixes host-tanking crashes under sustained load.**

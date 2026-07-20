@@ -27,7 +27,7 @@ test_claudebox_chat() {
 
 # format: label|path|expected_in_body
 CLAUDEBOX_DIRECT_CASES=(
-    "health|/claudebox/health|ok"
+    "health|/claudebox/healthz|ok"
     "status|/claudebox/status|busyWorkspaces"
 )
 

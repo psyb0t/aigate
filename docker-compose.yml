@@ -126,22 +126,24 @@ services:
 
   claudebox:
     profiles: ["claudebox"]
-    image: psyb0t/claudebox:v1.14.0-minimal
+    image: psyb0t/claudebox:v2.0.13
     restart: unless-stopped
     mem_limit: ${CLAUDEBOX_MEM_LIMIT:-1g}
     memswap_limit: ${CLAUDEBOX_MEMSWAP_LIMIT:-2g}
     cpus: ${CLAUDEBOX_CPUS:-2.0}
     environment:
-      CLAUDE_MODE_API: "1"
-      CLAUDE_MODE_API_PORT: "8080"
-      CLAUDE_MODE_API_TOKEN: ${CLAUDEBOX_API_TOKEN:-${AIGATE_TOKEN:-lulz-4-security}}
+      CLAUDEBOX_API_MODE: "1"
+      CLAUDEBOX_API_MODE_PORT: "8080"
+      CLAUDEBOX_API_MODE_TOKEN: ${CLAUDEBOX_API_TOKEN:-${AIGATE_TOKEN:-lulz-4-security}}
+      CLAUDEBOX_MCP_MODE: "1"
+      CLAUDEBOX_MCP_MODE_TOKEN: ${CLAUDEBOX_API_TOKEN:-${AIGATE_TOKEN:-lulz-4-security}}
       CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
       ANTHROPIC_API_KEY: ${CLAUDEBOX_ANTHROPIC_API_KEY:-}
     volumes:
-      - ${DATA_DIR_CLAUDEBOX:-${DATA_DIR:-.data}/claudebox}/config:/home/claude/.claude
-      - ${DATA_DIR_CLAUDEBOX:-${DATA_DIR:-.data}/claudebox}/workspaces:/workspaces
+      - ${DATA_DIR_CLAUDEBOX:-${DATA_DIR:-.data}/claudebox}/config:/home/aicode/.aicodebox
+      - ${DATA_DIR_CLAUDEBOX:-${DATA_DIR:-.data}/claudebox}/workspace:/workspace
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/healthz"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -154,7 +156,7 @@ services:
 
   pibox-zai:
     profiles: ["pibox-zai"]
-    image: psyb0t/pibox:v0.12.0
+    image: psyb0t/pibox:v0.14.0
     restart: unless-stopped
     mem_limit: ${PIBOX_ZAI_MEM_LIMIT:-1g}
     memswap_limit: ${PIBOX_ZAI_MEMSWAP_LIMIT:-2g}

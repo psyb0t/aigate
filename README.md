@@ -113,7 +113,7 @@ Default writable locations:
 | Path                                         | Used by                      | Notes                                                                                      |
 | -------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------ |
 | `.data/claudebox/config/.always-skills/`     | claudebox                    | Drop `<name>/SKILL.md` files here — injected into every Claude session automatically       |
-| `.data/claudebox/workspaces/`                | claudebox                    | Persistent task workspaces                                                                 |
+| `.data/claudebox/workspace/`                 | claudebox                    | Persistent task workspaces                                                                 |
 | `.data/pibox-zai/config/`                    | pibox-zai                    | pi config dir (`telegram.yml`, cron history, etc.)                                         |
 | `.data/pibox-zai/workspace/`                 | pibox-zai                    | Persistent workspace root (subdirs per task)                                               |
 | `.data/hybrids3/`                            | hybrids3                     | Object storage data                                                                        |
