@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here.
 
+## [v3.15.0] — 2026-07-25
+
+### Added
+- **Agent skill + ClawHub publish.** Added `.agents/skills/aigate/` (SKILL.md + references/setup.md) documenting the single OpenAI-compatible endpoint at `:4000` and the bundled capabilities, plus a new tag-gated pipeline that publishes the skill to ClawHub.
+
 ## [v3.14.9] — 2026-07-20
 
 **Bump claudebox v1.14.0-minimal → v2.0.13 and pibox-zai v0.12.0 → v0.14.0. Restores the claudebox v2 API-mode migration that had drifted out of `docker-compose.yml`, enables claudebox's MCP server, and fixes the file-ops 500s the drift caused.**
