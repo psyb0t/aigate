@@ -16,6 +16,7 @@
     "sdxl-lightning": {
       "args": [
         "--model", "/models/sdxl_lightning_4step.q8_0.gguf",
+        "--vae-tiling",
         "--cfg-scale", "1.0",
         "--sampling-method", "euler",
         "--steps", "4"
@@ -44,10 +45,8 @@
     },
     "juggernaut-xi": {
       "args": [
-        "--diffusion-model", "/models/juggernautXL_juggXIByRundiffusion-Q5_K_M.gguf",
-        "--vae", "/models/xlVAEC_c91.safetensors",
-        "--clip_l", "/models/clip_l_sdxl.safetensors",
-        "--clip_g", "/models/clip_g.safetensors",
+        "--model", "/models/Juggernaut-XI-byRunDiffusion.safetensors",
+        "--vae-tiling",
         "--cfg-scale", "5.0",
         "--sampling-method", "dpm++2m",
         "--steps", "30"

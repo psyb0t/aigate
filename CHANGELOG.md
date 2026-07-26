@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here.
 
+## [v3.15.3] — 2026-07-26
+
+**Local image generation fixes: `juggernaut-xi` could never load at all, SDXL generation OOMed at 1024×1024, and a failed image request could thrash the GPU for minutes.**
+
+### Fixed
+
+- **`local-sdcpp-cuda-juggernaut-xi` never worked — every load attempt failed since the model was added.** It was configured for split loading (`--diffusion-model` plus separate `--clip_l` / `--clip_g` / `--vae`), which cannot work for SDXL in stable-diffusion.cpp: the clip_g tensor prefix is chosen from a model-version probe that runs *before* the text encoders are loaded, so `cond_stage_model.1` is never emitted, `is_xl` never becomes true, and version detection fails with `get sd version from file failed`. This is still the behavior at upstream HEAD, so no version bump fixes it. Flux is unaffected because it is detected from `double_blocks` inside the diffusion model itself. `sdcpp/models.json` now points `juggernaut-xi` at the single-file `Juggernaut-XI-byRunDiffusion.safetensors` checkpoint (text encoders + VAE included), which detects as `Version: SDXL` and generates correctly. Requests for this model previously fell through to another model via the fallback chain, so callers received images from a *different* model under the `juggernaut-xi` name rather than an error.
+- **VAE decode OOM at 1024×1024.** One-shot VAE decode requested a 7,680 MiB compute buffer on top of resident model weights, exceeding a 12 GB card and failing with `vae: failed to allocate the compute buffer`. `--vae-tiling` added to `juggernaut-xi` and `sdxl-lightning` in `sdcpp/models.json`; decode now completes in tiles. This also affected `sdxl-lightning` at its native 1024×1024 independently of the juggernaut change.
+- **A single failed image request could thrash the GPU for minutes.** In `litellm/config/fallbacks.json`, every `local-sdcpp-cuda-*` model fell back to its own siblings (e.g. `juggernaut-xi` → `sdxl-lightning` → `flux-schnell`), and the `local-sdcpp-cpu-*` models likewise fell back to each other. Each sdcpp backend is a single `sd-server` process serving one model at a time, so a sibling hop cannot find spare capacity — it forces a full model swap (process kill + multi-GB reload), multiplied by the per-deployment retry count. Chains now route to genuinely independent capacity only: the other sdcpp backend, then `hf-flux-schnell`, then the OpenAI image models. Observed model swaps for a failing request dropped from 6–9 to 0–1.
+
+### Changed
+
+- `docker-compose.yml`: the `sdcpp-pull` init service now downloads the single-file `Juggernaut-XI-byRunDiffusion.safetensors` instead of the four split components (`juggernautXL_juggXIByRundiffusion-Q5_K_M.gguf`, `clip_l_sdxl.safetensors`, `clip_g.safetensors`, `xlVAEC_c91.safetensors`). The source repo is gated and requires the `HF_TOKEN` already passed to this service; the previously downloaded split files are no longer used and can be deleted (~3.5 GB). The checkpoint is ~6.6 GiB.
+- `juggernaut-xi` VRAM footprint is now ~5 GB (was documented as ~2.5 GB against the quantized diffusion-only file). README and `docs/providers.md` updated.
+- `HF_TOKEN` is now required to download the `juggernaut-xi` checkpoint (the source repo is gated). Without it that single model fails to download while the rest of the sdcpp models pull normally — noted in `.env.example`.
+
+Operators pulling this release need `docker compose up -d --build --force-recreate sdcpp-cuda` — `models.json` is baked into the image (`COPY models.json /etc/sdcpp/models.json`), so a recreate without a rebuild silently keeps the old model definitions.
+
 ## [v3.15.2] — 2026-07-26
 
 ### Changed

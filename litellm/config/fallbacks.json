@@ -581,24 +581,20 @@
   },
   {
     "local-sdcpp-cuda-flux-schnell": [
-      "local-sdcpp-cuda-sdxl-lightning",
-      "local-sdcpp-cuda-juggernaut-xi",
+      "local-sdcpp-cpu-sd-turbo",
       "hf-flux-schnell",
       "openai-dall-e-3"
     ]
   },
   {
     "local-sdcpp-cuda-sdxl-lightning": [
-      "local-sdcpp-cuda-flux-schnell",
-      "local-sdcpp-cuda-sdxl-turbo",
+      "local-sdcpp-cpu-sdxl-turbo",
       "hf-flux-schnell",
       "openai-dall-e-3"
     ]
   },
   {
     "local-sdcpp-cuda-sdxl-turbo": [
-      "local-sdcpp-cuda-sdxl-lightning",
-      "local-sdcpp-cuda-sd-turbo",
       "local-sdcpp-cpu-sdxl-turbo",
       "hf-flux-schnell",
       "openai-dall-e-3"
@@ -606,8 +602,6 @@
   },
   {
     "local-sdcpp-cuda-sd-turbo": [
-      "local-sdcpp-cuda-sdxl-turbo",
-      "local-sdcpp-cuda-sdxl-lightning",
       "local-sdcpp-cpu-sd-turbo",
       "hf-flux-schnell",
       "openai-dall-e-3"
@@ -615,15 +609,13 @@
   },
   {
     "local-sdcpp-cuda-juggernaut-xi": [
-      "local-sdcpp-cuda-sdxl-lightning",
-      "local-sdcpp-cuda-flux-schnell",
+      "local-sdcpp-cpu-sdxl-turbo",
       "hf-flux-schnell",
       "openai-dall-e-3"
     ]
   },
   {
     "local-sdcpp-cpu-sd-turbo": [
-      "local-sdcpp-cpu-sdxl-turbo",
       "local-sdcpp-cuda-sd-turbo",
       "hf-flux-schnell",
       "openai-dall-e-3"
@@ -631,7 +623,6 @@
   },
   {
     "local-sdcpp-cpu-sdxl-turbo": [
-      "local-sdcpp-cpu-sd-turbo",
       "local-sdcpp-cuda-sdxl-turbo",
       "hf-flux-schnell",
       "openai-dall-e-3"

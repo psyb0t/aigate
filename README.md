@@ -310,7 +310,7 @@ Adds the heavier ASR models that need a GPU to be useful. Kokoro TTS still runs 
 | `local-sdcpp-cuda-sdxl-turbo`     | SDXL Turbo — better quality (~2.5GB VRAM)                   |
 | `local-sdcpp-cuda-sdxl-lightning` | SDXL Lightning — fast, high quality (~2.5GB VRAM)           |
 | `local-sdcpp-cuda-flux-schnell`   | FLUX Schnell — best quality, largest (~7GB VRAM)            |
-| `local-sdcpp-cuda-juggernaut-xi`  | Juggernaut XI — photorealistic SDXL fine-tune (~2.5GB VRAM) |
+| `local-sdcpp-cuda-juggernaut-xi`  | Juggernaut XI — photorealistic SDXL fine-tune (~5GB VRAM)   |
 
 Models auto-download on first use and cache in `.data/sdcpp/models/`.
 

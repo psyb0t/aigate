@@ -932,11 +932,12 @@ services:
         dl "https://huggingface.co/OlegSkutte/sdxl-turbo-GGUF/resolve/main/sd_xl_turbo_1.0.q8_0.gguf" "sd_xl_turbo_1.0.q8_0.gguf"
         # SD Turbo
         dl "https://huggingface.co/Green-Sky/SD-Turbo-GGUF/resolve/main/sd_turbo-f16-q8_0.gguf" "sd_turbo-f16-q8_0.gguf"
-        # Juggernaut XI + shared SDXL components
-        dl "https://huggingface.co/hum-ma/SDXL-models-GGUF/resolve/main/juggernautXL_juggXIByRundiffusion-Q5_K_M.gguf" "juggernautXL_juggXIByRundiffusion-Q5_K_M.gguf"
-        dl "https://huggingface.co/hum-ma/SDXL-models-GGUF/resolve/main/clip/clip_l.safetensors" "clip_l_sdxl.safetensors"
-        dl "https://huggingface.co/hum-ma/SDXL-models-GGUF/resolve/main/clip/clip_g.safetensors" "clip_g.safetensors"
-        dl "https://huggingface.co/hum-ma/SDXL-models-GGUF/resolve/main/vae/xlVAEC_c91.safetensors" "xlVAEC_c91.safetensors"
+        # Juggernaut XI — single-file checkpoint. Split loading (separate
+        # --diffusion-model/--clip_l/--clip_g/--vae) can never work for SDXL:
+        # sd.cpp picks the clip_g tensor prefix from a version probe that runs
+        # before the text encoders are loaded, so `cond_stage_model.1` is never
+        # emitted and SDXL detection always fails. Gated repo — needs HF_TOKEN.
+        dl "https://huggingface.co/RunDiffusion/Juggernaut-XI-v11/resolve/main/Juggernaut-XI-byRunDiffusion.safetensors" "Juggernaut-XI-byRunDiffusion.safetensors"
         echo "all models ready"
     volumes:
       - ${DATA_DIR_SDCPP:-${DATA_DIR:-.data}/sdcpp}:/models
