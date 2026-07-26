@@ -22,7 +22,7 @@ metadata:
 
 # aigate — self-hosted AI platform behind one endpoint
 
-A self-hosted AI platform. One `docker-compose up` stands up inference, tool use, browser automation, image generation, speech synthesis, transcription, object storage, agentic code execution, web search, an email gateway, a Telegram client, time-series forecasting, an async job queue, and a web UI — all behind a single OpenAI-compatible endpoint at `http://localhost:4000`. Point any existing OpenAI-client library or `curl` at it and it works. Everything is opt-in via `.env` flags; only nginx, LiteLLM, PostgreSQL, and Redis are always on.
+A self-hosted AI platform. One `docker-compose up` stands up inference, tool use, browser automation, image generation, speech synthesis, transcription, object storage, agentic code execution, web search, an email gateway, a Telegram client, time-series forecasting, an async job queue, and a web UI — all behind a single OpenAI-compatible endpoint at `http://localhost:4000`. Point any existing OpenAI-client library or `curl` at it and it works. Everything else is opt-in via `.env` flags; the always-on core is nginx, LiteLLM, PostgreSQL, Redis, and the `proxq` async job queue (at `/q/`, no flag needed).
 
 ## Security & safety
 

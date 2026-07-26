@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here.
 
+## [v3.15.1] — 2026-07-26
+
+### Fixed
+- **Agent skill accuracy.** The `.agents/skills/aigate/` SKILL.md described the always-on core as "only nginx, LiteLLM, PostgreSQL, and Redis" — but `proxq` (the async job queue at `/q/`) also runs with no compose profile and is therefore always on. Corrected the always-on list to include `proxq`. No behavior change.
+
 ## [v3.15.0] — 2026-07-25
 
 ### Added
