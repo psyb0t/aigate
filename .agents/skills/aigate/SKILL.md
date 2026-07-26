@@ -34,6 +34,8 @@ A self-hosted AI platform. One `docker-compose up` stands up inference, tool use
 - Send email and Telegram messages on the user's behalf (mailbox, Telethon) — mailbox additionally holds plaintext IMAP/SMTP credentials in its YAML config.
 - Read/write S3-compatible object storage with a public-read bucket.
 
+**No per-tool scoping by default.** `AIGATE_TOKEN` is a single all-or-nothing capability grant — every per-service token (`CLAUDEBOX_API_TOKEN`, `PIBOX_ZAI_API_TOKEN`, `PREDICTALOT_AUTH_TOKEN`, `AUDIOLLA_AUTH_TOKEN`, `FLICKIES_AUTH_TOKEN`, `STEALTHY_AUTO_BROWSE_AUTH_TOKEN`, `HYBRIDS3_MASTER_KEY`, `MCP_TOOLS_AUTH_TOKEN`, `TELETHON_AUTH_KEY`, etc.) defaults to it unless the operator explicitly overrides each one separately. Handing an agent the token is not "give it chat access" — it's granting code execution, browser automation, and messaging in one shot, with no way to grant a narrower subset unless the operator has pre-split the per-service tokens. An agent must only be given `AIGATE_TOKEN` when it is fully trusted and only for the specific action the user explicitly requested — never pass it to an agent "just in case it needs something."
+
 Treat aigate as a **trusted host only**. Concretely:
 - Never expose port `4000` directly to the public internet. Use Cloudflare Tunnel (`CLOUDFLARED=1`) or Tailscale (`TAILSCALE=1`) — both keep no ports open on the host — or put a real authenticating gateway/reverse-proxy in front of it.
 - Every request needs `Authorization: Bearer $AIGATE_TOKEN` (or a per-service override token) — there is no unauthenticated path once a service is enabled. Don't hardcode the token in scripts committed to a repo; source it from `.env`/environment.

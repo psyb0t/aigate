@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here.
 
+## [v3.15.2] — 2026-07-26
+
+### Changed
+- **Agent skill security hardening.** Hardened `.agents/skills/aigate/` SKILL.md's "Security & safety" section with an explicit guardrail: `AIGATE_TOKEN` is a single all-or-nothing capability grant with no per-tool scoping unless the operator has pre-split the per-service override tokens — an agent handed the token can trigger code execution, browser automation, and messaging in one shot, so it must only be given to fully trusted agents for the specific action the user explicitly requested. Documentation-only change; no behavior change.
+
 ## [v3.15.1] — 2026-07-26
 
 ### Fixed
