@@ -594,6 +594,38 @@ All endpoints, auth requirements, request/response formats, and config options.
 
 → [Services index](docs/services/README.md)
 
+## Agent integrations
+
+The [skill](.agents/skills/aigate) works in any agent that reads `.agents/skills/`, and
+installs natively in the clients below.
+
+### Claude Code
+
+```bash
+claude plugin marketplace add psyb0t/agents
+claude plugin install aigate@psyb0t
+```
+
+Claude Code prompts for the aigate URL and, if you're using `AIGATE_TOKEN` auth, the
+token — the token is stored in your OS keychain.
+
+### Codex
+
+```bash
+codex plugin marketplace add psyb0t/agents
+```
+
+Codex also picks the skill up automatically in any repo containing `.agents/skills/`,
+and invokes it as `$aigate`.
+
+### OpenClaw
+
+The skill is published to ClawHub on every release:
+
+```bash
+openclaw skills install @psyb0t/aigate
+```
+
 ## Makefile
 
 ```bash

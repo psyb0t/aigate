@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here.
 
+## [v3.15.7] — 2026-07-27
+
+**Wire aigate into the Claude Code and Codex plugin ecosystems, and document every agent-integration channel in the README.**
+
+### Added
+
+- `.agents/.claude-plugin/plugin.json` — Claude Code plugin manifest (`name`, `description`, `author`, `homepage`, `license`, `keywords`). Declares `userConfig` for the aigate base URL and bearer token so Claude Code prompts for them at install time instead of requiring manual `.env` edits; the token is marked sensitive and stored in the OS keychain.
+- `.agents/.codex-plugin/plugin.json` — Codex plugin manifest with the same metadata plus `version` and `"skills": "./skills/"`, pointing at the existing `.agents/skills/aigate/` skill.
+- `## Agent integrations` section in the README with copy-pasteable install commands for Claude Code, Codex, and the OpenClaw skill.
+
 ## [v3.15.6] — 2026-07-27
 
 **Add a GitHub Actions CI status badge to the README.**

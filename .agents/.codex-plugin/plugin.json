@@ -1,0 +1,11 @@
+{
+  "name": "aigate",
+  "version": "3.15.7",
+  "description": "Self-hosted AI platform behind one OpenAI-compatible endpoint — inference routing across cloud and local providers, MCP tool use, browser automation, image/speech/transcription, object storage, agentic code execution, web search, email and Telegram gateways, and a web UI.",
+  "author": { "name": "psyb0t", "url": "https://github.com/psyb0t" },
+  "homepage": "https://github.com/psyb0t/aigate",
+  "repository": "https://github.com/psyb0t/aigate",
+  "license": "WTFPL",
+  "keywords": ["openai-compatible", "llm-gateway", "self-hosted", "docker-compose", "mcp", "inference-routing", "browser-automation"],
+  "skills": "./skills/"
+}

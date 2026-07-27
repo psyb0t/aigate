@@ -1,0 +1,22 @@
+{
+  "name": "aigate",
+  "description": "Self-hosted AI platform behind one OpenAI-compatible endpoint — inference routing across cloud and local providers, MCP tool use, browser automation, image/speech/transcription, object storage, agentic code execution, web search, email and Telegram gateways, and a web UI.",
+  "author": { "name": "psyb0t", "url": "https://github.com/psyb0t" },
+  "homepage": "https://github.com/psyb0t/aigate",
+  "license": "WTFPL",
+  "keywords": ["openai-compatible", "llm-gateway", "self-hosted", "docker-compose", "mcp", "inference-routing", "browser-automation"],
+  "userConfig": {
+    "aigate_url": {
+      "type": "string",
+      "title": "aigate URL",
+      "description": "Base URL of your running aigate gateway, e.g. http://localhost:4000, or wherever it's deployed.",
+      "required": true
+    },
+    "aigate_token": {
+      "type": "string",
+      "title": "aigate token",
+      "description": "Bearer token sent as Authorization: Bearer <token> on requests — the AIGATE_TOKEN set in aigate's .env (or a per-service override token).",
+      "sensitive": true
+    }
+  }
+}
