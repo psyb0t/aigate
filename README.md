@@ -1,5 +1,8 @@
 # aigate
 
+[![version](https://raw.githubusercontent.com/psyb0t/aigate/badges/version.svg)](https://github.com/psyb0t/aigate/releases)
+[![license](https://raw.githubusercontent.com/psyb0t/aigate/badges/license.svg)](LICENSE)
+
 A self-hosted AI platform. One `docker-compose up`.
 
 Everything an AI-powered workflow needs — inference, tool use, browser automation, image generation, speech synthesis, transcription, object storage, agentic code execution, web search, an email gateway, a Telegram client, time-series forecasting, an async job queue, and a web UI — behind a single OpenAI-compatible endpoint at `http://localhost:4000`. Point any existing client at it and it works.

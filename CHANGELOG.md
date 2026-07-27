@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## [v3.15.5] — 2026-07-27
+
+**Add self-hosted README badges.**
+
+### Added
+
+- Added self-hosted version and license badges; wired a badges job into pipeline.yml.
+
 ## [v3.15.4] — 2026-07-27
 
 **Add a LICENSE file (WTFPL) so the project's license is explicit and detected by GitHub.**
