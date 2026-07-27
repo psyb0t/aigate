@@ -1,5 +1,6 @@
 # aigate
 
+[![CI](https://github.com/psyb0t/aigate/actions/workflows/pipeline.yml/badge.svg?branch=main)](https://github.com/psyb0t/aigate/actions/workflows/pipeline.yml)
 [![version](https://raw.githubusercontent.com/psyb0t/aigate/badges/version.svg)](https://github.com/psyb0t/aigate/releases)
 [![license](https://raw.githubusercontent.com/psyb0t/aigate/badges/license.svg)](LICENSE)
 

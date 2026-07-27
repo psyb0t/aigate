@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## [v3.15.6] — 2026-07-27
+
+**Add a GitHub Actions CI status badge to the README.**
+
+### Added
+
+- Added a GitHub Actions CI status badge to the README.
+
 ## [v3.15.5] — 2026-07-27
 
 **Add self-hosted README badges.**
