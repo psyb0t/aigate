@@ -613,10 +613,12 @@ token — the token is stored in your OS keychain.
 
 ```bash
 codex plugin marketplace add psyb0t/agents
+codex plugin add aigate@psyb0t
 ```
 
-Codex also picks the skill up automatically in any repo containing `.agents/skills/`,
-and invokes it as `$aigate`.
+Installed via the marketplace, the skill invokes as `$aigate:aigate`. Codex also picks
+the skill up automatically with no install in any repo containing `.agents/skills/`,
+where it invokes as plain `$aigate`.
 
 ### OpenClaw
 

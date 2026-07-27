@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here.
 
+## [v3.15.8] — 2026-07-27
+
+**Fix the Codex subsection of `## Agent integrations`, which told readers to add the marketplace but never told them how to install the plugin.**
+
+### Fixed
+
+- The Codex install snippet in the README was missing its install command — it ran `codex plugin marketplace add psyb0t/agents` and stopped. Added the missing line: `codex plugin add aigate@psyb0t`.
+- The prose describing skill invocation conflated two different install paths. It now distinguishes them: installed via the marketplace, the skill invokes as `$aigate:aigate`; picked up automatically from the repo's own `.agents/skills/` with no install, it invokes as plain `$aigate`.
+
 ## [v3.15.7] — 2026-07-27
 
 **Wire aigate into the Claude Code and Codex plugin ecosystems, and document every agent-integration channel in the README.**
