@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here.
 
+## [v3.15.4] — 2026-07-27
+
+**Add a LICENSE file (WTFPL) so the project's license is explicit and detected by GitHub.**
+
+### Added
+
+- `LICENSE` — WTFPL (Do What The Fuck You Want To Public License), Version 2. The
+  project previously shipped without a license file. The orchestration code
+  (`docker-compose.yml`, `Makefile`, scripts, per-service config) is now explicitly
+  WTFPL. The third-party services aigate composes (LibreChat, litellm, vLLM, SearXNG,
+  llama.cpp, and the rest) are run as their own containers and retain their own
+  upstream licenses.
+
 ## [v3.15.3] — 2026-07-26
 
 **Local image generation fixes: `juggernaut-xi` could never load at all, SDXL generation OOMed at 1024×1024, and a failed image request could thrash the GPU for minutes.**
