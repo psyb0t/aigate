@@ -1,0 +1,13 @@
+.git
+*.md
+.env
+.env.*
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+git-update.sh
+.secaudit/
+.research_files/

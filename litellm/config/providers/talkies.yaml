@@ -2,7 +2,7 @@
   litellm_params:
     model: openai/whisper-large-v3
     api_base: http://talkies:8000/v1
-    api_key: none
+    api_key: os.environ/TALKIES_AUTH_TOKEN
   model_info:
     mode: audio_transcription
 
@@ -10,7 +10,7 @@
   litellm_params:
     model: openai/whisper-large-v3-turbo
     api_base: http://talkies:8000/v1
-    api_key: none
+    api_key: os.environ/TALKIES_AUTH_TOKEN
   model_info:
     mode: audio_transcription
 
@@ -18,7 +18,7 @@
   litellm_params:
     model: openai/canary-180m-flash
     api_base: http://talkies:8000/v1
-    api_key: none
+    api_key: os.environ/TALKIES_AUTH_TOKEN
   model_info:
     mode: audio_transcription
 
@@ -29,7 +29,7 @@
   litellm_params:
     model: openai/nemotron-3.5-asr-0.6b
     api_base: http://talkies:8000/v1
-    api_key: none
+    api_key: os.environ/TALKIES_AUTH_TOKEN
   model_info:
     mode: audio_transcription
 
@@ -39,7 +39,7 @@
   litellm_params:
     model: openai/kokoro-82m
     api_base: http://talkies:8000/v1
-    api_key: none
+    api_key: os.environ/TALKIES_AUTH_TOKEN
   model_info:
     mode: audio_speech
 
@@ -50,6 +50,6 @@
   litellm_params:
     model: openai/kokoro-82m-nvidia
     api_base: http://talkies:8000/v1
-    api_key: none
+    api_key: os.environ/TALKIES_AUTH_TOKEN
   model_info:
     mode: audio_speech

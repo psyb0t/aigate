@@ -42,6 +42,8 @@ PISTON_URL = os.environ.get("PISTON_URL", "")
 # pick to /v1/audio/speech without a second lookup.
 TALKIES_URL = os.environ.get("TALKIES_URL", "")
 TALKIES_CUDA_URL = os.environ.get("TALKIES_CUDA_URL", "")
+TALKIES_AUTH_TOKEN = os.environ.get("TALKIES_AUTH_TOKEN", "")
+TALKIES_CUDA_AUTH_TOKEN = os.environ.get("TALKIES_CUDA_AUTH_TOKEN", "")
 
 HF_INFERENCE_BASE = "https://router.huggingface.co/hf-inference/models"
 
@@ -78,6 +80,11 @@ TTS_DEFAULT_ORDER = [
 
 def log(msg):
     print(f"{PREFIX} {msg}", flush=True)
+
+
+def _talkies_headers(is_cuda: bool) -> dict[str, str]:
+    token = TALKIES_CUDA_AUTH_TOKEN if is_cuda else TALKIES_AUTH_TOKEN
+    return {"Authorization": f"Bearer {token}"} if token else {}
 
 
 def discover_models(max_retries=30, base_delay=2.0):
@@ -643,11 +650,17 @@ async def list_voices(_request: StarletteRequest) -> JSONResponse:
     voices_by_upstream: dict[str, list[dict]] = {}
     errors: list[str] = []
     async with httpx.AsyncClient(timeout=10) as client:
-        for label, base in (("cpu", TALKIES_URL), ("cuda", TALKIES_CUDA_URL)):
+        for label, base, is_cuda in (
+            ("cpu", TALKIES_URL, False),
+            ("cuda", TALKIES_CUDA_URL, True),
+        ):
             if not base:
                 continue
             try:
-                r = await client.get(f"{base}/v1/audio/voices")
+                r = await client.get(
+                    f"{base}/v1/audio/voices",
+                    headers=_talkies_headers(is_cuda),
+                )
                 r.raise_for_status()
                 for v in r.json().get("voices", []):
                     name = v.get("voice")
@@ -812,15 +825,17 @@ async def speech(request: StarletteRequest) -> Response:
         )
 
     inbound_auth = request.headers.get("authorization", "")
+    is_cuda = model.startswith("local-talkies-cuda-")
 
     async with httpx.AsyncClient(timeout=300) as client:
         target = await _resolve_talkies_target(client, model)
         if target is not None:
             upstream_model, base = target
             body_out = {**body, "model": upstream_model}
-            headers: dict[str, str] = {"Content-Type": "application/json"}
-            if inbound_auth:
-                headers["Authorization"] = inbound_auth
+            headers = {
+                "Content-Type": "application/json",
+                **_talkies_headers(is_cuda),
+            }
             try:
                 r = await client.post(
                     f"{base}/v1/audio/speech",
@@ -920,11 +935,11 @@ async def _unload_sdcpp(client: httpx.AsyncClient, base: str) -> dict:
 
 
 async def _unload_api_ps(
-    client: httpx.AsyncClient, base: str,
+    client: httpx.AsyncClient, base: str, headers: dict[str, str] | None = None,
 ) -> dict:
     """talkies / vllm / llamacpp: GET /api/ps, DELETE /api/ps/{model}."""
     try:
-        r = await client.get(f"{base}/api/ps")
+        r = await client.get(f"{base}/api/ps", headers=headers)
         r.raise_for_status()
         models = r.json().get("models", [])
         if not models:
@@ -935,11 +950,19 @@ async def _unload_api_ps(
             if not mid:
                 continue
             encoded = mid.replace("/", "%2F")
-            await client.delete(f"{base}/api/ps/{encoded}")
+            await client.delete(f"{base}/api/ps/{encoded}", headers=headers)
             unloaded.append(mid)
         return {"status": "ok", "unloaded": unloaded}
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
+
+
+async def _unload_talkies_cpu(client: httpx.AsyncClient, base: str) -> dict:
+    return await _unload_api_ps(client, base, _talkies_headers(False))
+
+
+async def _unload_talkies_cuda(client: httpx.AsyncClient, base: str) -> dict:
+    return await _unload_api_ps(client, base, _talkies_headers(True))
 
 
 async def _unload_audiolla(client: httpx.AsyncClient, base: str) -> dict:
@@ -979,7 +1002,7 @@ async def _unload_flickies(client: httpx.AsyncClient, base: str) -> dict:
 _UNLOAD_PLAN_CUDA = [
     ("ollama-cuda", OLLAMA_CUDA_URL, _unload_ollama),
     ("sdcpp-cuda", SDCPP_CUDA_URL, _unload_sdcpp),
-    ("talkies-cuda", TALKIES_CUDA_URL, _unload_api_ps),
+    ("talkies-cuda", TALKIES_CUDA_URL, _unload_talkies_cuda),
     ("vllm-cuda", VLLM_CUDA_URL, _unload_api_ps),
     ("llamacpp-cuda", LLAMACPP_CUDA_URL, _unload_api_ps),
     ("audiolla-cuda", AUDIOLLA_CUDA_URL, _unload_audiolla),
@@ -988,7 +1011,7 @@ _UNLOAD_PLAN_CUDA = [
 _UNLOAD_PLAN_CPU = [
     ("ollama", OLLAMA_URL, _unload_ollama),
     ("sdcpp", SDCPP_URL, _unload_sdcpp),
-    ("talkies", TALKIES_URL, _unload_api_ps),
+    ("talkies", TALKIES_URL, _unload_talkies_cpu),
     ("vllm", VLLM_URL, _unload_api_ps),
     ("llamacpp", LLAMACPP_URL, _unload_api_ps),
     ("audiolla", AUDIOLLA_URL, _unload_audiolla),

@@ -3,6 +3,9 @@
 *.key
 *.pem
 .research_files
+.testing/
+.secaudit/
+AGENTS.md
 CLAUDE.md
 git-update.sh
 litellm/config.yaml

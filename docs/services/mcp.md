@@ -24,6 +24,6 @@ See [mcp-tools.md](../mcp-tools.md#mcp_tools--2-tools-auto-enabled-with-imagetts
 | `MCP_MEM_LIMIT`        | `256m`   | Container memory limit               |
 | `MCP_MEMSWAP_LIMIT`    | `512m`   | Container memory + swap limit        |
 | `MCP_CPUS`             | `0.5`    | CPU limit                            |
+| `MCP_PIDS_LIMIT`       | `128`    | Process limit                        |
 
 ---
-

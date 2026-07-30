@@ -1,5 +1,12 @@
+x-docker-logging: &docker-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   nginx-auth-init:
+    logging: *docker-logging
     image: alpine:3.21
     restart: "no"
     mem_limit: ${NGINX_AUTH_INIT_MEM_LIMIT:-64m}
@@ -24,6 +31,7 @@ services:
       - ${DATA_DIR_NGINX:-${DATA_DIR:-.data}/nginx}:/htpasswd
 
   nginx:
+    logging: *docker-logging
     image: nginx:1.27.5-alpine
     restart: unless-stopped
     mem_limit: ${NGINX_MEM_LIMIT:-128m}
@@ -58,6 +66,7 @@ services:
       - aigate-public
 
   litellm:
+    logging: *docker-logging
     build: ./litellm
     restart: unless-stopped
     mem_limit: ${LITELLM_MEM_LIMIT:-4g}
@@ -99,6 +108,8 @@ services:
       PREDICTALOT_AUTH_TOKEN: ${PREDICTALOT_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-predictalot}}
       AUDIOLLA_AUTH_TOKEN: ${AUDIOLLA_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-audiolla}}
       FLICKIES_AUTH_TOKEN: ${FLICKIES_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-flickies}}
+      TALKIES_AUTH_TOKEN: ${TALKIES_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-talkies}}
+      TALKIES_CUDA_AUTH_TOKEN: ${TALKIES_CUDA_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-talkies-cuda}}
       UI_USERNAME: ${LITELLM_USERNAME:-}
       UI_PASSWORD: ${LITELLM_PASSWORD:-}
     depends_on:
@@ -125,6 +136,7 @@ services:
       - aigate-public
 
   claudebox:
+    logging: *docker-logging
     profiles: ["claudebox"]
     image: psyb0t/claudebox:v2.0.13
     restart: unless-stopped
@@ -155,6 +167,7 @@ services:
       - aigate-public
 
   pibox-zai:
+    logging: *docker-logging
     profiles: ["pibox-zai"]
     image: psyb0t/pibox:v0.14.0
     restart: unless-stopped
@@ -197,6 +210,7 @@ services:
   # ${DATA_DIR_PREDICTALOT}/models so the second variant to boot reuses
   # the first's HF snapshots.
   predictalot:
+    logging: *docker-logging
     profiles: ["predictalot"]
     image: psyb0t/predictalot:v1.0.1
     restart: unless-stopped
@@ -229,6 +243,7 @@ services:
       - aigate-public
 
   predictalot-cuda:
+    logging: *docker-logging
     profiles: ["predictalot-cuda"]
     image: psyb0t/predictalot:v1.0.1-cuda
     restart: unless-stopped
@@ -277,6 +292,7 @@ services:
   # so enabling both does not duplicate downloads.
   # Upstream: github.com/psyb0t/docker-audiolla.
   audiolla:
+    logging: *docker-logging
     profiles: ["audiolla"]
     image: psyb0t/audiolla:v1.0.10
     restart: unless-stopped
@@ -319,6 +335,7 @@ services:
       - aigate-public
 
   audiolla-cuda:
+    logging: *docker-logging
     profiles: ["audiolla-cuda"]
     image: psyb0t/audiolla:v1.0.10-cuda
     restart: unless-stopped
@@ -377,6 +394,7 @@ services:
   # LatentSync 1.5) so enabling both does not duplicate the ~6 GB of
   # downloads. Upstream: github.com/psyb0t/docker-flickies.
   flickies:
+    logging: *docker-logging
     profiles: ["flickies"]
     image: psyb0t/flickies:v0.3.1
     restart: unless-stopped
@@ -428,6 +446,7 @@ services:
       - aigate-public
 
   flickies-cuda:
+    logging: *docker-logging
     profiles: ["flickies-cuda"]
     image: psyb0t/flickies:v0.3.1-cuda
     restart: unless-stopped
@@ -474,6 +493,7 @@ services:
       - aigate-public
 
   hybrids3:
+    logging: *docker-logging
     profiles: ["hybrids3"]
     image: psyb0t/hybrids3:v0.2.0
     restart: unless-stopped
@@ -503,6 +523,7 @@ services:
       - aigate-internal
 
   redis:
+    logging: *docker-logging
     image: redis:7.4.9-alpine
     restart: unless-stopped
     mem_limit: ${REDIS_MEM_LIMIT:-256m}
@@ -522,6 +543,7 @@ services:
       - aigate-internal
 
   postgres-init:
+    logging: *docker-logging
     image: alpine:3.21
     restart: "no"
     command: sh -c "mkdir -p /pgmount/data && chown -R 70:70 /pgmount && chmod 755 /pgmount"
@@ -529,6 +551,7 @@ services:
       - ${DATA_DIR_POSTGRES:-${DATA_DIR:-.data}/postgres}:/pgmount
 
   postgres:
+    logging: *docker-logging
     image: postgres:16.13-alpine
     restart: unless-stopped
     mem_limit: ${POSTGRES_MEM_LIMIT:-512m}
@@ -560,6 +583,7 @@ services:
   # ── Stealthy Auto Browse cluster ─────────────────────────────────────────────
 
   stealthy-auto-browse-redis:
+    logging: *docker-logging
     profiles: ["browser"]
     image: redis:7.4.9-alpine
     restart: unless-stopped
@@ -575,6 +599,7 @@ services:
       - stealthy-auto-browse
 
   stealthy-auto-browse:
+    logging: *docker-logging
     profiles: ["browser"]
     image: psyb0t/stealthy-auto-browse:v1.0.0
     scale: ${STEALTHY_AUTO_BROWSE_NUM_REPLICAS:-5}
@@ -595,6 +620,7 @@ services:
       - stealthy-auto-browse
 
   stealthy-auto-browse-proxy:
+    logging: *docker-logging
     profiles: ["browser"]
     image: haproxy:3.2.15-alpine
     restart: unless-stopped
@@ -620,25 +646,37 @@ services:
   # External image: github.com/psyb0t/docker-talkies. One container,
   # both endpoints: /v1/audio/transcriptions (whisper + canary-180m) and
   # /v1/audio/speech (Kokoro-82M TTS). CPU variant doesn't ship Qwen3-TTS
-  # (CUDA-only model). Pinned to v0.9.0.
+  # (CUDA-only model). Pinned to v0.12.1.
 
   talkies:
+    logging: *docker-logging
     profiles: ["talkies"]
-    image: psyb0t/talkies:v0.10.0
+    image: psyb0t/talkies:0.12.1
     restart: unless-stopped
     mem_limit: ${TALKIES_MEM_LIMIT:-8g}
     memswap_limit: ${TALKIES_MEMSWAP_LIMIT:-16g}
     cpus: ${TALKIES_CPUS:-4.0}
     environment:
       TALKIES_DEVICE: cpu
+      # Direct nginx access is authenticated by Talkies itself. Health remains
+      # intentionally unauthenticated so Docker can probe it.
+      TALKIES_AUTH_TOKEN: ${TALKIES_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-talkies}}
       TALKIES_MODEL_TTL: ${TALKIES_MODEL_TTL:-10m}
       TALKIES_SWEEPER_INTERVAL: ${TALKIES_SWEEPER_INTERVAL:-1m}
       TALKIES_LOAD_TIMEOUT: ${TALKIES_LOAD_TIMEOUT:-5m}
       TALKIES_MAX_UPLOAD_BYTES: ${TALKIES_MAX_UPLOAD_BYTES:-104857600}
+      # Direct clients may submit remote file URLs. Keep private network targets
+      # blocked unless an operator explicitly opts out for a trusted deployment.
+      TALKIES_BLOCK_PRIVATE_DOWNLOADS: ${TALKIES_BLOCK_PRIVATE_DOWNLOADS:-true}
       TALKIES_LOG_LEVEL: ${TALKIES_LOG_LEVEL:-INFO}
       TALKIES_PRELOAD: ${TALKIES_PRELOAD:-}
       TALKIES_VAD_CHUNK_THRESHOLD: ${TALKIES_VAD_CHUNK_THRESHOLD:-30}
       TALKIES_VAD_MAX_SPEECH: ${TALKIES_VAD_MAX_SPEECH:-28}
+      TALKIES_STREAM_MAX_CONNECTIONS: ${TALKIES_STREAM_MAX_CONNECTIONS:-4}
+      TALKIES_STREAM_MAX_FRAME_BYTES: ${TALKIES_STREAM_MAX_FRAME_BYTES:-65536}
+      TALKIES_STREAM_MAX_BUFFER_SECONDS: ${TALKIES_STREAM_MAX_BUFFER_SECONDS:-5}
+      TALKIES_STREAM_IDLE_TIMEOUT: ${TALKIES_STREAM_IDLE_TIMEOUT:-30s}
+      TALKIES_STREAM_MAX_DURATION: ${TALKIES_STREAM_MAX_DURATION:-4h}
     volumes:
       # Single mount — host dir holds `hf/hub/models--*/` (HF cache) plus
       # `custom-voices/<name>.wav` (Qwen3-TTS reference voices, CUDA only).
@@ -662,25 +700,34 @@ services:
   # SALM), Kokoro-82M TTS (CPU-served), and Qwen3-TTS-0.6B (CUDA-only voice
   # cloning, 17 languages). Drop reference .wav files into
   # ${DATA_DIR_TALKIES}/custom-voices/ to make them selectable as
-  # `voice=<filename-without-ext>`. Pinned to v0.9.0-cuda.
+  # `voice=<filename-without-ext>`. Pinned to v0.12.1-cuda.
 
   talkies-cuda:
+    logging: *docker-logging
     profiles: ["talkies-cuda"]
-    image: psyb0t/talkies:v0.10.0-cuda
+    image: psyb0t/talkies:0.12.1-cuda
     restart: unless-stopped
     mem_limit: ${TALKIES_CUDA_MEM_LIMIT:-12g}
     memswap_limit: ${TALKIES_CUDA_MEMSWAP_LIMIT:-24g}
     cpus: ${TALKIES_CUDA_CPUS:-4.0}
     environment:
       TALKIES_DEVICE: cuda
+      TALKIES_AUTH_TOKEN: ${TALKIES_CUDA_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-talkies-cuda}}
       TALKIES_MODEL_TTL: ${TALKIES_CUDA_MODEL_TTL:-10m}
       TALKIES_SWEEPER_INTERVAL: ${TALKIES_CUDA_SWEEPER_INTERVAL:-1m}
       TALKIES_LOAD_TIMEOUT: ${TALKIES_CUDA_LOAD_TIMEOUT:-5m}
       TALKIES_MAX_UPLOAD_BYTES: ${TALKIES_CUDA_MAX_UPLOAD_BYTES:-104857600}
+      TALKIES_BLOCK_PRIVATE_DOWNLOADS: ${TALKIES_CUDA_BLOCK_PRIVATE_DOWNLOADS:-true}
       TALKIES_LOG_LEVEL: ${TALKIES_CUDA_LOG_LEVEL:-INFO}
       TALKIES_PRELOAD: ${TALKIES_CUDA_PRELOAD:-}
       TALKIES_VAD_CHUNK_THRESHOLD: ${TALKIES_CUDA_VAD_CHUNK_THRESHOLD:-30}
       TALKIES_VAD_MAX_SPEECH: ${TALKIES_CUDA_VAD_MAX_SPEECH:-28}
+      TALKIES_STREAM_MAX_CONNECTIONS: ${TALKIES_CUDA_STREAM_MAX_CONNECTIONS:-4}
+      TALKIES_STREAM_MAX_FRAME_BYTES: ${TALKIES_CUDA_STREAM_MAX_FRAME_BYTES:-65536}
+      TALKIES_STREAM_MAX_BUFFER_SECONDS: ${TALKIES_CUDA_STREAM_MAX_BUFFER_SECONDS:-5}
+      TALKIES_STREAM_IDLE_TIMEOUT: ${TALKIES_CUDA_STREAM_IDLE_TIMEOUT:-30s}
+      TALKIES_STREAM_MAX_DURATION: ${TALKIES_CUDA_STREAM_MAX_DURATION:-4h}
+      TALKIES_QWEN3_STREAM_CHUNK_SIZE: ${TALKIES_CUDA_QWEN3_STREAM_CHUNK_SIZE:-${TALKIES_QWEN3_STREAM_CHUNK_SIZE:-8}}
     volumes:
       # Single mount — host dir holds `hf/hub/models--*/` (HF cache) plus
       # `custom-voices/<name>.wav` (Qwen3-TTS reference voices). Drop your
@@ -709,6 +756,7 @@ services:
   # ── Ollama (local inference) ─────────────────────────────────────────────────
 
   ollama:
+    logging: *docker-logging
     profiles: ["ollama"]
     image: ollama/ollama:0.20.7
     restart: unless-stopped
@@ -726,6 +774,7 @@ services:
       - aigate-public
 
   ollama-pull:
+    logging: *docker-logging
     profiles: ["ollama", "ollama-cuda"]
     image: ollama/ollama:0.20.7
     restart: on-failure
@@ -791,6 +840,7 @@ services:
   # ── Ollama CUDA (NVIDIA, local inference) ────────────────────────────────────
 
   ollama-cuda:
+    logging: *docker-logging
     profiles: ["ollama-cuda"]
     image: ollama/ollama:0.20.7
     restart: unless-stopped
@@ -820,6 +870,7 @@ services:
   # ── sd.cpp (local image generation — FLUX.1-schnell) ────────────────────────
 
   sdcpp:
+    logging: *docker-logging
     profiles: ["sdcpp"]
     build:
       context: ./sdcpp
@@ -853,6 +904,7 @@ services:
       - aigate-internal
 
   sdcpp-cuda:
+    logging: *docker-logging
     profiles: ["sdcpp-cuda"]
     build:
       context: ./sdcpp
@@ -893,6 +945,7 @@ services:
       - aigate-internal
 
   sdcpp-pull:
+    logging: *docker-logging
     profiles: ["sdcpp", "sdcpp-cuda"]
     image: alpine:3.21
     restart: "no"
@@ -958,6 +1011,7 @@ services:
   # device-tuned vllm_args.
 
   vllm:
+    logging: *docker-logging
     profiles: ["vllm"]
     build:
       context: ./vllm
@@ -992,6 +1046,7 @@ services:
       - aigate-internal
 
   vllm-cuda:
+    logging: *docker-logging
     profiles: ["vllm-cuda"]
     build:
       context: ./vllm
@@ -1032,6 +1087,7 @@ services:
       - aigate-internal
 
   vllm-pull:
+    logging: *docker-logging
     profiles: ["vllm", "vllm-cuda"]
     image: python:3.12-slim-bookworm@sha256:d193c6f51a7dbd10395d6328de3a7edb0516fb0608ca138036576f574c3e07d2
     restart: "no"
@@ -1076,6 +1132,7 @@ services:
   # wrapper never touches the network at runtime.
 
   llamacpp:
+    logging: *docker-logging
     profiles: ["llamacpp"]
     build:
       context: ./llamacpp
@@ -1114,6 +1171,7 @@ services:
       - aigate-internal
 
   llamacpp-cuda:
+    logging: *docker-logging
     profiles: ["llamacpp-cuda"]
     build:
       context: ./llamacpp
@@ -1171,6 +1229,7 @@ services:
   # and llamacpp/models.cuda.json — bind-mounted read-only so adding a new
   # model to either registry auto-extends the pull on next `up`.
   llamacpp-pull:
+    logging: *docker-logging
     profiles: ["llamacpp", "llamacpp-cuda"]
     image: python:3.12-slim-bookworm@sha256:d193c6f51a7dbd10395d6328de3a7edb0516fb0608ca138036576f574c3e07d2
     restart: "no"
@@ -1242,6 +1301,7 @@ services:
   # auth gated against AIGATE_TOKEN).
 
   piston:
+    logging: *docker-logging
     profiles: ["piston"]
     # Custom pre-baked image: upstream piston + every language in
     # PISTON_LANGUAGES installed at BUILD time so the runtime container can
@@ -1292,12 +1352,14 @@ services:
   # ── MCP tools (image generation + TTS, extensible) ─────────────────────────
 
   mcp:
+    logging: *docker-logging
     profiles: ["mcp"]
     build: ./mcp
     restart: unless-stopped
     mem_limit: ${MCP_MEM_LIMIT:-256m}
     memswap_limit: ${MCP_MEMSWAP_LIMIT:-512m}
     cpus: ${MCP_CPUS:-0.5}
+    pids_limit: ${MCP_PIDS_LIMIT:-128}
     environment:
       LITELLM_URL: http://litellm:4000
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-${AIGATE_TOKEN}}
@@ -1321,6 +1383,8 @@ services:
       # aigate-internal, talkies-* containers are on aigate-internal).
       TALKIES_URL: ${MCP_TALKIES_URL:-http://talkies:8000}
       TALKIES_CUDA_URL: ${MCP_TALKIES_CUDA_URL:-http://talkies-cuda:8000}
+      TALKIES_AUTH_TOKEN: ${TALKIES_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-talkies}}
+      TALKIES_CUDA_AUTH_TOKEN: ${TALKIES_CUDA_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-talkies-cuda}}
       # Bearer token used by /v1/unload/{cuda,cpu} to authenticate
       # against downstream services that gate their APIs (audiolla +
       # flickies both default to AIGATE_TOKEN if no service-specific
@@ -1344,6 +1408,12 @@ services:
       start_period: 60s
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    init: true
     networks:
       - aigate-internal
       - aigate-public
@@ -1351,6 +1421,7 @@ services:
   # ── LibreChat (web UI for LLM interaction) ──────────────────────────────────
 
   librechat-mongodb:
+    logging: *docker-logging
     profiles: ["librechat"]
     image: mongo:8.0.20
     restart: unless-stopped
@@ -1372,6 +1443,7 @@ services:
       - aigate-internal
 
   librechat:
+    logging: *docker-logging
     profiles: ["librechat"]
     image: ghcr.io/danny-avila/librechat:v0.8.4
     restart: unless-stopped
@@ -1421,6 +1493,7 @@ services:
   # ── proxq (async job queue proxy for LiteLLM) ──────────────────────────────
 
   proxq:
+    logging: *docker-logging
     image: psyb0t/proxq:v0.9.1
     restart: unless-stopped
     mem_limit: ${PROXQ_MEM_LIMIT:-256m}
@@ -1447,6 +1520,7 @@ services:
       - aigate-internal
 
   cloudflared:
+    logging: *docker-logging
     profiles: ["cloudflared"]
     build: ./cloudflared
     restart: unless-stopped
@@ -1464,6 +1538,7 @@ services:
   # ── SearXNG (self-hosted meta search engine) ─────────────────────────────────
 
   telethon:
+    logging: *docker-logging
     profiles: ["telethon"]
     image: psyb0t/telethon-plus:v0.2.0
     restart: unless-stopped
@@ -1494,6 +1569,7 @@ services:
   # mailbox — stateless IMAP+SMTP gateway. Config file holds plaintext creds +
   # bearer tokens, so MAILBOX_CONFIG must point at a gitignored YAML on the host.
   mailbox:
+    logging: *docker-logging
     profiles: ["mailbox"]
     image: psyb0t/mailbox:v0.3.0
     restart: unless-stopped
@@ -1523,6 +1599,7 @@ services:
       - aigate-public
 
   searxng:
+    logging: *docker-logging
     profiles: ["searxng"]
     image: searxng/searxng:2026.4.24-a7ac696b4
     restart: unless-stopped
@@ -1546,6 +1623,7 @@ services:
   # ── Tailscale (tailnet-only HTTP proxy to nginx) ─────────────────────────────
 
   tailscale:
+    logging: *docker-logging
     profiles: ["tailscale"]
     image: tailscale/tailscale:v1.82.0
     restart: unless-stopped
@@ -1712,6 +1790,58 @@ configs:
               proxy_set_header X-Forwarded-Proto $$scheme;
               proxy_read_timeout ${TIMEOUT_PREDICTALOT:-24h};
               proxy_send_timeout ${TIMEOUT_PREDICTALOT:-24h};
+              proxy_buffering off;
+              proxy_cache off;
+          }
+
+          # talkies — raw upstream API. Keep a disabled profile invisible
+          # instead of exposing a route which would fail against a missing
+          # container. Talkies owns bearer authentication (AIGATE_TOKEN by
+          # default) and accepts both HTTP and live-ASR WebSocket traffic.
+          location /talkies/ {
+              set $$talkies_enabled "${TALKIES:-0}";
+              if ($$talkies_enabled != "1") {
+                  return 404;
+              }
+              limit_req zone=talkies burst=${RATELIMIT_TALKIES_BURST:-20} nodelay;
+              client_max_body_size ${TALKIES_MAX_UPLOAD_BYTES:-104857600};
+              set $$upstream_talkies http://talkies:8000;
+              rewrite ^/talkies/(.*) /$$1 break;
+              proxy_pass $$upstream_talkies;
+              proxy_http_version 1.1;
+              proxy_set_header Upgrade $$http_upgrade;
+              proxy_set_header Connection $$talkies_connection;
+              proxy_set_header Host $$http_host;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_read_timeout ${TIMEOUT_TALKIES:-4h};
+              proxy_send_timeout ${TIMEOUT_TALKIES:-4h};
+              proxy_buffering off;
+              proxy_cache off;
+          }
+
+          # talkies-cuda — raw CUDA sibling. The profile gate is independent
+          # from CPU Talkies so CPU-only deployments never advertise GPU APIs.
+          location /talkies-cuda/ {
+              set $$talkies_cuda_enabled "${TALKIES_CUDA:-0}";
+              if ($$talkies_cuda_enabled != "1") {
+                  return 404;
+              }
+              limit_req zone=talkies_cuda burst=${RATELIMIT_TALKIES_CUDA_BURST:-20} nodelay;
+              client_max_body_size ${TALKIES_CUDA_MAX_UPLOAD_BYTES:-104857600};
+              set $$upstream_talkies_cuda http://talkies-cuda:8000;
+              rewrite ^/talkies-cuda/(.*) /$$1 break;
+              proxy_pass $$upstream_talkies_cuda;
+              proxy_http_version 1.1;
+              proxy_set_header Upgrade $$http_upgrade;
+              proxy_set_header Connection $$talkies_connection;
+              proxy_set_header Host $$http_host;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_read_timeout ${TIMEOUT_TALKIES_CUDA:-4h};
+              proxy_send_timeout ${TIMEOUT_TALKIES_CUDA:-4h};
               proxy_buffering off;
               proxy_cache off;
           }
@@ -2047,6 +2177,11 @@ configs:
 
       resolver 127.0.0.11 valid=10s ipv6=off;
 
+      map $$http_upgrade $$talkies_connection {
+          default upgrade;
+          '' close;
+      }
+
       limit_req_zone $$binary_remote_addr zone=admin:10m rate=${RATELIMIT_ADMIN:-30r/m};
       limit_req_zone $$binary_remote_addr zone=api:10m rate=${RATELIMIT_API:-500r/m};
       limit_req_zone $$binary_remote_addr zone=storage:10m rate=${RATELIMIT_STORAGE:-60r/m};
@@ -2058,6 +2193,8 @@ configs:
       limit_req_zone $$binary_remote_addr zone=telethon:10m rate=${RATELIMIT_TELETHON:-30r/m};
       limit_req_zone $$binary_remote_addr zone=predictalot:10m rate=${RATELIMIT_PREDICTALOT:-60r/m};
       limit_req_zone $$binary_remote_addr zone=predictalot_cuda:10m rate=${RATELIMIT_PREDICTALOT_CUDA:-60r/m};
+      limit_req_zone $$binary_remote_addr zone=talkies:10m rate=${RATELIMIT_TALKIES:-30r/m};
+      limit_req_zone $$binary_remote_addr zone=talkies_cuda:10m rate=${RATELIMIT_TALKIES_CUDA:-30r/m};
       limit_req_zone $$binary_remote_addr zone=audiolla:10m rate=${RATELIMIT_AUDIOLLA:-30r/m};
       limit_req_zone $$binary_remote_addr zone=audiolla_cuda:10m rate=${RATELIMIT_AUDIOLLA_CUDA:-30r/m};
       limit_req_zone $$binary_remote_addr zone=flickies:10m rate=${RATELIMIT_FLICKIES:-30r/m};

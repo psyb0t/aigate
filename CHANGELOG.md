@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented here.
 
+## [v3.16.0] — 2026-07-30
+
+**Upgrade Talkies to 0.12.1, expose its profile-gated native APIs, and repair the MCP image's incompatible SDK install.**
+
+### Added
+
+- `/talkies/*` and `/talkies-cuda/*` proxy the corresponding native Talkies APIs, including live-ASR WebSocket upgrades and unbuffered CUDA PCM streaming. Each route is available only while its matching profile is enabled; disabled routes return `404`.
+- Direct Talkies endpoints use the Aigate bearer token by default, with optional per-variant `TALKIES_AUTH_TOKEN` and `TALKIES_CUDA_AUTH_TOKEN` overrides. LiteLLM and MCP now send the same service credentials for mediated speech, voice listing, and model eviction calls.
+- Direct-route rate, timeout, private-download, and live-stream limit settings are documented in `.env.example` and the Talkies service guide.
+- Docker services now use bounded JSON log rotation (five 10 MB files) to prevent unbounded local log growth.
+
+### Fixed
+
+- Updated CPU and CUDA Talkies images to `0.12.1` and documented its newer model surface and streaming modes.
+- Pinned the MCP SDK to the compatible v1 API line (`mcp==1.28.1`), eliminating the `mcp.server.fastmcp` startup crash. The MCP dependency set is now hash-locked with a seven-day release-age cutoff, and the image installs it with hash verification.
+- Hardened the MCP image and service: digest-pinned base image, non-root runtime user, read-only filesystem, dropped capabilities, PID limit, `init`, and a restricted build context.
+
 ## [v3.15.8] — 2026-07-27
 
 **Fix the Codex subsection of `## Agent integrations`, which told readers to add the marketplace but never told them how to install the plugin.**

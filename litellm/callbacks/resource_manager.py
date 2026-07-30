@@ -278,6 +278,8 @@ def _sdcpp_key_for(model: str, group: str) -> tuple[str, str] | None:
 # upstream, also add it here so the resource_manager actually evicts it.
 _TALKIES_CUDA_URL = "http://talkies-cuda:8000"
 _TALKIES_CPU_URL = "http://talkies:8000"
+_TALKIES_AUTH_TOKEN = os.environ.get("TALKIES_AUTH_TOKEN", "")
+_TALKIES_CUDA_AUTH_TOKEN = os.environ.get("TALKIES_CUDA_AUTH_TOKEN", "")
 _TALKIES_CUDA_MODELS = [
     "whisper-large-v3",
     "whisper-large-v3-turbo",
@@ -304,16 +306,26 @@ _TALKIES_CPU_MODELS = [
 ]
 
 
-async def _unload_via_api_ps(base_url: str, group: str, model_ids: list) -> None:
+async def _unload_via_api_ps(
+    base_url: str,
+    group: str,
+    model_ids: list,
+    auth_token: str = "",
+) -> None:
     """Unload models from a service exposing DELETE /api/ps/{model_id}
     (talkies). Parallel — one slow upstream shouldn't block the other
     unloads.
     """
     async with httpx.AsyncClient(timeout=10.0) as client:
+        headers = {"Authorization": f"Bearer {auth_token}"} if auth_token else None
+
         async def _one(model_id: str) -> None:
             encoded = model_id.replace("/", "%2F")
             try:
-                r = await client.delete(f"{base_url}/api/ps/{encoded}")
+                r = await client.delete(
+                    f"{base_url}/api/ps/{encoded}",
+                    headers=headers,
+                )
                 if r.status_code == 200:
                     logger.warning(
                         "[resource_manager] %s: unloaded %s", group, model_id
@@ -343,7 +355,10 @@ async def _unload_cuda_stt_talkies():
     """Unload CUDA STT models from talkies-cuda to free VRAM."""
     logger.warning("[resource_manager] unloading cuda-stt-talkies models")
     await _unload_via_api_ps(
-        _TALKIES_CUDA_URL, "cuda-stt-talkies", _TALKIES_CUDA_MODELS
+        _TALKIES_CUDA_URL,
+        "cuda-stt-talkies",
+        _TALKIES_CUDA_MODELS,
+        _TALKIES_CUDA_AUTH_TOKEN,
     )
 
 
@@ -351,7 +366,10 @@ async def _unload_cpu_stt_talkies():
     """Unload CPU STT models from talkies to free RAM."""
     logger.warning("[resource_manager] unloading cpu-stt-talkies models")
     await _unload_via_api_ps(
-        _TALKIES_CPU_URL, "cpu-stt-talkies", _TALKIES_CPU_MODELS
+        _TALKIES_CPU_URL,
+        "cpu-stt-talkies",
+        _TALKIES_CPU_MODELS,
+        _TALKIES_AUTH_TOKEN,
     )
 
 

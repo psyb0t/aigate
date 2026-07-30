@@ -3,7 +3,27 @@
 > Profile flags: `TALKIES=1` (CPU) / `TALKIES_CUDA=1` (NVIDIA GPU).
 > One container, both endpoints: `/v1/audio/transcriptions` and `/v1/audio/speech`.
 
-External image: [`psyb0t/talkies`](https://github.com/psyb0t/docker-talkies) (pinned to `v0.9.0` / `v0.9.0-cuda`). CPU image ships **6 models** — four ASR (`whisper-large-v3`, `whisper-large-v3-turbo`, `canary-180m-flash`, `nemotron-3.5-asr-0.6b` via parakeet.cpp) plus two TTS (`kokoro-82m` PyTorch and `kokoro-82m-nvidia` ONNXRuntime). CUDA image ships **14 models** — adds Parakeet-TDT, Canary-1B-Flash, Canary-Qwen-2.5B SALM, and the full Qwen3-TTS line (Base 0.6B + Base 1.7B + CustomVoice 0.6B + CustomVoice 1.7B + VoiceDesign 1.7B). Kokoro stays CPU-bound in both images.
+External image: [`psyb0t/talkies`](https://github.com/psyb0t/docker-talkies) (pinned to `0.12.1` / `0.12.1-cuda`). CPU image ships **6 models** — four ASR (`whisper-large-v3`, `whisper-large-v3-turbo`, `canary-180m-flash`, `nemotron-3.5-asr-0.6b` via parakeet.cpp) plus two TTS (`kokoro-82m` PyTorch and `kokoro-82m-nvidia` ONNXRuntime). CUDA image ships **14 models** — adds Parakeet-TDT, Canary-1B-Flash, Canary-Qwen-2.5B SALM, and the full Qwen3-TTS line (Base 0.6B + Base 1.7B + CustomVoice 0.6B + CustomVoice 1.7B + VoiceDesign 1.7B). Kokoro stays CPU-bound in both images.
+
+## Direct API routes
+
+The direct routes preserve Talkies' raw API and model slugs; they do not pass through LiteLLM. Enable only the variant you need:
+
+| Profile | Gateway prefix | When disabled |
+|---|---|---|
+| `TALKIES=1` | `/talkies/` | nginx returns `404` |
+| `TALKIES_CUDA=1` | `/talkies-cuda/` | nginx returns `404` |
+
+Every route except `/healthz` requires `Authorization: Bearer $AIGATE_TOKEN` by default. `TALKIES_AUTH_TOKEN` and `TALKIES_CUDA_AUTH_TOKEN` optionally replace that shared key for the CPU and CUDA service respectively. The containers have no host port bindings; nginx is the only entry point.
+
+For example, query the CPU service without translating its upstream model slug:
+
+```bash
+curl http://localhost:4000/talkies/v1/models \
+  -H "Authorization: Bearer $AIGATE_TOKEN"
+```
+
+The existing `/v1/audio/transcriptions`, `/v1/audio/speech`, and `/v1/audio/voices` gateway paths retain their LiteLLM/MCP behavior and aliases. Use the direct paths when an application needs a Talkies-specific endpoint or transport behavior.
 
 ## Available models
 
@@ -104,6 +124,14 @@ OpenAI-extras (v0.8.0+) via `extra_body` on official SDKs, all Qwen3-TTS modes: 
 
 `response_format="pcm"` against any qwen3_tts model streams the raw PCM body via HTTP/1.1 chunked transfer-encoding — TTFA drops to ~200-700 ms vs ~3-8 s buffered. Tune chunk size via `TALKIES_QWEN3_STREAM_CHUNK_SIZE` (default `8` codec-steps-per-chunk).
 
+For the raw CUDA API, send the upstream slug directly to `/talkies-cuda/v1/audio/speech`; nginx does not buffer the PCM response.
+
+### Live ASR WebSocket streaming
+
+Talkies 0.12.1 adds live ASR at `ws://<gateway>/talkies/v1/audio/transcriptions/stream` (or `/talkies-cuda/...` for CUDA). Send the same bearer token in the WebSocket upgrade header, then a `start` JSON message naming a streaming-capable upstream slug such as `nemotron-3.5-asr-0.6b`, followed by binary PCM16LE, 16 kHz, mono frames. Talkies emits `ready`, `partial`, endpoint/final, and stats events according to its native protocol.
+
+The stream is intentionally distinct from multipart transcription: it accepts only PCM audio and has independently configurable connection, frame, rolling-buffer, idle, and duration limits. nginx forwards WebSocket upgrades and leaves HTTP PCM responses unbuffered.
+
 ## Behavior
 
 - **Lazy load + idle TTL unload** — weights download on first request, sit on disk in `${DATA_DIR_TALKIES}` (HF cache layout). A background sweeper unloads any model idle longer than `TALKIES_MODEL_TTL` (default `10m`); next request warm-reloads from disk.
@@ -113,18 +141,19 @@ OpenAI-extras (v0.8.0+) via `extra_body` on official SDKs, all Qwen3-TTS modes: 
 - **Audio preprocessing** — any container/codec is ffmpeg-converted to 16 kHz mono WAV before the backend sees it. Stereo `diarization=true` splits L/R into two mono streams, transcribes each, and time-interleaves the segments with channel tags.
 - **OpenAI parity** — every `response_format` returns the correct Content-Type body: `text/plain` for `text`, `application/x-subrip` for `srt`, `text/vtt` for `vtt`, `application/json` for `json` / `verbose_json`. `verbose_json` carries `text`, `language`, `duration`, `segments[{id,start,end,text,channel?,…}]`, `words[{word,start,end,channel?}]`.
 
-## Endpoints (internal — accessed through LiteLLM, not directly via nginx)
+## Direct endpoints
 
-| Endpoint | URL | Description |
+| Endpoint | CPU URL | CUDA URL | Description |
 |---|---|---|
-| Transcribe | `POST /v1/audio/transcriptions` | OpenAI-compatible multipart upload (`file`, `model`, `language`, `response_format`, `timestamp_granularities[]`, `diarization`). |
-| Speech | `POST /v1/audio/speech` | OpenAI-compatible TTS. JSON body with `model`, `input`, `voice`, `response_format` (`mp3`/`opus`/`aac`/`flac`/`wav`/`pcm`). |
-| List models | `GET /v1/models` | Configured model_ids |
-| List voices | `GET /v1/audio/voices` | Available voices per slug |
-| Loaded models | `GET /api/ps` | Currently loaded backends + `idle_seconds` |
-| Unload one | `DELETE /api/ps/{model_id}` | Evict one model (URL-encoded id) |
-| Unload all | `POST /unload` | Evict every loaded backend |
-| Health | `GET /healthz` | Liveness + device + configured model_ids |
+| Transcribe | `POST /talkies/v1/audio/transcriptions` | `POST /talkies-cuda/v1/audio/transcriptions` | OpenAI-compatible multipart upload using raw Talkies model slugs. |
+| Speech | `POST /talkies/v1/audio/speech` | `POST /talkies-cuda/v1/audio/speech` | TTS, including raw Qwen3 PCM streaming on CUDA. |
+| Live ASR | `WS /talkies/v1/audio/transcriptions/stream` | `WS /talkies-cuda/v1/audio/transcriptions/stream` | Bidirectional native Talkies PCM stream. |
+| List models | `GET /talkies/v1/models` | `GET /talkies-cuda/v1/models` | Configured model IDs. |
+| List voices | `GET /talkies/v1/audio/voices` | `GET /talkies-cuda/v1/audio/voices` | Available voices per slug. |
+| Loaded models | `GET /talkies/api/ps` | `GET /talkies-cuda/api/ps` | Currently loaded backends + `idle_seconds`. |
+| Unload one | `DELETE /talkies/api/ps/{model_id}` | `DELETE /talkies-cuda/api/ps/{model_id}` | Evict one model (URL-encoded ID). |
+| Unload all | `POST /talkies/unload` | `POST /talkies-cuda/unload` | Evict every loaded backend. |
+| Health | `GET /talkies/healthz` | `GET /talkies-cuda/healthz` | Liveness + device + configured model IDs; no bearer token. |
 
 ## Configuration
 
@@ -138,7 +167,15 @@ OpenAI-extras (v0.8.0+) via `extra_body` on official SDKs, all Qwen3-TTS modes: 
 | `TALKIES_PRELOAD` / `TALKIES_CUDA_PRELOAD` | _empty_ | Comma-separated model_ids to load at boot |
 | `TALKIES_VAD_CHUNK_THRESHOLD` / `TALKIES_CUDA_VAD_CHUNK_THRESHOLD` | `30` | Audio length (seconds) above which VAD chunking kicks in |
 | `TALKIES_VAD_MAX_SPEECH` / `TALKIES_CUDA_VAD_MAX_SPEECH` | `28` | Max chunk length fed to a single forward pass |
-| `TALKIES_QWEN3_STREAM_CHUNK_SIZE` | `8` | Qwen3-TTS PCM streaming chunk size (codec-steps-per-chunk) |
+| `TALKIES_AUTH_TOKEN` / `TALKIES_CUDA_AUTH_TOKEN` | `AIGATE_TOKEN` | Direct-route bearer token. Use a separate variant token only when needed. |
+| `TALKIES_BLOCK_PRIVATE_DOWNLOADS` / `TALKIES_CUDA_BLOCK_PRIVATE_DOWNLOADS` | `true` | Blocks private, loopback, link-local, multicast, and metadata `file_path` URL targets. Set `false` only for trusted callers that require private-network downloads. |
+| `TALKIES_STREAM_MAX_CONNECTIONS` / `TALKIES_CUDA_STREAM_MAX_CONNECTIONS` | `4` | Concurrent live-ASR WebSockets per service. |
+| `TALKIES_STREAM_MAX_FRAME_BYTES` / `TALKIES_CUDA_STREAM_MAX_FRAME_BYTES` | `65536` | Largest accepted binary PCM frame (2–16777216). |
+| `TALKIES_STREAM_MAX_BUFFER_SECONDS` / `TALKIES_CUDA_STREAM_MAX_BUFFER_SECONDS` | `5` | Rolling Whisper buffer length (0.1–300 seconds). |
+| `TALKIES_STREAM_IDLE_TIMEOUT` / `TALKIES_CUDA_STREAM_IDLE_TIMEOUT` | `30s` | Maximum wait between client messages. |
+| `TALKIES_STREAM_MAX_DURATION` / `TALKIES_CUDA_STREAM_MAX_DURATION` | `4h` | Maximum accepted PCM duration; keep it within the matching nginx timeout. |
+| `TALKIES_CUDA_QWEN3_STREAM_CHUNK_SIZE` | `8` | Qwen3-TTS PCM streaming chunk size (codec steps per chunk). `TALKIES_QWEN3_STREAM_CHUNK_SIZE` remains a backward-compatible fallback. |
+| `TIMEOUT_TALKIES` / `TIMEOUT_TALKIES_CUDA` | `4h` | nginx direct-route read/send timeout for HTTP and WebSocket streams. |
 | `TALKIES_MEM_LIMIT` / `TALKIES_CUDA_MEM_LIMIT` | `8g` / `12g` | Container memory limit |
 | `TALKIES_CPUS` / `TALKIES_CUDA_CPUS` | `4.0` | Container CPU limit |
 | `DATA_DIR_TALKIES` | `${DATA_DIR}/talkies` | Bind-mount root for talkies' `/data` dir. Contains `hf/hub/models--*/` (HF cache, shared by CPU + CUDA) and — for CUDA — `custom-voices/<name>.wav` (Qwen3-TTS reference voices). |
