@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## [v3.16.2] — 2026-07-31
+
+**Mirror to GitLab only; Gitee is disabled until the account can publish.**
+
+### Changed
+
+- `git-mirror.yml` now enables GitLab only. Gitee requires a mobile number bound to the account before any repository can be public, and instead of refusing a public create it silently makes the repository private — so the mirror ran green while the result was visible to nobody. Re-enable `gitee_enabled` once the account is verified.
+
 ## [v3.16.1] — 2026-07-31
 
 **Mirror the repository to GitLab and Gitee on every push.**
