@@ -1,0 +1,20 @@
+name: git-mirror
+
+# Kept separate from pipeline.yml on purpose. The mirror has to see every branch
+# and every tag, while pipeline.yml is tag-only and its publish-to-clawhub job
+# carries no ref guard -- widening that trigger would publish to ClawHub on
+# every branch push.
+on:
+  push:
+    branches: ["**"]
+    tags: ["**"]
+
+jobs:
+  git-mirror:
+    uses: psyb0t/reusable-github-workflows/.github/workflows/git-mirror.yml@master
+    with:
+      gitlab_enabled: true
+      gitee_enabled: true
+    secrets:
+      gitlab_token: ${{ secrets.GITLAB_TOKEN }}
+      gitee_token: ${{ secrets.GITEE_TOKEN }}

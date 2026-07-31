@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here.
 
+## [v3.16.1] — 2026-07-31
+
+**Mirror the repository to GitLab and Gitee on every push.**
+
+### Added
+
+- `.github/workflows/git-mirror.yml` — push-mirrors every branch and tag to GitLab and Gitee, creating the repo on each if it does not exist yet and syncing the GitHub description (and topics, on GitLab). Read-only copies: the push is forced and refs deleted here are deleted there.
+- Kept as its own workflow rather than a job in `pipeline.yml`, because the mirror needs to run on every branch push while `pipeline.yml` is tag-only and its `publish-to-clawhub` job has no ref guard — widening that trigger would publish to ClawHub on every branch push.
+
 ## [v3.16.0] — 2026-07-30
 
 **Upgrade Talkies to 0.12.1, expose its profile-gated native APIs, and repair the MCP image's incompatible SDK install.**
