@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here.
 
+## [v3.17.0] — 2026-07-31
+
+**Bump talkies to v0.13.2 and register its five new streaming ASR models on both the CPU and CUDA variants.**
+
+### Added
+
+- Ten new transcription aliases — the five models talkies bundled in its v0.13.0 registries, wired up for both variants:
+  - `local-talkies-sherpa-zipformer-en-left-64` / `-left-128` and their `-int8-` counterparts (k2-fsa Sherpa-ONNX Zipformer, English). The `int8` builds are quantized (smaller and faster, slightly lower accuracy); `left-64` vs `left-128` sets the attention left-context window.
+  - `local-talkies-vosk-small-en-us-0.15` (Vosk small English) — the smallest-footprint option.
+  - Same five again under the `local-talkies-cuda-` prefix. The CUDA image installs a hash-verified upstream Sherpa CUDA wheel, so these use its CUDA execution provider there instead of falling back to CPU.
+- All five support both native live ASR over the streaming WebSocket and `POST /v1/audio/transcriptions`; the file route feeds normalized audio through a short-lived native stream.
+
+### Changed
+
+- `psyb0t/talkies:0.12.1` → `v0.13.2` (and `0.12.1-cuda` → `v0.13.2-cuda`). Note the upstream tag naming gained a `v` prefix — the unprefixed `0.13.2` tags do not exist.
+- CPU image now ships 11 models (was 6), CUDA 19 (was 14). README, `docs/providers.md`, and `docs/services/talkies.md` updated with the new counts, aliases, and version strings.
+- Upstream v0.13.1 and v0.13.2 are documentation and CI-only releases with no service behavior change; the functional change in this bump is entirely v0.13.0.
+
 ## [v3.16.2] — 2026-07-31
 
 **Mirror to GitLab only; Gitee is disabled until the account can publish.**

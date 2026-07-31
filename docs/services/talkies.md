@@ -3,7 +3,7 @@
 > Profile flags: `TALKIES=1` (CPU) / `TALKIES_CUDA=1` (NVIDIA GPU).
 > One container, both endpoints: `/v1/audio/transcriptions` and `/v1/audio/speech`.
 
-External image: [`psyb0t/talkies`](https://github.com/psyb0t/docker-talkies) (pinned to `0.12.1` / `0.12.1-cuda`). CPU image ships **6 models** — four ASR (`whisper-large-v3`, `whisper-large-v3-turbo`, `canary-180m-flash`, `nemotron-3.5-asr-0.6b` via parakeet.cpp) plus two TTS (`kokoro-82m` PyTorch and `kokoro-82m-nvidia` ONNXRuntime). CUDA image ships **14 models** — adds Parakeet-TDT, Canary-1B-Flash, Canary-Qwen-2.5B SALM, and the full Qwen3-TTS line (Base 0.6B + Base 1.7B + CustomVoice 0.6B + CustomVoice 1.7B + VoiceDesign 1.7B). Kokoro stays CPU-bound in both images.
+External image: [`psyb0t/talkies`](https://github.com/psyb0t/docker-talkies) (pinned to `v0.13.2` / `v0.13.2-cuda`). CPU image ships **11 models** — nine ASR (`whisper-large-v3`, `whisper-large-v3-turbo`, `canary-180m-flash`, `nemotron-3.5-asr-0.6b` via parakeet.cpp, the four English Sherpa-ONNX Zipformer variants `sherpa-zipformer-en-left-64` / `-left-128` / `-int8-left-64` / `-int8-left-128`, and `vosk-small-en-us-0.15`) plus two TTS (`kokoro-82m` PyTorch and `kokoro-82m-nvidia` ONNXRuntime). CUDA image ships **19 models** — adds Parakeet-TDT, Canary-1B-Flash, Canary-Qwen-2.5B SALM, and the full Qwen3-TTS line (Base 0.6B + Base 1.7B + CustomVoice 0.6B + CustomVoice 1.7B + VoiceDesign 1.7B). The Sherpa variants use the CUDA execution provider in the CUDA image; Kokoro stays CPU-bound in both images.
 
 ## Direct API routes
 
@@ -128,7 +128,7 @@ For the raw CUDA API, send the upstream slug directly to `/talkies-cuda/v1/audio
 
 ### Live ASR WebSocket streaming
 
-Talkies 0.12.1 adds live ASR at `ws://<gateway>/talkies/v1/audio/transcriptions/stream` (or `/talkies-cuda/...` for CUDA). Send the same bearer token in the WebSocket upgrade header, then a `start` JSON message naming a streaming-capable upstream slug such as `nemotron-3.5-asr-0.6b`, followed by binary PCM16LE, 16 kHz, mono frames. Talkies emits `ready`, `partial`, endpoint/final, and stats events according to its native protocol.
+Talkies v0.12.0 added live ASR at `ws://<gateway>/talkies/v1/audio/transcriptions/stream` (or `/talkies-cuda/...` for CUDA). Send the same bearer token in the WebSocket upgrade header, then a `start` JSON message naming a streaming-capable upstream slug such as `nemotron-3.5-asr-0.6b`, `sherpa-zipformer-en-left-64`, or `vosk-small-en-us-0.15`, followed by binary PCM16LE, 16 kHz, mono frames. Talkies emits `ready`, `partial`, endpoint/final, and stats events according to its native protocol.
 
 The stream is intentionally distinct from multipart transcription: it accepts only PCM audio and has independently configurable connection, frame, rolling-buffer, idle, and duration limits. nginx forwards WebSocket upgrades and leaves HTTP PCM responses unbuffered.
 

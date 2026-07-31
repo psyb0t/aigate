@@ -57,6 +57,51 @@
   model_info:
     mode: audio_transcription
 
+# New in talkies v0.13.0: English-only streaming ASR via Sherpa-ONNX
+# Zipformer and Vosk. The CUDA image ships a hash-verified upstream Sherpa
+# CUDA wheel, so these run on the GPU here rather than falling back to CPU.
+# The `int8` variants are quantized; `left-64`/`left-128` set the attention
+# left-context window.
+- model_name: local-talkies-cuda-sherpa-zipformer-en-left-64
+  litellm_params:
+    model: openai/sherpa-zipformer-en-left-64
+    api_base: http://talkies-cuda:8000/v1
+    api_key: os.environ/TALKIES_CUDA_AUTH_TOKEN
+  model_info:
+    mode: audio_transcription
+
+- model_name: local-talkies-cuda-sherpa-zipformer-en-left-128
+  litellm_params:
+    model: openai/sherpa-zipformer-en-left-128
+    api_base: http://talkies-cuda:8000/v1
+    api_key: os.environ/TALKIES_CUDA_AUTH_TOKEN
+  model_info:
+    mode: audio_transcription
+
+- model_name: local-talkies-cuda-sherpa-zipformer-en-int8-left-64
+  litellm_params:
+    model: openai/sherpa-zipformer-en-int8-left-64
+    api_base: http://talkies-cuda:8000/v1
+    api_key: os.environ/TALKIES_CUDA_AUTH_TOKEN
+  model_info:
+    mode: audio_transcription
+
+- model_name: local-talkies-cuda-sherpa-zipformer-en-int8-left-128
+  litellm_params:
+    model: openai/sherpa-zipformer-en-int8-left-128
+    api_base: http://talkies-cuda:8000/v1
+    api_key: os.environ/TALKIES_CUDA_AUTH_TOKEN
+  model_info:
+    mode: audio_transcription
+
+- model_name: local-talkies-cuda-vosk-small-en-us-0.15
+  litellm_params:
+    model: openai/vosk-small-en-us-0.15
+    api_base: http://talkies-cuda:8000/v1
+    api_key: os.environ/TALKIES_CUDA_AUTH_TOKEN
+  model_info:
+    mode: audio_transcription
+
 # Kokoro TTS shares the same talkies-cuda container as of v0.3.0 —
 # `POST /v1/audio/speech` routed to the same upstream.
 - model_name: local-talkies-cuda-kokoro-tts
