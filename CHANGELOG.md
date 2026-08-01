@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented here.
 
+## [v3.17.1] — 2026-08-01
+
+**Infrastructure only — no code in this repository changed. Every commit in
+this release touches `.github/workflows/`.**
+
+### Changed
+
+- The pipeline was split so that building and publishing stay in
+  `pipeline.yml`, and everything that leaves the host lives beside it in
+  `mirror-and-archive.yml` (replacing the separate `git-mirror.yml` and
+  `archive.yml`).
+- The repository is now mirrored to Codeberg as well as GitLab.
+- It is archived to the Wayback Machine, Software Heritage, and archive.org.
+- Pull requests are switched off on both mirrors. The mirrors are force-pushed
+  from GitHub, so anything merged on one would be destroyed by the next sync.
+  Issues and forking stay enabled.
+
+### Added
+
+- `issue-pull.yml`: issues opened on either mirror are copied back to GitHub
+  every six hours, and the GitHub copy is closed when the original closes.
+
 ## [v3.17.0] — 2026-07-31
 
 **Bump talkies to v0.13.2 and register its five new streaming ASR models on both the CPU and CUDA variants.**
