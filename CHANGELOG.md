@@ -2,6 +2,35 @@
 
 All notable changes to this project are documented here.
 
+## [v3.17.2] — 2026-08-02
+
+**Bump talkies v0.13.2 → v0.13.3. Image-tag bump only — no aigate-side config
+change. The upstream release fixes Sherpa-ONNX word output, which affects the
+five `sherpa-*` and `vosk-*` transcription aliases registered here.**
+
+### Changed
+
+- `psyb0t/talkies:v0.13.2` → `v0.13.3` (and `-cuda`).
+
+### Fixed upstream
+
+These are talkies fixes that change what the `local-talkies-*-sherpa-*` aliases
+return through `/v1/audio/transcriptions`; no aigate configuration changed.
+
+- Sherpa models returned `"words": []` on every request. The upstream adapter
+  read token and timestamp data off a plain string, so word-level output was
+  always empty regardless of what the caller asked for. Sherpa aliases now
+  return populated `words`.
+- Sherpa word entries were subword fragments rather than words — transducer
+  tokens are BPE pieces, so `"QUICK"` came back as `QUI` + `CK`. Tokens are now
+  reassembled into words.
+- Sherpa words now carry a per-word `confidence` in the 0–1 range, matching the
+  field the Vosk aliases already returned.
+- File transcription through a Sherpa alias duplicated text: a nine-word clip
+  came back with the transcript repeated three times as the decoder's cumulative
+  revisions were concatenated. Fixed upstream; live WebSocket streaming was never
+  affected.
+
 ## [v3.17.1] — 2026-08-01
 
 **Infrastructure only — no code in this repository changed. Every commit in
