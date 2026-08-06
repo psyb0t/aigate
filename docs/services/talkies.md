@@ -3,7 +3,7 @@
 > Profile flags: `TALKIES=1` (CPU) / `TALKIES_CUDA=1` (NVIDIA GPU).
 > One container, both endpoints: `/v1/audio/transcriptions` and `/v1/audio/speech`.
 
-External image: [`psyb0t/talkies`](https://github.com/psyb0t/docker-talkies) (pinned to `v0.13.3` / `v0.13.3-cuda`). CPU image ships **11 models** — nine ASR (`whisper-large-v3`, `whisper-large-v3-turbo`, `canary-180m-flash`, `nemotron-3.5-asr-0.6b` via parakeet.cpp, the four English Sherpa-ONNX Zipformer variants `sherpa-zipformer-en-left-64` / `-left-128` / `-int8-left-64` / `-int8-left-128`, and `vosk-small-en-us-0.15`) plus two TTS (`kokoro-82m` PyTorch and `kokoro-82m-nvidia` ONNXRuntime). CUDA image ships **19 models** — adds Parakeet-TDT, Canary-1B-Flash, Canary-Qwen-2.5B SALM, and the full Qwen3-TTS line (Base 0.6B + Base 1.7B + CustomVoice 0.6B + CustomVoice 1.7B + VoiceDesign 1.7B). The Sherpa variants use the CUDA execution provider in the CUDA image; Kokoro stays CPU-bound in both images.
+External image: [`psyb0t/talkies`](https://github.com/psyb0t/docker-talkies) (pinned to `v0.14.0` / `v0.14.0-cuda`). CPU image ships **11 models** — nine ASR (`whisper-large-v3`, `whisper-large-v3-turbo`, `canary-180m-flash`, `nemotron-3.5-asr-0.6b` via parakeet.cpp, the four English Sherpa-ONNX Zipformer variants `sherpa-zipformer-en-left-64` / `-left-128` / `-int8-left-64` / `-int8-left-128`, and `vosk-small-en-us-0.15`) plus two TTS (`kokoro-82m` PyTorch and `kokoro-82m-nvidia` ONNXRuntime). CUDA image ships **19 models** — adds Parakeet-TDT, Canary-1B-Flash, Canary-Qwen-2.5B SALM, and the full Qwen3-TTS line (Base 0.6B + Base 1.7B + CustomVoice 0.6B + CustomVoice 1.7B + VoiceDesign 1.7B). The Sherpa variants use the CUDA execution provider in the CUDA image; Kokoro stays CPU-bound in both images.
 
 ## Direct API routes
 
@@ -34,7 +34,7 @@ The existing `/v1/audio/transcriptions`, `/v1/audio/speech`, and `/v1/audio/voic
 | `local-talkies-whisper-large-v3` | Systran/faster-whisper-large-v3 | multilingual | highest accuracy |
 | `local-talkies-whisper-large-v3-turbo` | deepdml/faster-whisper-large-v3-turbo-ct2 | multilingual | ~8× faster than large-v3 |
 | `local-talkies-canary-180m-flash` | nvidia/canary-180m-flash | English | FastConformer encoder |
-| `local-talkies-nemotron-3.5-asr-0.6b` | nvidia/Nemotron-3.5-ASR-Streaming-0.6B (parakeet.cpp) | 40+ locales | OpenMDW-1.1, per-word timestamps + confidence, WER-0 vs NeMo. C++17/ggml backend; CPU-only in both images at this stage. Operators can register additional parakeet.cpp checkpoints (any Parakeet TDT/CTC/RNNT GGUF in [mudler/parakeet-cpp-gguf](https://huggingface.co/mudler/parakeet-cpp-gguf)) via a custom `models.json`. |
+| `local-talkies-nemotron-3.5-asr-0.6b` | nvidia/Nemotron-3.5-ASR-Streaming-0.6B (parakeet.cpp) | 40+ locales | OpenMDW-1.1, per-word timestamps + confidence, WER-0 vs NeMo. C++17/ggml backend; CPU in the CPU image, GPU-accelerated in the CUDA image as of talkies v0.14.0 (which ships the upstream parakeet.cpp CUDA build). Operators can register additional parakeet.cpp checkpoints (any Parakeet TDT/CTC/RNNT GGUF in [mudler/parakeet-cpp-gguf](https://huggingface.co/mudler/parakeet-cpp-gguf)) via a custom `models.json`. |
 | `local-talkies-cuda-parakeet-tdt-0.6b-v3` | nvidia/parakeet-tdt-0.6b-v3 | 25 European | NeMo RNNT |
 | `local-talkies-cuda-canary-1b-flash` | nvidia/canary-1b-flash | EN/DE/FR/ES + EN↔X translation | NeMo multitask |
 | `local-talkies-cuda-canary-qwen-2.5b` | nvidia/canary-qwen-2.5b | English | NeMo SALM hybrid ASR+LLM (text-only; no per-word timestamps) |

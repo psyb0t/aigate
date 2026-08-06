@@ -2,6 +2,65 @@
 
 All notable changes to this project are documented here.
 
+## [v3.18.0] — 2026-08-04
+
+**Bump talkies v0.13.3 → v0.14.0 and expose its new per-model concurrency
+controls. Talkies transcription and speech now admit two simultaneous requests
+per model instead of one, and talkies no longer falls back to itself.**
+
+### Added
+
+- `TALKIES_MODEL_MAX_CONCURRENCY` / `TALKIES_CUDA_MODEL_MAX_CONCURRENCY`
+  (default `2`) — simultaneous inference requests allowed against a model.
+  Talkies keeps one model resident and evicts the others on admission, so this
+  caps concurrent requests against that single model, not how many models are
+  loaded. Cost is the weights, loaded once, plus one activation buffer per
+  in-flight request — which is what keeps the default at 2 rather than higher.
+- `TALKIES_MODEL_CONCURRENCY` / `TALKIES_CUDA_MODEL_CONCURRENCY` — per-slug
+  `slug=limit` overrides taking precedence over both the registry entry and the
+  global above. The CUDA variant ships defaults pinning every model at or above
+  roughly 4 GiB of weights back to `1`: `parakeet-tdt-0.6b-v3`,
+  `canary-1b-flash`, `canary-qwen-2.5b`, and the three 1.7B Qwen3-TTS variants.
+  A second activation buffer on top of those weights does not fit a 12 GiB card.
+- Talkies rejects requests above the limit with HTTP 429 immediately rather than
+  queueing, and returns 409 when a different model is mid-inference.
+  `GET /v1/models` now reports `max_concurrency` per model.
+
+  **A slug that is unknown or disabled in an image's registry fails that
+  container at startup**, and the CUDA registry carries models the CPU one does
+  not — so the two variants need separate override strings, never one shared
+  value.
+
+### Fixed
+
+- Talkies models no longer fall back to a sibling model on the **same**
+  container. Six chains in `litellm/config/fallbacks.json` listed one first —
+  `whisper-large-v3` → `whisper-large-v3-turbo` and the equivalents for the CUDA
+  variant and both TTS entries. Each talkies container serves one model at a
+  time and evicts the previous one on admission, so a sibling hop cannot find
+  spare capacity: it forces a model swap, and under retries that becomes
+  repeated eviction churn. Chains now route to the other talkies container
+  first, then to the cloud providers. CPU↔CUDA hops are kept — those are
+  genuinely independent processes.
+- Corrected the claim that Nemotron runs CPU-only inside the CUDA image, in
+  `README.md`, `docs/providers.md`, `docs/services/talkies.md`, and both talkies
+  provider fragments. As of talkies v0.14.0 the CUDA image ships the upstream
+  parakeet.cpp CUDA build instead of compiling a CPU-only library, so it is
+  GPU-accelerated there.
+- `.agents/skills/aigate/SKILL.md` listed the talkies backends without
+  Sherpa-ONNX or Vosk, which have been registered since v3.17.0.
+- Added `.gitleaks.toml` so secret scanning can run against the working tree.
+  Scanning in directory mode ignores `.gitignore`, so the config re-declares the
+  gitignored paths — chiefly `.data/`, which holds live service credentials and
+  several GiB of model cache that must never be committed or scanned.
+
+### Changed
+
+- `psyb0t/talkies:v0.13.3` → `v0.14.0` (and `-cuda`). Upstream also releases
+  native model contexts and clears Torch CUDA allocator caches on every unload
+  path, so evicting talkies now actually returns its VRAM — which is what the
+  resource manager depends on when it frees the GPU for another service.
+
 ## [v3.17.2] — 2026-08-02
 
 **Bump talkies v0.13.2 → v0.13.3. Image-tag bump only — no aigate-side config

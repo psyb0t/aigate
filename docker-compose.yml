@@ -651,7 +651,7 @@ services:
   talkies:
     logging: *docker-logging
     profiles: ["talkies"]
-    image: psyb0t/talkies:v0.13.3
+    image: psyb0t/talkies:v0.14.0
     restart: unless-stopped
     mem_limit: ${TALKIES_MEM_LIMIT:-8g}
     memswap_limit: ${TALKIES_MEMSWAP_LIMIT:-16g}
@@ -662,6 +662,11 @@ services:
       # intentionally unauthenticated so Docker can probe it.
       TALKIES_AUTH_TOKEN: ${TALKIES_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-talkies}}
       TALKIES_MODEL_TTL: ${TALKIES_MODEL_TTL:-10m}
+      # Talkies keeps ONE model resident and evicts siblings on admission, so
+      # this caps concurrent requests against that single model — not the
+      # number of models loaded. Cost is weights (loaded once) plus one
+      # activation buffer per in-flight request, which is what bounds it to 2.
+      TALKIES_MODEL_MAX_CONCURRENCY: ${TALKIES_MODEL_MAX_CONCURRENCY:-2}
       TALKIES_SWEEPER_INTERVAL: ${TALKIES_SWEEPER_INTERVAL:-1m}
       TALKIES_LOAD_TIMEOUT: ${TALKIES_LOAD_TIMEOUT:-5m}
       TALKIES_MAX_UPLOAD_BYTES: ${TALKIES_MAX_UPLOAD_BYTES:-104857600}
@@ -705,7 +710,7 @@ services:
   talkies-cuda:
     logging: *docker-logging
     profiles: ["talkies-cuda"]
-    image: psyb0t/talkies:v0.13.3-cuda
+    image: psyb0t/talkies:v0.14.0-cuda
     restart: unless-stopped
     mem_limit: ${TALKIES_CUDA_MEM_LIMIT:-12g}
     memswap_limit: ${TALKIES_CUDA_MEMSWAP_LIMIT:-24g}
@@ -714,6 +719,14 @@ services:
       TALKIES_DEVICE: cuda
       TALKIES_AUTH_TOKEN: ${TALKIES_CUDA_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-talkies-cuda}}
       TALKIES_MODEL_TTL: ${TALKIES_CUDA_MODEL_TTL:-10m}
+      # See the CPU variant for the sizing rationale. The global 2 only holds
+      # for models small enough to afford a second activation buffer on a
+      # 12 GiB card, so every model at or above ~4 GiB of weights is pinned
+      # back to 1 below. Slugs here must exist in models.json or the container
+      # refuses to start — the CUDA registry carries models the CPU one does
+      # not, which is why the two variants get different override strings.
+      TALKIES_MODEL_MAX_CONCURRENCY: ${TALKIES_CUDA_MODEL_MAX_CONCURRENCY:-2}
+      TALKIES_MODEL_CONCURRENCY: ${TALKIES_CUDA_MODEL_CONCURRENCY:-parakeet-tdt-0.6b-v3=1,canary-1b-flash=1,canary-qwen-2.5b=1,qwen3-tts-1.7b=1,qwen3-tts-1.7b-custom=1,qwen3-tts-1.7b-design=1}
       TALKIES_SWEEPER_INTERVAL: ${TALKIES_CUDA_SWEEPER_INTERVAL:-1m}
       TALKIES_LOAD_TIMEOUT: ${TALKIES_CUDA_LOAD_TIMEOUT:-5m}
       TALKIES_MAX_UPLOAD_BYTES: ${TALKIES_CUDA_MAX_UPLOAD_BYTES:-104857600}
