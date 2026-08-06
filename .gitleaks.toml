@@ -1,0 +1,41 @@
+title = "aigate secret scanning"
+
+[extend]
+useDefault = true
+
+# gitleaks `dir` mode scans the working tree and does NOT honour .gitignore, so
+# every gitignored path has to be named again here. Nothing listed below is
+# tracked by git — verified per entry with `git check-ignore` +
+# `git ls-files --error-unmatch`.
+#
+# `.data/` is the big one on both counts: it is the live runtime state of every
+# service (cloudflared credentials, agent OAuth tokens, model caches) and runs to
+# several GiB, so leaving it in means both guaranteed findings that can never be
+# committed and a scan slow enough that people start skipping the gate.
+#
+# `.data/` is the one entry here that is not purely untracked: `.gitignore` uses
+# `.data/**` plus `!` re-includes so the directory skeleton survives a fresh
+# clone. Every one of those tracked files is a 0-byte `.gitkeep` — checked, all
+# 23 of them — so excluding the tree cannot hide a secret. If a real file is ever
+# committed under `.data/`, narrow this pattern instead of widening it.
+[[allowlists]]
+description = "Gitignored local state, runtime data, caches, and scratch"
+paths = [
+  '''(^|/)\.env$''',
+  '''(^|/)\.env\.limits$''',
+  '''(^|/)\.data(?:/|$)''',
+  '''(^|/)\.research_files(?:/|$)''',
+  '''(^|/)\.custom_voices(?:/|$)''',
+  '''(^|/)\.telemetry(?:/|$)''',
+  '''(^|/)\.testing(?:/|$)''',
+  '''(^|/)\.secaudit(?:/|$)''',
+  '''(^|/)litellm/config\.yaml$''',
+  '''(^|/)git-update\.sh$''',
+  '''(^|/)CLAUDE\.md$''',
+  '''(^|/)AGENTS\.md$''',
+  '''(^|/)__pycache__(?:/|$)''',
+  '''(^|/)\.venv(?:/|$)''',
+  '''(^|/)\.mypy_cache(?:/|$)''',
+  '''(^|/)\.pytest_cache(?:/|$)''',
+  '''(^|/)\.ruff_cache(?:/|$)''',
+]

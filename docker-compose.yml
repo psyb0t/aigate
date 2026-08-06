@@ -1619,8 +1619,9 @@ services:
     mem_limit: ${SEARXNG_MEM_LIMIT:-512m}
     memswap_limit: ${SEARXNG_MEMSWAP_LIMIT:-1g}
     cpus: ${SEARXNG_CPUS:-0.5}
-    volumes:
-      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+    configs:
+      - source: searxng_config
+        target: /etc/searxng/settings.yml
     cap_drop:
       - ALL
     cap_add:
@@ -2214,6 +2215,40 @@ configs:
       limit_req_zone $$binary_remote_addr zone=flickies_cuda:10m rate=${RATELIMIT_FLICKIES_CUDA:-30r/m};
       limit_req_zone $$binary_remote_addr zone=mailbox:10m rate=${RATELIMIT_MAILBOX:-60r/m};
       limit_req_zone $$binary_remote_addr zone=piston:10m rate=${RATELIMIT_PISTON:-30r/m};
+
+  # Rendered here rather than bind-mounted from searxng/settings.yml so the
+  # signing key comes from .env instead of living in a tracked file. SearXNG
+  # refuses to start on the upstream "ultrasecretkey" placeholder, so
+  # SEARXNG_SECRET_KEY is required whenever SEARXNG=1.
+  searxng_config:
+    content: |
+      use_default_settings: true
+
+      server:
+        secret_key: "${SEARXNG_SECRET_KEY:-ultrasecretkey}"
+        # Per-IP rate limiting is handled by nginx upstream
+        limiter: false
+        image_proxy: false
+
+      search:
+        # JSON format is what the MCP search_web tool consumes
+        formats:
+          - html
+          - json
+
+      engines:
+        - name: google
+          engine: google
+          disabled: false
+        - name: bing
+          engine: bing
+          disabled: false
+        - name: duckduckgo
+          engine: duckduckgo
+          disabled: false
+        - name: wikipedia
+          engine: wikipedia
+          disabled: false
 
   proxq_config:
     content: |

@@ -20,7 +20,9 @@ Also exposed to the MCP `search_web` tool — when `SEARXNG=1`, the MCP tools se
 | `SEARXNG_MEMSWAP_LIMIT`   | `512m`      | Container memory + swap limit        |
 | `SEARXNG_CPUS`            | `0.5`       | CPU limit                            |
 
-Settings are in `searxng/settings.yml` (mounted read-only into the container). The default config enables HTML and JSON output formats and activates Google, Bing, DuckDuckGo, and Wikipedia engines with no rate limiter.
+Settings render from the `searxng_config` entry in the `configs:` block of `docker-compose.yml` and mount at `/etc/searxng/settings.yml`. HTML and JSON output formats are both enabled — the MCP `search_web` tool consumes the JSON one — with Google, Bing, DuckDuckGo, and Wikipedia active and SearXNG's own limiter off, since nginx rate-limits upstream.
+
+`SEARXNG_SECRET_KEY` signs SearXNG's session and preference state. It is read from `.env` rather than a tracked file; generate one with `openssl rand -hex 32`. Without it the service falls back to the upstream placeholder and refuses to start.
 
 ---
 

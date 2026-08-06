@@ -1,0 +1,23 @@
+# Per-finding suppressions for the secret scan.
+#
+# Fingerprints, NOT paths. Ignoring `tests/` wholesale would hide a real
+# credential in the test suite forever; each line here pins one exact
+# file:rule:line, so anything else in the same file still fails the gate — and
+# if one of these lines moves, its fingerprint stops matching and the finding
+# comes back for re-review rather than staying silently suppressed.
+#
+# All of these are deliberately-invalid tokens in negative auth tests that
+# assert a bad bearer returns 401/403. Verified individually:
+#   wrong-key / definitely-not-the-real-token / totally-fake-garbage-token /
+#   fake-ssrf-attempt / fake-hijack-attempt
+#
+# Paths carry the /repo prefix because the scan runs against a bind mount at
+# /repo (see git-update.sh) — fingerprints include the scanned path.
+/repo/tests/test_mcp.sh:curl-auth-header:111
+/repo/tests/test_hybrids3.sh:curl-auth-header:92
+/repo/tests/test_piston.sh:curl-auth-header:36
+/repo/tests/test_security.sh:curl-auth-header:34
+/repo/tests/test_security.sh:curl-auth-header:49
+/repo/tests/test_security.sh:curl-auth-header:223
+/repo/tests/test_security.sh:curl-auth-header:260
+/repo/tests/test_security.sh:curl-auth-header:667

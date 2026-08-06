@@ -49,10 +49,24 @@ per model instead of one, and talkies no longer falls back to itself.**
   GPU-accelerated there.
 - `.agents/skills/aigate/SKILL.md` listed the talkies backends without
   Sherpa-ONNX or Vosk, which have been registered since v3.17.0.
+- **SearXNG's `secret_key` was hardcoded in the tracked `searxng/settings.yml`.**
+  It is now generated per deployment and read from `SEARXNG_SECRET_KEY` in
+  `.env`. `searxng/settings.yml` is deleted; the settings render from a
+  `searxng_config` entry in the `configs:` block, the same way `proxq_config`
+  already sources `${REDIS_PASSWORD}`. Set `SEARXNG_SECRET_KEY` when `SEARXNG=1`
+  — `openssl rand -hex 32` — or SearXNG starts on the upstream placeholder.
+  Exposure was limited: `/searxng/` sits behind nginx admin auth, the container
+  publishes no host ports, and `limiter: false` means the key was not gating
+  rate limits. The previous value remains in git history.
 - Added `.gitleaks.toml` so secret scanning can run against the working tree.
   Scanning in directory mode ignores `.gitignore`, so the config re-declares the
   gitignored paths — chiefly `.data/`, which holds live service credentials and
   several GiB of model cache that must never be committed or scanned.
+- Added `.gitleaksignore` pinning the eight deliberately-invalid bearer tokens
+  in the negative auth tests under `tests/`. These are suppressed by
+  per-finding fingerprint rather than by path, so any other secret in those same
+  files still fails the scan, and a suppressed line that moves resurfaces for
+  review instead of staying silently ignored.
 
 ### Changed
 

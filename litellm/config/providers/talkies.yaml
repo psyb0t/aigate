@@ -23,8 +23,8 @@
     mode: audio_transcription
 
 # New in talkies v0.9.0: multilingual ASR via parakeet.cpp (NVIDIA
-# Nemotron-3.5-ASR-Streaming-0.6B, OpenMDW-1.1, 40+ locales). Runs
-# CPU-only in both images.
+# Nemotron-3.5-ASR-Streaming-0.6B, OpenMDW-1.1, 40+ locales). CPU here; the
+# CUDA variant is GPU-accelerated as of talkies v0.14.0.
 - model_name: local-talkies-nemotron-3.5-asr-0.6b
   litellm_params:
     model: openai/nemotron-3.5-asr-0.6b
