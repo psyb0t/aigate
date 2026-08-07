@@ -231,7 +231,7 @@ Requires `nvidia-container-toolkit`. Flash attention + quantized KV cache enable
 
 ## talkies CPU (local — `TALKIES=1`)
 
-Unified OpenAI-compatible speech service via [`psyb0t/talkies:v0.14.0`](https://github.com/psyb0t/docker-talkies). One container exposes both `/v1/audio/transcriptions` (whisper + canary-180m + nemotron-3.5-asr + Sherpa-ONNX Zipformer + Vosk) and `/v1/audio/speech` (Kokoro-82M PyTorch + Kokoro-82M ONNXRuntime). Stereo channel-split diarization (`diarization=true` → segments tagged with `"channel": "L"/"R"`), VAD-chunked long audio, idle-unload TTL. Weights auto-downloaded into `.data/talkies/` on first request. Loaded models auto-unload after `TALKIES_MODEL_TTL` (default `10m`). Its native API, including live-ASR WebSockets, is also available at `/talkies/`; see [the Talkies service guide](services/talkies.md#direct-api-routes).
+Unified OpenAI-compatible speech service via [`psyb0t/talkies:v0.15.2`](https://github.com/psyb0t/docker-talkies). One container exposes both `/v1/audio/transcriptions` (whisper + canary-180m + nemotron-3.5-asr + Sherpa-ONNX Zipformer + Vosk) and `/v1/audio/speech` (Kokoro-82M PyTorch + Kokoro-82M ONNXRuntime). Stereo channel-split diarization (`diarization=true` → segments tagged with `"channel": "L"/"R"`), VAD-chunked long audio, idle-unload TTL. Weights auto-downloaded into `.data/talkies/` on first request. Loaded models auto-unload after `TALKIES_MODEL_TTL` (default `10m`). Its native API, including live-ASR WebSockets, is also available at `/talkies/`; see [the Talkies service guide](services/talkies.md#direct-api-routes).
 
 | Alias | Model | Mode |
 | ----- | ----- | ---- |
@@ -249,7 +249,7 @@ Unified OpenAI-compatible speech service via [`psyb0t/talkies:v0.14.0`](https://
 
 ## talkies CUDA (local NVIDIA — `TALKIES_CUDA=1`)
 
-CUDA-accelerated talkies (`psyb0t/talkies:v0.14.0-cuda`). Adds Parakeet TDT, Canary-1B-Flash, Canary-Qwen-2.5B SALM, and the full Qwen3-TTS line (Base / CustomVoice / VoiceDesign across 0.6B + 1.7B) on top of the CPU set. The Sherpa-ONNX variants run on the GPU here — the CUDA image installs a hash-verified upstream Sherpa CUDA wheel so they use its CUDA execution provider instead of a CPU fallback. Kokoro TTS still runs on CPU inside the CUDA image (fast enough that it doesn't need a GPU). Shares `.data/talkies/` with the CPU variant. The LiteLLM resource manager evicts these from VRAM whenever a competing CUDA job (LLM / image / TTS / other STT) arrives. Its raw API and PCM streaming are available at `/talkies-cuda/` only when `TALKIES_CUDA=1`; otherwise the route returns `404`.
+CUDA-accelerated talkies (`psyb0t/talkies:v0.15.2-cuda`). Adds Parakeet TDT, Canary-1B-Flash, Canary-Qwen-2.5B SALM, and the full Qwen3-TTS line (Base / CustomVoice / VoiceDesign across 0.6B + 1.7B) on top of the CPU set. The Sherpa-ONNX variants run on the GPU here — the CUDA image installs a hash-verified upstream Sherpa CUDA wheel so they use its CUDA execution provider instead of a CPU fallback. Kokoro TTS still runs on CPU inside the CUDA image (fast enough that it doesn't need a GPU). Shares `.data/talkies/` with the CPU variant. The LiteLLM resource manager evicts these from VRAM whenever a competing CUDA job (LLM / image / TTS / other STT) arrives. Its raw API and PCM streaming are available at `/talkies-cuda/` only when `TALKIES_CUDA=1`; otherwise the route returns `404`.
 
 | Alias | Model | Mode |
 | ----- | ----- | ---- |
@@ -272,6 +272,7 @@ CUDA-accelerated talkies (`psyb0t/talkies:v0.14.0-cuda`). Adds Parakeet TDT, Can
 | `local-talkies-cuda-qwen3-tts-0.6b-custom` | Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice | TTS — CustomVoice mode, 9 preset speakers (`Vivian`, `Serena`, `Uncle_Fu`, `Dylan`, `Eric`, `Ryan`, `Aiden`, `Ono_Anna`, `Sohee`) — pass as `voice=<preset>` |
 | `local-talkies-cuda-qwen3-tts-1.7b-custom` | Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice | TTS — same 9 preset speakers as the 0.6b-custom slug, plus `instructions=<emotion>` (`"happy"`, `"sad"`, …) |
 | `local-talkies-cuda-qwen3-tts-1.7b-design` | Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign | TTS — VoiceDesign mode. Pass `voice="design"` (sentinel) + `instructions=<natural-language description>` (e.g. `"a young energetic female voice"`); model synthesises a voice that matches the description |
+| `local-talkies-cuda-chatterbox-turbo` | ResembleAI/chatterbox-turbo | TTS — expressive English only, 24 kHz mono, buffered (no PCM streaming). Emotion and non-verbal sounds go inline in `input` as bracketed tags; the tokenizer defines exactly 19, so anything else in brackets is spoken literally. `voice=builtin` or a reference `.wav` under `${DATA_DIR_TALKIES}/custom-voices/` — no transcript needed, but the clip must exceed 5 seconds. `speed` is ignored. Output is watermarked unconditionally by the upstream package. See [the Talkies service guide](services/talkies.md#chatterbox-turbo-emotion-tags) for the tag list |
 
 ## sd.cpp CPU (local — `SDCPP=1`)
 

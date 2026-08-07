@@ -644,14 +644,15 @@ services:
 
   # ── talkies (unified OpenAI-compatible speech service, CPU) ─────────────────
   # External image: github.com/psyb0t/docker-talkies. One container,
-  # both endpoints: /v1/audio/transcriptions (whisper + canary-180m) and
-  # /v1/audio/speech (Kokoro-82M TTS). CPU variant doesn't ship Qwen3-TTS
-  # (CUDA-only model). Pinned to v0.12.1.
+  # both endpoints: /v1/audio/transcriptions (whisper, canary-180m, nemotron,
+  # sherpa-zipformer, vosk) and /v1/audio/speech (Kokoro-82M, two variants).
+  # 11 models. The CPU registry omits every CUDA-only model — Qwen3-TTS,
+  # Chatterbox Turbo, parakeet, the larger canaries; see the CUDA variant.
 
   talkies:
     logging: *docker-logging
     profiles: ["talkies"]
-    image: psyb0t/talkies:v0.14.0
+    image: psyb0t/talkies:v0.15.2
     restart: unless-stopped
     mem_limit: ${TALKIES_MEM_LIMIT:-8g}
     memswap_limit: ${TALKIES_MEMSWAP_LIMIT:-16g}
@@ -700,17 +701,23 @@ services:
 
   # ── talkies CUDA (unified speech service — Whisper + Parakeet + all Canary
   # + Kokoro TTS + Qwen3-TTS voice cloning, NVIDIA GPU) ──────────────────────
-  # External image: github.com/psyb0t/docker-talkies — fronts the whole ASR
-  # set (whisper, parakeet, canary 180m/1b, canary-qwen-2.5b
-  # SALM), Kokoro-82M TTS (CPU-served), and Qwen3-TTS-0.6B (CUDA-only voice
-  # cloning, 17 languages). Drop reference .wav files into
-  # ${DATA_DIR_TALKIES}/custom-voices/ to make them selectable as
-  # `voice=<filename-without-ext>`. Pinned to v0.12.1-cuda.
+  # External image: github.com/psyb0t/docker-talkies — 20 models. The whole ASR
+  # set (whisper, parakeet, nemotron, canary 180m/1b, canary-qwen-2.5b SALM,
+  # sherpa-zipformer, vosk), Kokoro-82M TTS, Qwen3-TTS voice cloning
+  # (17 languages), and Chatterbox Turbo expressive English TTS. Drop reference
+  # .wav files into ${DATA_DIR_TALKIES}/custom-voices/ to make them selectable
+  # as `voice=<filename-without-ext>` — Qwen3 needs a matching transcript,
+  # Chatterbox does not but requires a clip longer than 5 seconds.
+  #
+  # First boot on this pin downloads ~3 GB of Chatterbox weights before the
+  # server binds, which outruns the start_period below and shows the container
+  # unhealthy for a few minutes. Nothing depends_on this service, so that is
+  # cosmetic — but do not mistake it for the v0.15.0 startup crash it replaced.
 
   talkies-cuda:
     logging: *docker-logging
     profiles: ["talkies-cuda"]
-    image: psyb0t/talkies:v0.14.0-cuda
+    image: psyb0t/talkies:v0.15.2-cuda
     restart: unless-stopped
     mem_limit: ${TALKIES_CUDA_MEM_LIMIT:-12g}
     memswap_limit: ${TALKIES_CUDA_MEMSWAP_LIMIT:-24g}
@@ -722,11 +729,14 @@ services:
       # See the CPU variant for the sizing rationale. The global 2 only holds
       # for models small enough to afford a second activation buffer on a
       # 12 GiB card, so every model at or above ~4 GiB of weights is pinned
-      # back to 1 below. Slugs here must exist in models.json or the container
-      # refuses to start — the CUDA registry carries models the CPU one does
-      # not, which is why the two variants get different override strings.
+      # back to 1 below. chatterbox-turbo is pinned too despite loading closer
+      # to 3 GiB — it runs a transformer and a meanflow vocoder back to back
+      # per request, so its peak far exceeds the weight figure. Slugs here must
+      # exist in models.json or the container refuses to start — the CUDA
+      # registry carries models the CPU one does not, which is why the two
+      # variants get different override strings.
       TALKIES_MODEL_MAX_CONCURRENCY: ${TALKIES_CUDA_MODEL_MAX_CONCURRENCY:-2}
-      TALKIES_MODEL_CONCURRENCY: ${TALKIES_CUDA_MODEL_CONCURRENCY:-parakeet-tdt-0.6b-v3=1,canary-1b-flash=1,canary-qwen-2.5b=1,qwen3-tts-1.7b=1,qwen3-tts-1.7b-custom=1,qwen3-tts-1.7b-design=1}
+      TALKIES_MODEL_CONCURRENCY: ${TALKIES_CUDA_MODEL_CONCURRENCY:-parakeet-tdt-0.6b-v3=1,canary-1b-flash=1,canary-qwen-2.5b=1,qwen3-tts-1.7b=1,qwen3-tts-1.7b-custom=1,qwen3-tts-1.7b-design=1,chatterbox-turbo=1}
       TALKIES_SWEEPER_INTERVAL: ${TALKIES_CUDA_SWEEPER_INTERVAL:-1m}
       TALKIES_LOAD_TIMEOUT: ${TALKIES_CUDA_LOAD_TIMEOUT:-5m}
       TALKIES_MAX_UPLOAD_BYTES: ${TALKIES_CUDA_MAX_UPLOAD_BYTES:-104857600}

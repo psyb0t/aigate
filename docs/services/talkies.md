@@ -3,7 +3,7 @@
 > Profile flags: `TALKIES=1` (CPU) / `TALKIES_CUDA=1` (NVIDIA GPU).
 > One container, both endpoints: `/v1/audio/transcriptions` and `/v1/audio/speech`.
 
-External image: [`psyb0t/talkies`](https://github.com/psyb0t/docker-talkies) (pinned to `v0.14.0` / `v0.14.0-cuda`). CPU image ships **11 models** — nine ASR (`whisper-large-v3`, `whisper-large-v3-turbo`, `canary-180m-flash`, `nemotron-3.5-asr-0.6b` via parakeet.cpp, the four English Sherpa-ONNX Zipformer variants `sherpa-zipformer-en-left-64` / `-left-128` / `-int8-left-64` / `-int8-left-128`, and `vosk-small-en-us-0.15`) plus two TTS (`kokoro-82m` PyTorch and `kokoro-82m-nvidia` ONNXRuntime). CUDA image ships **19 models** — adds Parakeet-TDT, Canary-1B-Flash, Canary-Qwen-2.5B SALM, and the full Qwen3-TTS line (Base 0.6B + Base 1.7B + CustomVoice 0.6B + CustomVoice 1.7B + VoiceDesign 1.7B). The Sherpa variants use the CUDA execution provider in the CUDA image; Kokoro stays CPU-bound in both images.
+External image: [`psyb0t/talkies`](https://github.com/psyb0t/docker-talkies) (pinned to `v0.15.2` / `v0.15.2-cuda`). CPU image ships **11 models** — nine ASR (`whisper-large-v3`, `whisper-large-v3-turbo`, `canary-180m-flash`, `nemotron-3.5-asr-0.6b` via parakeet.cpp, the four English Sherpa-ONNX Zipformer variants `sherpa-zipformer-en-left-64` / `-left-128` / `-int8-left-64` / `-int8-left-128`, and `vosk-small-en-us-0.15`) plus two TTS (`kokoro-82m` PyTorch and `kokoro-82m-nvidia` ONNXRuntime). CUDA image ships **20 models** — adds Parakeet-TDT, Canary-1B-Flash, Canary-Qwen-2.5B SALM, the full Qwen3-TTS line (Base 0.6B + Base 1.7B + CustomVoice 0.6B + CustomVoice 1.7B + VoiceDesign 1.7B), and `chatterbox-turbo` (expressive English TTS with inline emotion tags). The Sherpa variants use the CUDA execution provider in the CUDA image; Kokoro stays CPU-bound in both images.
 
 ## Direct API routes
 
@@ -50,6 +50,30 @@ The existing `/v1/audio/transcriptions`, `/v1/audio/speech`, and `/v1/audio/voic
 | `local-talkies-cuda-qwen3-tts-0.6b-custom` | Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice | CustomVoice mode. 9 baked-in presets: `Vivian`, `Serena`, `Uncle_Fu`, `Dylan`, `Eric`, `Ryan`, `Aiden`, `Ono_Anna`, `Sohee` — pass as `voice=<preset>`. |
 | `local-talkies-cuda-qwen3-tts-1.7b-custom` | Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice | Same 9 presets + `instructions=<emotion>` (`"happy"`, `"sad"`, …). |
 | `local-talkies-cuda-qwen3-tts-1.7b-design` | Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign | VoiceDesign mode. Pass `voice="design"` (sentinel) + `instructions=<natural-language description>` (e.g. `"a young energetic female voice"`). |
+| `local-talkies-cuda-chatterbox-turbo` | ResembleAI/chatterbox-turbo | Expressive English-only TTS, 24 kHz mono, buffered (no PCM streaming). Emotion and non-verbal sounds are written inline in `input` as bracketed tags — see below. `voice=builtin` (ships in the checkpoint) or a `.wav` under `${DATA_DIR_TALKIES}/custom-voices/`; unlike Qwen3 no reference transcript is needed, but the clip must be **longer than 5 seconds** or the request is rejected with a 400. `speed` is ignored. Every waveform carries Resemble AI's PerTh neural watermark — the upstream package applies it unconditionally. |
+
+### Chatterbox Turbo emotion tags
+
+The tags are real tokens in the model's tokenizer, so only these 19 work.
+Anything else inside brackets is read as literal text:
+
+`[angry]` `[fear]` `[surprised]` `[whispering]` `[advertisement]` `[dramatic]`
+`[narration]` `[crying]` `[happy]` `[sarcastic]` `[clear throat]` `[sigh]`
+`[shush]` `[cough]` `[groan]` `[sniff]` `[gasp]` `[chuckle]` `[laugh]`
+
+```bash
+curl -X POST http://localhost:4000/v1/audio/speech \
+  -H "Authorization: Bearer $AIGATE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -o out.wav \
+  -d '{"model": "local-talkies-cuda-chatterbox-turbo",
+       "voice": "builtin",
+       "input": "Oh, that is hilarious. [chuckle] Anyway, [sigh] back to work.",
+       "response_format": "wav"}'
+```
+
+First call downloads ~3 GB of weights and loads them before synthesizing, so
+expect well over a minute; subsequent calls reuse the resident model.
 
 ## curl recipes
 

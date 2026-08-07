@@ -174,3 +174,20 @@
     api_key: os.environ/TALKIES_CUDA_AUTH_TOKEN
   model_info:
     mode: audio_speech
+
+# Chatterbox Turbo, added in talkies v0.15.0 (usable as of v0.15.1 — v0.15.0
+# shipped a registry the image's own validator rejected). English-only, 24 kHz
+# mono, buffered — no PCM streaming. Emotion and non-verbal sounds go inline in
+# `input` as bracketed tags; the tokenizer defines exactly 19 of them, so
+# anything outside that set is read as literal text. Voice is `builtin` or a
+# `<name>.wav` under ${DATA_DIR_TALKIES}/custom-voices/ — unlike Qwen3 no
+# reference transcript is needed, but clips of 5 seconds or less are rejected
+# with a 400. `speed` is ignored. Every waveform carries an unconditional
+# neural watermark applied by the upstream package.
+- model_name: local-talkies-cuda-chatterbox-turbo
+  litellm_params:
+    model: openai/chatterbox-turbo
+    api_base: http://talkies-cuda:8000/v1
+    api_key: os.environ/TALKIES_CUDA_AUTH_TOKEN
+  model_info:
+    mode: audio_speech

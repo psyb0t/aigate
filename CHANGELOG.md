@@ -2,6 +2,51 @@
 
 All notable changes to this project are documented here.
 
+## [v3.19.0] — 2026-08-07
+
+**Bump talkies v0.14.0 → v0.15.2 and expose Chatterbox Turbo, an expressive
+English TTS model with inline emotion tags. The CUDA profile now serves 20
+models; the CPU profile is unchanged at 11.**
+
+### Added
+
+- `local-talkies-cuda-chatterbox-turbo` — expressive English-only TTS
+  (`ResembleAI/chatterbox-turbo`, MIT weights) on `POST /v1/audio/speech`,
+  24 kHz mono, buffered. **CUDA only**; the CPU registry does not carry it.
+- Emotion and non-verbal sounds are written inline in `input` as bracketed
+  tags. They are real tokens in the model's tokenizer, so only 19 work —
+  `[sigh]`, `[chuckle]`, `[whispering]`, `[sarcastic]`, `[gasp]` and the rest
+  are listed in `docs/services/talkies.md`. Anything else inside brackets is
+  spoken literally.
+- Voice is `builtin` (shipped in the checkpoint) or a `.wav` under
+  `${DATA_DIR_TALKIES}/custom-voices/`. Unlike Qwen3 no reference transcript is
+  needed, but a clip of 5 seconds or less is rejected with a 400. `speed` is
+  ignored.
+- Every waveform this model produces carries Resemble AI's PerTh neural
+  watermark. The upstream package applies it unconditionally and exposes no
+  option to turn it off.
+- `TALKIES_CUDA_MODEL_CONCURRENCY` gains `chatterbox-turbo=1`. It loads closer
+  to 3 GiB rather than the ~4 GiB that pins the other entries, but it runs a
+  transformer and a meanflow vocoder back to back per request, so its peak far
+  exceeds the weight figure. Raise it only with measured headroom.
+
+### Fixed
+
+- `docker-compose.yml` described the talkies services as pinned to `v0.12.1`
+  and listed model sets that predate several releases. Both comment blocks now
+  match what the pinned images actually serve.
+
+### Notes
+
+- Chatterbox is **not** wired as a fallback target for any other TTS model. It
+  interprets bracketed text as emotion tokens and watermarks its output, so
+  silently substituting it for a generic speech request would change the
+  result. It has an outbound chain of its own
+  (`local-talkies-kokoro-tts` → `openai-tts-1` → `openai-tts-1-hd`).
+- First request after this bump downloads ~3 GB of weights before synthesizing
+  and can exceed the healthcheck's `start_period`, briefly showing
+  `talkies-cuda` as unhealthy. Nothing gates on that service's health.
+
 ## [v3.18.0] — 2026-08-04
 
 **Bump talkies v0.13.3 → v0.14.0 and expose its new per-model concurrency

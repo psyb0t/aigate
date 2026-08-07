@@ -675,6 +675,13 @@
     ]
   },
   {
+    "local-talkies-cuda-chatterbox-turbo": [
+      "local-talkies-kokoro-tts",
+      "openai-tts-1",
+      "openai-tts-1-hd"
+    ]
+  },
+  {
     "voxtral-small": [
       "groq-whisper-large-v3-turbo",
       "groq-whisper-large-v3",
