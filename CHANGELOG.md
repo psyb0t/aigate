@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here.
 
+## [v3.19.2] — 2026-08-08
+
+**Dependency bump in the sdcpp wrapper. No runtime behaviour changed.**
+
+### Changed
+
+- `slogging` v1.6.1 → v1.7.0 in `sdcpp/wrapper`. v1.7.0 rebuilt that module's
+  handler API, but none of it reaches here: the wrapper uses the blank import
+  and never names a handler type, so its logging is still configured by the
+  same `LOG_LEVEL` / `LOG_FORMAT` / `LOG_ADD_SOURCE` variables with the same
+  stdout/stderr split. No compose service, model registry, provider config or
+  fallback chain changes.
+
 ## [v3.19.1] — 2026-08-08
 
 **Dependency rename in the sdcpp wrapper. No runtime behaviour changed.**
