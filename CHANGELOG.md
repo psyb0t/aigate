@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here.
 
+## [v3.19.1] — 2026-08-08
+
+**Dependency rename in the sdcpp wrapper. No runtime behaviour changed.**
+
+### Changed
+
+- `github.com/psyb0t/slog-configurator` was renamed upstream to
+  `github.com/psyb0t/slogging`, with the configurator now at
+  `slogging/slogconf`. The blank import in `sdcpp/wrapper/cmd/main.go` follows
+  it. Every exported name is unchanged, so the wrapper's logging is configured
+  by exactly the same `LOG_LEVEL` / `LOG_FORMAT` / `LOG_ADD_SOURCE` variables as
+  before, with the same stdout/stderr split.
+
 ## [v3.19.0] — 2026-08-07
 
 **Bump talkies v0.14.0 → v0.15.2 and expose Chatterbox Turbo, an expressive

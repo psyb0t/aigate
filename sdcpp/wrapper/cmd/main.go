@@ -10,7 +10,7 @@ import (
 
 	"github.com/psyb0t/aichteeteapee/serbewr"
 	"github.com/psyb0t/aichteeteapee/serbewr/middleware"
-	_ "github.com/psyb0t/slog-configurator"
+	_ "github.com/psyb0t/slogging/slogconf"
 
 	"github.com/psyb0t/aigate/sdcpp/wrapper/internal/config"
 	"github.com/psyb0t/aigate/sdcpp/wrapper/internal/process"
