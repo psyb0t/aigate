@@ -2,6 +2,53 @@
 
 All notable changes to this project are documented here.
 
+## [v3.19.3] — 2026-08-08
+
+**Documentation accuracy pass. No code, compose, or config changes — every
+edit corrects a claim the docs made that the repo does not support.**
+
+### Fixed
+
+- **Removed every stale `Speaches` reference.** That service was replaced by
+  talkies and no longer exists anywhere in the stack, but it still appeared as
+  a live component in `docs/resource-management.md` (both the idle-unload and
+  unload-API tables), `docs/mcp-tools.md`, `docs/services/mcp.md`, and
+  `docs/testing.md`. The idle-unload table now carries the talkies CPU/CUDA and
+  llamacpp CPU/CUDA rows that replaced them.
+- **`mcp_tools` activation conditions were wrong in `README.md` and
+  `docs/services/mcp.md`.** The set is `HUGGINGFACE`, `OPENAI`, `TALKIES`,
+  `TALKIES_CUDA`, `SDCPP`, `SDCPP_CUDA`, `SEARXNG` — see
+  `active_mcp_servers()` in `litellm/build-config.py`. `PISTON=1` is **not** in
+  that list and does not enable the aggregator on its own, so `execute_code`
+  only appears once `mcp_tools` is already active for one of the other
+  reasons. The README implied piston alone was sufficient.
+- **`docs/mcp-tools.md` claimed the aggregated `/mcp/` endpoint proxies "all
+  five servers".** It proxies whichever are active, and the direct-endpoint
+  table was missing eight of them — audiolla, audiolla-cuda, flickies,
+  flickies-cuda, telethon, predictalot, predictalot-cuda, and mailbox.
+- **Per-mailbox routes are under `/mailbox/mailboxes/<name>/…`**, not
+  `/mailbox/<name>/…` as `docs/services/mailbox.md` had it. Affects the
+  per-mailbox ops and send rows.
+- **The sd.cpp wrapper serves `GET /health`**, not `/sdcpp/v1/health` — see the
+  route registration in `sdcpp/wrapper/cmd/main.go`.
+- **Tailscale access is plain HTTP, not HTTPS.** `tailscale serve` is
+  configured for L4 forwarding, which passes the raw TCP stream to nginx, so
+  Tailscale's hosted HTTPS auto-cert is not in play. `README.md` promised
+  `https://<hostname>.<tailnet>.ts.net` in two places.
+- **`docs/testing.md` gave talkies model counts that were several releases
+  stale** (CPU 6, CUDA 14). The suite spot-checks core ASR slugs rather than
+  asserting a total; the current catalog is 11 CPU / 20 CUDA and lives in
+  `docs/services/talkies.md`.
+- The piston row in `README.md` said `make build` where the target is
+  `make run-bg`.
+- The agent setup reference listed which per-service tokens fall back to
+  `AIGATE_TOKEN` and omitted `TALKIES_AUTH_TOKEN` and
+  `TALKIES_CUDA_AUTH_TOKEN`. Twelve variables use that fallback; grep
+  `docker-compose.yml` for `:-${AIGATE_TOKEN` to see the full set.
+- Two historical CHANGELOG entries pointed at paths that exist only on a
+  maintainer's machine. Both now describe the change in terms a reader of this
+  repo can verify.
+
 ## [v3.19.2] — 2026-08-08
 
 **Dependency bump in the sdcpp wrapper. No runtime behaviour changed.**
@@ -750,7 +797,7 @@ Upstream pibox v0.10.0 pulls in two aicodebox patches — v0.8.2 (reconstruction
 
 ### What v0.10.0 brings
 
-- **PiAdapter logging.** Previously zero logging calls. Now: decode errors, provider errors, schema bolt-on, build_argv decisions, and a `parse_output` summary line per call (text_len, session_id, lines, decode_errors, usage_keys, provider_error). Security-aware — never logs tokens / secrets / full prompts / full schemas; only schema keys + truncated samples. Mirrors the level/format discipline from `~/.claude/rules/06-logging.md`.
+- **PiAdapter logging.** Previously zero logging calls. Now: decode errors, provider errors, schema bolt-on, build_argv decisions, and a `parse_output` summary line per call (text_len, session_id, lines, decode_errors, usage_keys, provider_error). Security-aware — never logs tokens / secrets / full prompts / full schemas; only schema keys + truncated samples. Mirrors the project's established level/format logging discipline.
 - **aicodebox v0.8.2 schema-mode logging.** `parse_json_response`, `run_with_json_retry`, `oai.chat_completions`, header parse helpers — all logged at reconstruction-grade. Schema retries and failure modes are now observable end-to-end.
 - **Single-source versioning (aicodebox v0.8.3).** `pyproject.toml` is THE version. `__init__.py` reads via `importlib.metadata`. Makefile derives the docker tag from pyproject and tags both `:v0.10.0` AND `:latest` per build. Eliminates the version-drift bug that had `__version__` stuck at `"0.1.0"` across every release since v0.1.0 itself.
 - **Base image bump:** `psyb0t/aicodebox:v0.8.1` → `:v0.8.3` (tag pin — upstream notes digest pending registry push).
@@ -1625,7 +1672,7 @@ Also trimmed the long predictalot endpoint matrix in the in-repo docs — the up
 - `.env.example`: `AUDIOLLA=` + `AUDIOLLA_CUDA=` flags in Core; `AUDIOLLA_*` tuning vars (auth, device, enabled engines, preload, engine TTL, sweeper, upload cap, server-side URL fetch policy, job TTL + concurrency); `DATA_DIR_AUDIOLLA`; per-route `RATELIMIT_AUDIOLLA[_BURST]` and `RATELIMIT_AUDIOLLA_CUDA[_BURST]`; shared `TIMEOUT_AUDIOLLA`.
 - `README.md`, `docs/services-reference.md`, `docs/usage.md`: minimal sections — what it is, where the endpoint lives, auth, a small smoke-test, and a link to the upstream README for the full API. Trimmed predictalot to the same minimal shape.
 - `tests/test_audiolla.sh`: parameterised helpers (route prefix + tag) run the full suite — open-healthz, unauthenticated-rejection on `/v1/engines`, engines listing (asserts `htdemucs` + `librosa-analyze`), `/v1/catalog` discovery, two live ops against `tests/.fixtures/audio.mp3` (`/v1/audio/info` ffprobe, `/v1/audio/analyze` librosa), and a direct `/v1/mcp/` `tools/list` assertion (≥ 20 tools, spot-checks `separate`/`analyze`/`chords`) — separately against `/audiolla/` (gated on `AUDIOLLA=1`) and `/audiolla-cuda/` (gated on `AUDIOLLA_CUDA=1`).
-- `.research_files/docker-audiolla/`: upstream repo clone (for reference; gitignored).
+- Upstream `docker-audiolla` repo cloned locally for reference (gitignored, not committed).
 
 ### Fix: aigate-side MCP wiring made `/mcp/` actually aggregate downstream services
 

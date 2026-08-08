@@ -1,6 +1,6 @@
 # MCP Tools — Media Generation (auto-enabled)
 
-Auto-enabled when any image or TTS provider is active (HuggingFace, OpenAI, Speaches, SDCPP, CUDA). Runs as an internal service — no direct nginx route, accessed only through LiteLLM's aggregated MCP endpoint at `/mcp/`.
+Auto-enabled when any image, TTS, or web-search provider is active (HuggingFace, OpenAI, talkies, talkies-cuda, SDCPP, SDCPP-cuda, SearXNG). Runs as an internal service — no direct nginx route, accessed only through LiteLLM's aggregated MCP endpoint at `/mcp/`.
 
 | Endpoint               | URL                | Auth                              |
 | ---------------------- | ------------------ | --------------------------------- |

@@ -6,7 +6,7 @@ This means you can ask a Groq model to browse a website, take a screenshot, uplo
 
 ## Connecting
 
-The gateway exposes a single aggregated MCP endpoint that proxies all five servers:
+The gateway exposes a single aggregated MCP endpoint that proxies every active MCP-capable server (which servers are active depends on which `.env` flags are set — see `active_mcp_servers()` in `litellm/build-config.py`):
 
 ```
 POST http://localhost:4000/mcp/
@@ -24,6 +24,14 @@ Each individual service also exposes its own MCP endpoint directly (routed via n
 | hybrids3             | `http://localhost:4000/storage/mcp/`                |
 | claudebox            | `http://localhost:4000/claudebox/mcp/`              |
 | pibox-zai            | `http://localhost:4000/pibox-zai/mcp/`              |
+| audiolla             | `http://localhost:4000/audiolla/v1/mcp`             |
+| audiolla-cuda        | `http://localhost:4000/audiolla-cuda/v1/mcp`        |
+| flickies             | `http://localhost:4000/flickies/v1/mcp`             |
+| flickies-cuda        | `http://localhost:4000/flickies-cuda/v1/mcp`        |
+| telethon             | `http://localhost:4000/telethon/mcp`                |
+| predictalot          | `http://localhost:4000/predictalot/mcp`             |
+| predictalot-cuda     | `http://localhost:4000/predictalot-cuda/mcp`        |
+| mailbox              | `http://localhost:4000/mailbox/mcp`                 |
 | mcp_tools            | via LiteLLM aggregation only (no direct nginx route)|
 
 ```bash
@@ -148,7 +156,7 @@ The pibox-zai instance runs in a separate container — workspaces are not share
 
 ## mcp_tools (auto-enabled with image/TTS/search providers)
 
-Media generation and web search tools. Auto-enabled when any image, TTS, or search provider is active (HuggingFace, OpenAI, Speaches, SDCPP, SearXNG). Discovers available models dynamically from LiteLLM at startup — tool descriptions include the list of available models and defaults. Auth via `MCP_TOOLS_AUTH_TOKEN`.
+Media generation and web search tools. Auto-enabled when any image, TTS, or search provider is active (HuggingFace, OpenAI, talkies, SDCPP, SearXNG). Discovers available models dynamically from LiteLLM at startup — tool descriptions include the list of available models and defaults. Auth via `MCP_TOOLS_AUTH_TOKEN`.
 
 Image and TTS tools return structured JSON with all parameters used and a persistent URL to the result file (uploaded to HybridS3). No base64 blobs are sent to the LLM.
 

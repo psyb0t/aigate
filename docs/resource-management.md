@@ -1,7 +1,7 @@
 # Resource Management (cross-cutting)
 
 
-Local services (Ollama, sd.cpp, Speaches, Qwen3-TTS) share limited hardware. The platform coordinates them automatically — no manual model management needed.
+Local services (Ollama, sd.cpp, talkies, vllm, llamacpp) share limited hardware. The platform coordinates them automatically — no manual model management needed.
 
 ### Idle auto-unload
 
@@ -12,10 +12,12 @@ Every local service unloads models after a period of inactivity:
 | Ollama (CPU/CUDA) | 5 minutes | Ollama's built-in `keep_alive` |
 | sd.cpp CPU | 5 minutes | `SDCPP_IDLE_TIMEOUT` |
 | sd.cpp CUDA | 5 minutes | `SDCPP_CUDA_IDLE_TIMEOUT` |
-| Speaches | On-demand unload | Resource manager triggers `DELETE /api/ps/{model}` |
-| Qwen3 CUDA TTS | On-demand unload | Resource manager triggers `POST /unload` |
+| talkies CPU (ASR + Kokoro TTS) | 10 minutes | `TALKIES_MODEL_TTL` (wrapper idle sweeper); resource manager also triggers `DELETE /api/ps/{model}` |
+| talkies CUDA (ASR + Kokoro TTS + Qwen3-TTS) | 10 minutes | `TALKIES_CUDA_MODEL_TTL` (wrapper idle sweeper); resource manager also triggers `DELETE /api/ps/{model}` |
 | vllm-cuda | 10 minutes | `VLLM_CUDA_MODEL_TTL` (wrapper idle sweeper); resource manager also triggers `DELETE /api/ps/{model}` |
 | vllm (CPU) | 10 minutes | `VLLM_MODEL_TTL` (wrapper idle sweeper); resource manager also triggers `DELETE /api/ps/{model}` |
+| llamacpp CUDA | 600 seconds | `LLAMACPP_CUDA_MODEL_TTL` (wrapper idle sweeper); resource manager also triggers `DELETE /api/ps/{model}` |
+| llamacpp (CPU) | 600 seconds | `LLAMACPP_MODEL_TTL` (wrapper idle sweeper); resource manager also triggers `DELETE /api/ps/{model}` |
 
 ### Auto-load on demand
 
@@ -53,8 +55,6 @@ Each service has its own unload API:
 | ------- | ------------- |
 | Ollama | `POST /api/generate {"model": "...", "keep_alive": 0}` |
 | sd.cpp | `POST /sdcpp/v1/unload` |
-| Speaches | `DELETE /api/ps/{model_id}` |
-| Qwen3 CUDA TTS | `POST /unload` |
 | talkies / vllm-cuda / llamacpp-cuda | `DELETE /api/ps/{model_id}` (per model) or `POST /unload` (kill any loaded) |
 | audiolla | `POST /v1/unload` (bulk evict every loaded engine) |
 | flickies | `GET /v1/engines` + `DELETE /v1/engines/{slug}` (per loaded engine) |

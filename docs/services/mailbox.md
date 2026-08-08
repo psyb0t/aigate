@@ -9,8 +9,8 @@ Not registered with LiteLLM (no chat/completion surface). MCP is enabled by defa
 | Health          | `GET /mailbox/health`                | open         |
 | List mailboxes  | `GET /mailbox/mailboxes`             | Bearer token |
 | Unified inbox   | `GET /mailbox/inbox`                 | Bearer token |
-| Per-mailbox ops | `GET/POST/DELETE /mailbox/<name>/…`  | Bearer token |
-| Send            | `POST /mailbox/<name>/send`          | Bearer token |
+| Per-mailbox ops | `GET/POST/DELETE /mailbox/mailboxes/<name>/…`  | Bearer token |
+| Send            | `POST /mailbox/mailboxes/<name>/send`          | Bearer token |
 | MCP (direct)    | `/mailbox/mcp`                       | Bearer token |
 | MCP (aggregated)| `/mcp/` (via LiteLLM master key)     | Master key   |
 

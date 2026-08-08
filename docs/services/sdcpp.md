@@ -12,7 +12,7 @@ Local image generation via [stable-diffusion.cpp](https://github.com/leejet/stab
 | Cancel generation | `POST /sdcpp/v1/cancel` | Kill in-progress generation |
 | Status | `GET /sdcpp/v1/status` | Current state: loaded model, generating, process info |
 | Models list | `GET /v1/models` | Available models |
-| Health | `GET /sdcpp/v1/health` | Wrapper health check |
+| Health | `GET /health` | Wrapper health check |
 
 ### Models
 
