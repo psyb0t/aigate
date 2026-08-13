@@ -2,6 +2,33 @@
 
 All notable changes to this project are documented here.
 
+## [v3.20.0] — 2026-08-13
+
+**Bump pibox `v0.14.0` → `v0.15.10`, which fixes the pibox-zai container
+restart-looping, and correct the GLM model list to reflect z.ai's aliasing.**
+
+### Fixed
+
+- **`pibox-zai` no longer restart-loops while serving requests.** `psyb0t/pibox`
+  v0.15.10 rebases on `aicodebox` v0.14.5, which spawns the agent subprocess in
+  its own session and process group. Previously the agent shared the server's
+  process group; since the server is PID 1 in the container, a `SIGTERM`/`SIGINT`
+  the agent CLI (or a tool it spawned) delivered to that group also shut down the
+  API server — a clean exit (0) that the restart policy relaunched, looping under
+  request load without any crash or OOM. Verified fixed: the container held at
+  zero restarts through sustained agent traffic that previously cycled it every
+  few minutes.
+
+### Changed
+
+- Documented that three of the eight exposed GLM aliases resolve to another model
+  on z.ai's end rather than a distinct one, verified 2026-08-13 from the `model`
+  field z.ai echoes back per request: `pibox-zai-glm-5.1` and `pibox-zai-glm-5`
+  both serve **GLM-5.2**, and `pibox-zai-glm-4.5-air` serves **GLM-4.7**. All
+  eight remain exposed for backwards compatibility; the aliasing is now noted in
+  `docs/providers.md` and in `litellm/config/providers/pibox-zai.yaml`. No model
+  was added or removed.
+
 ## [v3.19.3] — 2026-08-08
 
 **Documentation accuracy pass. No code, compose, or config changes — every

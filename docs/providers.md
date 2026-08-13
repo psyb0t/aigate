@@ -141,13 +141,20 @@ Set up with `claude setup-token` or generate at [console.anthropic.com](https://
 | Alias                       | Underlying model | Notes                                                              |
 | --------------------------- | ---------------- | ------------------------------------------------------------------ |
 | `pibox-zai-glm-5.2`         | GLM-5.2          | Newest flagship (2026-06-17). 3× quota peak / 2× off-peak.         |
-| `pibox-zai-glm-5.1`         | GLM-5.1          | 3× quota peak / 2× off-peak.                                       |
+| `pibox-zai-glm-5.1`         | GLM-5.2          | **Alias** — z.ai serves this as GLM-5.2. Kept for compatibility.   |
 | `pibox-zai-glm-5-turbo`     | GLM-5-Turbo      | Fast tier. 3× quota peak / 2× off-peak.                            |
-| `pibox-zai-glm-5`           | GLM-5            | Earlier 5-series. 3× quota peak / 2× off-peak.                     |
+| `pibox-zai-glm-5`           | GLM-5.2          | **Alias** — z.ai serves this as GLM-5.2. Kept for compatibility.   |
 | `pibox-zai-glm-4.7`         | GLM-4.7          | Baseline 1× quota. Default for batch / catalog work.               |
 | `pibox-zai-glm-4.6`         | GLM-4.6          | Baseline 1× quota.                                                 |
 | `pibox-zai-glm-4.5`         | GLM-4.5          | Baseline 1× quota.                                                 |
-| `pibox-zai-glm-4.5-air`     | GLM-4.5-Air      | Smallest / cheapest. Baseline 1× quota.                            |
+| `pibox-zai-glm-4.5-air`     | GLM-4.7          | **Alias** — z.ai serves this as GLM-4.7. Kept for compatibility.   |
+
+All eight aliases are accepted by z.ai, but three resolve to another model on their
+end rather than a distinct one — verified 2026-08-13 by inspecting the `model`
+field z.ai echoes back per request: `glm-5.1` and `glm-5` both serve **GLM-5.2**,
+and `glm-4.5-air` serves **GLM-4.7**. The remaining five (`glm-5.2`, `glm-5-turbo`,
+`glm-4.7`, `glm-4.6`, `glm-4.5`) serve themselves. The aliases stay exposed for
+backwards compatibility.
 
 Override the exposed list with `PIBOX_ZAI_AVAILABLE_MODELS=glm-4.5,glm-4.5-air,glm-4.6,glm-4.7,glm-5,glm-5-turbo,glm-5.1,glm-5.2` and the default model with `PIBOX_ZAI_DEFAULT_MODEL=glm-4.7` in `.env`. The full list is also the compose default — set the override only to subset.
 

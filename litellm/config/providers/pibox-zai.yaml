@@ -57,12 +57,18 @@
 #       },
 #   )
 
+# z.ai accepts all eight ids below, but three are aliases on their end rather
+# than distinct models. Verified 2026-08-13 from the `model` field z.ai echoes
+# back per request: glm-5.1 -> glm-5.2, glm-5 -> glm-5.2, glm-4.5-air -> glm-4.7.
+# The other five serve themselves. Aliases are kept exposed for backwards compat.
+
 - model_name: pibox-zai-glm-5.2
   litellm_params:
     model: openai/glm-5.2
     api_base: http://pibox-zai:8080/openai/v1
     api_key: os.environ/PIBOX_ZAI_API_TOKEN
 
+# Alias: z.ai serves glm-5.1 as glm-5.2.
 - model_name: pibox-zai-glm-5.1
   litellm_params:
     model: openai/glm-5.1
@@ -75,6 +81,7 @@
     api_base: http://pibox-zai:8080/openai/v1
     api_key: os.environ/PIBOX_ZAI_API_TOKEN
 
+# Alias: z.ai serves glm-5 as glm-5.2.
 - model_name: pibox-zai-glm-5
   litellm_params:
     model: openai/glm-5
@@ -99,6 +106,7 @@
     api_base: http://pibox-zai:8080/openai/v1
     api_key: os.environ/PIBOX_ZAI_API_TOKEN
 
+# Alias: z.ai serves glm-4.5-air as glm-4.7.
 - model_name: pibox-zai-glm-4.5-air
   litellm_params:
     model: openai/glm-4.5-air
