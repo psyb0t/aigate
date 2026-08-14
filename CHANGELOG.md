@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here.
 
+## [v3.20.1] — 2026-08-14
+
+**Bump pibox `v0.15.10` → `v0.15.11` to fix a GLM upstream-auth regression that
+v3.20.0's pibox bump introduced.**
+
+### Fixed
+
+- **`pibox-zai` GLM requests reach z.ai again instead of 401-ing.** The pi
+  `0.75.3 → 0.84.0` upgrade that came with pibox v0.15.10 (shipped in v3.20.0)
+  changed how the provider `apiKey` is handled: pibox wrote the env-var *name*
+  into pi's config, and pi ≥ 0.84.0 sends `apiKey` literally rather than
+  resolving a name, so every GLM request returned 401 upstream and LiteLLM
+  silently fell back to a cloud model. pibox v0.15.11 writes the resolved token.
+  Verified: `pibox-zai-glm-4.7` and `pibox-zai-glm-5.1` now return responses
+  served by the GLM models themselves, with no 401s in the pibox log. The
+  restart-loop fix from v3.20.0 is carried forward (v0.15.11 keeps the
+  `aicodebox` v0.14.5 base).
+
 ## [v3.20.0] — 2026-08-13
 
 **Bump pibox `v0.14.0` → `v0.15.10`, which fixes the pibox-zai container
