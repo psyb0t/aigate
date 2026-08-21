@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented here.
 
+## [v3.21.0] — 2026-08-14
+
+**Adds a toggle to disable the Chatterbox neural watermark (talkies v0.16.0).**
+
+### Added
+
+- **`TALKIES_CHATTERBOX_WATERMARK`**. Set it `false` to stop `chatterbox-turbo`
+  embedding Resemble AI's PerTh neural watermark, so it emits clean audio. It
+  needs the CUDA talkies profile, since Chatterbox is CUDA-only. It accepts
+  `true/false/1/0/yes/no` and defaults to `true`, so an existing deployment
+  keeps the watermark until it opts out. It reaches `talkies-cuda` and requires
+  `psyb0t/talkies:v0.16.0-cuda`, the pin this release moves to. Verified with it
+  `false`: the backend logs `watermarking disabled` and generates audio with no
+  watermarker applied.
+
+### Changed
+
+- Bumped talkies `v0.15.2` to `v0.16.0` (CPU and CUDA images). The model
+  registry, endpoints, and defaults are unchanged. v0.16.0 only adds the
+  watermark control above plus an upstream version-metadata fix.
+
 ## [v3.20.1] — 2026-08-14
 
 **Bump pibox `v0.15.10` → `v0.15.11` to fix a GLM upstream-auth regression that

@@ -652,7 +652,7 @@ services:
   talkies:
     logging: *docker-logging
     profiles: ["talkies"]
-    image: psyb0t/talkies:v0.15.2
+    image: psyb0t/talkies:v0.16.0
     restart: unless-stopped
     mem_limit: ${TALKIES_MEM_LIMIT:-8g}
     memswap_limit: ${TALKIES_MEMSWAP_LIMIT:-16g}
@@ -717,7 +717,7 @@ services:
   talkies-cuda:
     logging: *docker-logging
     profiles: ["talkies-cuda"]
-    image: psyb0t/talkies:v0.15.2-cuda
+    image: psyb0t/talkies:v0.16.0-cuda
     restart: unless-stopped
     mem_limit: ${TALKIES_CUDA_MEM_LIMIT:-12g}
     memswap_limit: ${TALKIES_CUDA_MEMSWAP_LIMIT:-24g}
@@ -737,6 +737,10 @@ services:
       # variants get different override strings.
       TALKIES_MODEL_MAX_CONCURRENCY: ${TALKIES_CUDA_MODEL_MAX_CONCURRENCY:-2}
       TALKIES_MODEL_CONCURRENCY: ${TALKIES_CUDA_MODEL_CONCURRENCY:-parakeet-tdt-0.6b-v3=1,canary-1b-flash=1,canary-qwen-2.5b=1,qwen3-tts-1.7b=1,qwen3-tts-1.7b-custom=1,qwen3-tts-1.7b-design=1,chatterbox-turbo=1}
+      # chatterbox-turbo embeds Resemble AI's PerTh neural watermark by default
+      # (talkies v0.16.0+). Set TALKIES_CHATTERBOX_WATERMARK=false in .env to
+      # emit clean audio. Only chatterbox watermarks; Kokoro/Qwen3-TTS never do.
+      TALKIES_CHATTERBOX_WATERMARK: ${TALKIES_CHATTERBOX_WATERMARK:-true}
       TALKIES_SWEEPER_INTERVAL: ${TALKIES_CUDA_SWEEPER_INTERVAL:-1m}
       TALKIES_LOAD_TIMEOUT: ${TALKIES_CUDA_LOAD_TIMEOUT:-5m}
       TALKIES_MAX_UPLOAD_BYTES: ${TALKIES_CUDA_MAX_UPLOAD_BYTES:-104857600}
