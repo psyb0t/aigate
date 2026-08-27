@@ -652,7 +652,7 @@ services:
   talkies:
     logging: *docker-logging
     profiles: ["talkies"]
-    image: psyb0t/talkies:v0.16.0
+    image: psyb0t/talkies:v0.17.0
     restart: unless-stopped
     mem_limit: ${TALKIES_MEM_LIMIT:-8g}
     memswap_limit: ${TALKIES_MEMSWAP_LIMIT:-16g}
@@ -717,7 +717,7 @@ services:
   talkies-cuda:
     logging: *docker-logging
     profiles: ["talkies-cuda"]
-    image: psyb0t/talkies:v0.16.0-cuda
+    image: psyb0t/talkies:v0.17.0-cuda
     restart: unless-stopped
     mem_limit: ${TALKIES_CUDA_MEM_LIMIT:-12g}
     memswap_limit: ${TALKIES_CUDA_MEMSWAP_LIMIT:-24g}

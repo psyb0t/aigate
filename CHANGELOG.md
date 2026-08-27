@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented here.
 
+## [v3.22.0] — 2026-08-27
+
+**Bump talkies `v0.16.0` → `v0.17.0`, which adds two phoneme-recognition ASR
+models. The CPU profile now serves 13 models, the CUDA profile 22.**
+
+### Added
+
+- Two phoneme ASR models on `/v1/audio/transcriptions`, in both the CPU and
+  CUDA images. They carry no language model and no lexicon, so a mispronunciation
+  comes back as the phones actually spoken rather than corrected to the nearest
+  real word. `text` is a space-separated IPA phone stream, and per-phone
+  timestamps come through `verbose_json`, `srt`, `vtt`, and
+  `timestamp_granularities` the same way the word-level models do.
+  - `local-talkies-wav2vec2-xlsr-53-espeak` (and its `-cuda-` alias) is a
+    multilingual wav2vec2 CTC model that emits eSpeak IPA, the same alphabet the
+    Kokoro G2P path uses.
+  - `local-talkies-zipa-ipa` (and its `-cuda-` alias) is a Zipformer IPA CTC
+    model served through the sherpa-onnx offline runtime, a 71 MB int8 download
+    that decodes a whole file in one pass.
+- Verified end to end through LiteLLM: both return IPA for spoken input on the
+  CPU and CUDA routes.
+
 ## [v3.21.0] — 2026-08-14
 
 **Adds a toggle to disable the Chatterbox neural watermark (talkies v0.16.0).**

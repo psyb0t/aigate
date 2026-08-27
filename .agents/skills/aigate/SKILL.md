@@ -88,7 +88,7 @@ Everything below sits behind the same `http://localhost:4000` endpoint and the s
 - **Agentic code execution** — claudebox (Claude Code) and pibox-zai (pi-coding-agent/z.ai) for full shell+file agentic tasks; piston at `/piston/` for sandboxed nsjail-isolated one-shot code execution (`CLAUDEBOX=1`, `PIBOX_ZAI=1`, `PISTON=1`).
 - **Object storage** — `hybrids3` at `/storage/`, S3-compatible, plain HTTP + boto3, public-read uploads, presigned URLs (`HYBRIDS3=1`).
 - **Image generation** — cloud (FLUX, DALL-E, SD) and local CPU/CUDA (`SDCPP=1` / `SDCPP_CUDA=1`) via `/images/generations` or MCP.
-- **Speech synthesis + transcription** — `talkies` unifies both under `/audio/speech` and `/audio/transcriptions` (Kokoro, Qwen3-TTS, Chatterbox Turbo, Whisper, Parakeet, Canary, Sherpa-ONNX, Vosk — `TALKIES=1` / `TALKIES_CUDA=1`); cloud TTS/ASR routes through the same endpoints.
+- **Speech synthesis + transcription** — `talkies` unifies both under `/audio/speech` and `/audio/transcriptions` (Kokoro, Qwen3-TTS, Chatterbox Turbo, Whisper, Parakeet, Canary, Sherpa-ONNX, Vosk, wav2vec2/ZIPA phoneme ASR — `TALKIES=1` / `TALKIES_CUDA=1`); cloud TTS/ASR routes through the same endpoints.
 - **Web search** — SearXNG at `/searxng/`, plus MCP `search_web` (`SEARXNG=1`).
 - **Email gateway** — `mailbox` at `/mailbox/`, stateless IMAP+SMTP across N accounts from one YAML config, REST + MCP (`MAILBOX=1`, needs `MAILBOX_CONFIG` + `MAILBOX_AUTH_TOKEN`).
 - **Telegram client** — `telethon` at `/telethon/`, REST + MCP (`TELETHON=1`, needs API ID/hash + string session).

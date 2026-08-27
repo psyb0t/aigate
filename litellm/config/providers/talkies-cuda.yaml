@@ -103,6 +103,27 @@
   model_info:
     mode: audio_transcription
 
+# New in talkies v0.17.0: phoneme-recognition ASR. Both carry no language
+# model or lexicon, so a mispronunciation surfaces as the phones actually
+# spoken rather than being corrected to the nearest real word. `text` is a
+# space-separated IPA phone stream; verbose_json/srt/vtt and per-phone
+# timestamps behave as for the other ASR models.
+- model_name: local-talkies-cuda-wav2vec2-xlsr-53-espeak
+  litellm_params:
+    model: openai/wav2vec2-xlsr-53-espeak
+    api_base: http://talkies-cuda:8000/v1
+    api_key: os.environ/TALKIES_CUDA_AUTH_TOKEN
+  model_info:
+    mode: audio_transcription
+
+- model_name: local-talkies-cuda-zipa-ipa
+  litellm_params:
+    model: openai/zipa-ipa
+    api_base: http://talkies-cuda:8000/v1
+    api_key: os.environ/TALKIES_CUDA_AUTH_TOKEN
+  model_info:
+    mode: audio_transcription
+
 # Kokoro TTS shares the same talkies-cuda container as of v0.3.0 —
 # `POST /v1/audio/speech` routed to the same upstream.
 - model_name: local-talkies-cuda-kokoro-tts
