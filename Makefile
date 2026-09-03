@@ -86,6 +86,8 @@ endif
 # tailscale: opt-in with TAILSCALE=1
 ifeq ($(strip $(TAILSCALE)),1)
   _PROFILES += tailscale
+  # Load the tailnet-egress overlay so claudebox/pibox can reach the tailnet.
+  export COMPOSE_FILE := docker-compose.yml:docker-compose.tailscale.yml
 endif
 
 # predictalot: opt-in with PREDICTALOT=1 (CPU)
@@ -261,7 +263,7 @@ help:
 	@echo "  librechat     set LIBRECHAT=1"
 	@echo "  searxng       set SEARXNG=1 (meta search engine + MCP tool)"
 	@echo "  telethon      set TELETHON=1 (Telegram client REST API + MCP)"
-	@echo "  tailscale     set TAILSCALE=1 (tailnet-only HTTP proxy to nginx)"
+	@echo "  tailscale     set TAILSCALE=1 (tailnet-only HTTP proxy to nginx; claudebox/pibox get outbound tailnet reach)"
 	@echo "  predictalot   set PREDICTALOT=1 (CPU time-series forecasting + MCP)"
 	@echo "  predictalot-cuda set PREDICTALOT_CUDA=1 (NVIDIA GPU time-series forecasting + MCP)"
 	@echo "  mailbox       set MAILBOX=1 (IMAP+SMTP gateway REST API + MCP — needs MAILBOX_CONFIG)"

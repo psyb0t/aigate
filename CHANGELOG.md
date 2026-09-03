@@ -2,6 +2,41 @@
 
 All notable changes to this project are documented here.
 
+## [v3.23.0] — 2026-09-03
+
+**Outbound tailnet access for the claudebox and pibox-zai agent containers.
+When `TAILSCALE=1` runs alongside `CLAUDEBOX=1` or `PIBOX_ZAI=1`, those
+containers can reach machines on your tailnet over any protocol, on top of the
+existing inbound `tailscale serve` proxy.**
+
+### Added
+
+- Tailnet egress overlay (`docker-compose.tailscale.yml`), loaded by the
+  Makefile only when `TAILSCALE=1`. It routes the `100.64.0.0/10` Tailscale
+  CGNAT range out through the existing tailscale node and configures split DNS,
+  so claudebox and pibox-zai resolve tailnet names and connect to tailnet peers
+  while public and sibling-container names keep resolving. Both containers stay
+  on the bridge, so nginx and LiteLLM still reach them.
+  - The tailscale container becomes a NAT gateway (`MASQUERADE` on `tailscale0`,
+    kept present by a sidecar). Each agent container gets the tailnet route
+    installed in its network namespace by a per-container sidecar that re-adds it
+    after a restart. All egress sidecars run with `no-new-privileges:true` and
+    `cap_drop: [ALL]`, adding back only `NET_ADMIN` (plus `NET_RAW` on the
+    gateway sidecar for the NAT rule).
+  - DNS: Tailscale MagicDNS (`100.100.100.100`) answers tailnet names and
+    SERVFAILs everything else; Docker's embedded resolver falls through to a
+    public resolver for public names.
+- `TS_MAGICDNS_SUFFIX` (optional): your tailnet's MagicDNS suffix, so the agent
+  containers resolve bare tailnet names in addition to FQDNs. Leave unset to
+  require fully-qualified names.
+- `TS_FALLBACK_DNS` (optional, default `1.1.1.1`): resolver the agent containers
+  use for non-tailnet names. Set your own to keep public DNS on your
+  infrastructure.
+
+Scope: IPv4 tailnet peers by their `100.64.0.0/10` address or MagicDNS name. A
+LAN behind a subnet router and tailnet IPv6 are not routed. See
+[docs/services/tailscale.md](docs/services/tailscale.md).
+
 ## [v3.22.0] — 2026-08-27
 
 **Bump talkies `v0.16.0` → `v0.17.0`, which adds two phoneme-recognition ASR

@@ -46,5 +46,37 @@ Default forward port is 80 (`http://<host>.<tailnet>/`). Change with `TS_SERVE_P
 - Forwarding sysctls (`net.ipv4.ip_forward=1`, `net.ipv6.conf.all.forwarding=1`) are set so subnet-routing and exit-node modes work if you add `--advertise-routes=...` or `--advertise-exit-node` via `TS_EXTRA_ARGS`.
 - Stays on the `aigate-public` network so the `nginx:4000` upstream resolves via Docker DNS.
 
+### Tailnet egress for claudebox and pibox-zai
+
+`tailscale serve` covers the inbound direction: tailnet devices reaching aigate. The reverse, letting the agent containers reach machines on your tailnet, is off by default and turns on when `TAILSCALE=1` runs alongside `CLAUDEBOX=1` or `PIBOX_ZAI=1`. The Makefile then loads the `docker-compose.tailscale.yml` overlay, which routes tailnet traffic out through the existing tailscale node. Both containers stay on the bridge, so nginx and LiteLLM still reach them as before.
+
+With the overlay active, from inside claudebox or pibox-zai you can resolve tailnet names and connect to tailnet peers over any protocol (SSH, HTTP, whatever the peer serves), while container names and public names keep resolving as usual.
+
+How it works:
+
+- The tailscale container becomes a NAT gateway for the tailnet CGNAT range. A small sidecar keeps a `MASQUERADE` rule on `tailscale0` so replies find their way back to the bridge clients.
+- Each agent container gets a route for `100.64.0.0/10` (the range Tailscale assigns every node) pointed at the tailscale container. A per-container sidecar sharing that container's network namespace installs the route and re-adds it after a restart, since Compose has no static-route field.
+- DNS is split. Tailscale MagicDNS (`100.100.100.100`) answers tailnet names and returns SERVFAIL for everything else; Docker's embedded resolver falls through to a public resolver for public names and still answers sibling container names.
+
+Two settings, both optional:
+
+```env
+# Your tailnet's MagicDNS suffix, from `tailscale status` (hosted: tailXXXX.ts.net;
+# Headscale: your base_domain). Lets the containers resolve bare tailnet names in
+# addition to FQDNs. Leave unset to require fully-qualified names.
+TS_MAGICDNS_SUFFIX=tailXXXX.ts.net
+
+# Resolver for non-tailnet names, since MagicDNS only answers tailnet names.
+# Defaults to 1.1.1.1; set your own to keep public DNS on your infrastructure.
+TS_FALLBACK_DNS=1.1.1.1
+```
+
+Scope and limits:
+
+- Covers IPv4 tailnet peers by their `100.64.0.0/10` address or MagicDNS name. That is the complete range for node-to-node tailnet access.
+- A LAN behind a subnet router is **not** in `100.64.0.0/10`, so it is not reached by this route. Add that subnet as a separate route if you need it.
+- IPv4 only. Tailnet IPv6 (`fd7a:115c:a1e0::/48`) is not routed.
+- The egress sidecars carry `no-new-privileges:true` and `cap_drop: [ALL]`, adding back only `NET_ADMIN` (and `NET_RAW` on the gateway sidecar for the NAT rule).
+
 ---
 

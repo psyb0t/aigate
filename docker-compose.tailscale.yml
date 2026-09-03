@@ -1,0 +1,121 @@
+# Tailnet egress overlay. The Makefile loads this file only when TAILSCALE=1.
+#
+# It gives claudebox and pibox-zai layer-3 access to the tailnet through the
+# existing tailscale sidecar: a route to the 100.64.0.0/10 CGNAT range plus
+# split DNS (tailscale MagicDNS for tailnet names, the Docker resolver for
+# everything else). The tailscale container becomes the NAT gateway for that
+# route.
+#
+# Each `*-tsnet` helper shares its target's network namespace and adds the
+# route from inside it, because Compose has no native per-service static route.
+# The helpers are gated by their target's own profile, so a helper only runs
+# when both that target and the tailscale profile are active.
+
+x-tsnet-logging: &tsnet-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-tsnet-helper: &tsnet-helper
+  cap_drop: ["ALL"]
+  cap_add: ["NET_ADMIN"]
+  security_opt: ["no-new-privileges:true"]
+  read_only: true
+  # iptables needs a writable lock at /run/xtables.lock; the rest stays read-only.
+  tmpfs:
+    - /run:rw,noexec,nosuid,size=8m
+  init: true
+  restart: unless-stopped
+  logging: *tsnet-logging
+  deploy:
+    resources:
+      limits:
+        memory: 64M
+        cpus: "0.1"
+        pids: 32
+
+services:
+  # ip_forward lets the tailscale netns route bridge traffic out to the tailnet.
+  tailscale:
+    sysctls:
+      - net.ipv4.ip_forward=1
+
+  # Keeps the outbound MASQUERADE rule present in the tailscale netns so tailnet
+  # peers see the tailscale node as the source and replies return to the bridge
+  # clients. The official image rebuilds its own rules on restart, so this
+  # re-asserts on a loop rather than adding the rule once.
+  tailscale-tsnet-gw:
+    <<: *tsnet-helper
+    image: tailscale/tailscale:v1.82.0
+    # iptables against the nat table needs NET_RAW on top of NET_ADMIN, matching
+    # the caps the main tailscale container already carries.
+    cap_add: ["NET_ADMIN", "NET_RAW"]
+    profiles: ["tailscale"]
+    network_mode: "service:tailscale"
+    depends_on:
+      - tailscale
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          iptables -t nat -C POSTROUTING -o tailscale0 -j MASQUERADE 2>/dev/null \
+            || iptables -t nat -A POSTROUTING -o tailscale0 -j MASQUERADE
+          sleep 30
+        done
+
+  # Split DNS. Docker keeps its embedded resolver in front (so sibling container
+  # names still resolve) and uses these as its upstreams: tailscale MagicDNS
+  # first, which answers tailnet names and returns SERVFAIL for everything else,
+  # then a public resolver the embedded server falls through to for public
+  # names. Override TS_FALLBACK_DNS to use a different resolver.
+  claudebox:
+    dns:
+      - 100.100.100.100
+      - "${TS_FALLBACK_DNS:-1.1.1.1}"
+    dns_search:
+      - "${TS_MAGICDNS_SUFFIX:-}"
+
+  pibox-zai:
+    dns:
+      - 100.100.100.100
+      - "${TS_FALLBACK_DNS:-1.1.1.1}"
+    dns_search:
+      - "${TS_MAGICDNS_SUFFIX:-}"
+
+  # Route helpers. Each resolves the tailscale container's bridge IP by name and
+  # keeps the 100.64.0.0/10 route present in its target's namespace, re-adding
+  # it after a target restart recreates the namespace.
+  claudebox-tsnet:
+    <<: *tsnet-helper
+    image: alpine:3.20
+    profiles: ["claudebox"]
+    network_mode: "service:claudebox"
+    depends_on:
+      - claudebox
+    command:
+      - /bin/sh
+      - -c
+      - |
+        while true; do
+          gw="$$(getent hosts tailscale | awk '{print $$1}' | head -1)"
+          [ -n "$$gw" ] && ip route replace 100.64.0.0/10 via "$$gw"
+          sleep 30
+        done
+
+  pibox-zai-tsnet:
+    <<: *tsnet-helper
+    image: alpine:3.20
+    profiles: ["pibox-zai"]
+    network_mode: "service:pibox-zai"
+    depends_on:
+      - pibox-zai
+    command:
+      - /bin/sh
+      - -c
+      - |
+        while true; do
+          gw="$$(getent hosts tailscale | awk '{print $$1}' | head -1)"
+          [ -n "$$gw" ] && ip route replace 100.64.0.0/10 via "$$gw"
+          sleep 30
+        done
