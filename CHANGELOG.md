@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented here.
 
+## [v3.24.0] — 2026-09-06
+
+**Bump the claudebox and pibox agent images. Both are rebuilt on the aicodebox
+v0.14.6 base, which adds native full-event retention on `POST /run`.**
+
+### Changed
+
+- claudebox image bumped `v2.0.13` to `v2.3.10`. As of the image's v2.3.0,
+  Claude Code is no longer baked into the image (Anthropic's CLI carries no
+  redistribution grant); it installs from npm on first container start, so a
+  fresh claudebox needs outbound network and a few extra seconds on first boot.
+  The version is pinned via `CLAUDEBOX_CLAUDE_VERSION` and warm restarts skip
+  the install. The v0.14.6 base adds native full-event retention on `POST /run`
+  (`eventMode`) and Claude Code's native `--json-schema` flag, and the chain
+  since v2.0.13 inherited an API-mode restart-loop fix (the agent subprocess is
+  spawned in its own session, so its signals no longer reach the uvicorn PID 1).
+- pibox image bumped `v0.15.11` to `v0.15.12`, rebuilt on the same aicodebox
+  v0.14.6 base for native full-event retention on `POST /run`.
+
 ## [v3.23.0] — 2026-09-03
 
 **Outbound tailnet access for the claudebox and pibox-zai agent containers.
