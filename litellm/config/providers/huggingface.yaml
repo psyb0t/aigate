@@ -13,9 +13,14 @@
     model: huggingface/Qwen/Qwen3-8B
     api_key: os.environ/HF_TOKEN
 
-- model_name: hf-qwq-32b
+- model_name: hf-qwen3-32b
   litellm_params:
-    model: huggingface/Qwen/QwQ-32B
+    model: huggingface/Qwen/Qwen3-32B
+    api_key: os.environ/HF_TOKEN
+
+- model_name: hf-qwen3-235b
+  litellm_params:
+    model: huggingface/Qwen/Qwen3-235B-A22B
     api_key: os.environ/HF_TOKEN
 
 - model_name: hf-deepseek-r1
@@ -33,9 +38,9 @@
     model: huggingface/Qwen/Qwen2.5-VL-72B-Instruct
     api_key: os.environ/HF_TOKEN
 
-- model_name: hf-qwen3-vl-8b
+- model_name: hf-gemma-3-27b
   litellm_params:
-    model: huggingface/Qwen/Qwen2.5-VL-7B-Instruct
+    model: huggingface/google/gemma-3-27b-it
     api_key: os.environ/HF_TOKEN
 
 - model_name: hf-gemma-3-12b

@@ -11,13 +11,13 @@ Numbers below were correct at last check (provider docs change — click through
 | Provider     | CC required? | Per-minute            | Per-day                              | Monthly cap                          | Notes                                                                                | Official limits page                                                                                                  |
 | ------------ | ------------ | --------------------- | ------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
 | Groq         | No           | 30 RPM, 6–12K TPM     | 1K–14.4K RPD, 100K–500K TPD          | —                                    | Per-model. `llama-3.3-70b`: 1K RPD / 100K TPD. `llama-3.1-8b`: 14.4K RPD / 500K TPD. | [console.groq.com/docs/rate-limits](https://console.groq.com/docs/rate-limits)                                        |
-| Cerebras     | No           | 5 RPM, 30K TPM        | 1M TPH, 1M TPD                       | —                                    | "Free Trial" eligible models only: `qwen-3-235b`, `gpt-oss-120b`, `zai-glm-4.7`, `llama3.1-8b`. | [inference-docs.cerebras.ai/support/rate-limits](https://inference-docs.cerebras.ai/support/rate-limits)                |
+| Cerebras     | Yes          | n/a                   | n/a                                  | n/a                                  | No free tier at the last audit: every model returns `Payment required`. | [inference-docs.cerebras.ai/support/rate-limits](https://inference-docs.cerebras.ai/support/rate-limits)                |
 | OpenRouter   | No (for $0)  | 20 RPM on `:free`     | 50 RPD with $0 / 1000 RPD with $10+  | —                                    | Daily cap is per-account, not per-model.                                             | [openrouter.ai/docs/api-reference/limits](https://openrouter.ai/docs/api-reference/limits)                            |
 | HuggingFace  | No           | varies per provider   | varies per provider                  | **$0.10 credits/mo** (PRO: $2/mo)    | Once credits run out you must purchase more — there is no "stays free forever" tier. | [huggingface.co/docs/inference-providers/pricing](https://huggingface.co/docs/inference-providers/pricing)            |
 | Mistral      | No           | not published         | not published                        | not published                        | "Experiment" plan exists but Mistral doesn't publish numeric limits — see Admin → Limits in console after sign-up. Only `mistral-large`, `mistral-small`, `ministral-8b`, `mistral-embed` are free-tier. | [docs.mistral.ai/admin/user-management-finops/tier](https://docs.mistral.ai/admin/user-management-finops/tier)         |
 | Cohere       | No           | 20 RPM chat, 10 RPM rerank, 2K inputs/min embed | —                          | **1,000 API calls/month** (chat)     | Hard monthly request cap is very low — runs out fast on any real workload.            | [docs.cohere.com/v2/docs/rate-limits](https://docs.cohere.com/v2/docs/rate-limits)                                     |
 | Claudebox    | Subscription | depends on plan       | depends on plan                      | —                                    | Uses your Claude Pro/Max OAuth — no extra cost beyond the sub.                       | [anthropic.com/pricing](https://www.anthropic.com/pricing)                                                            |
-| Pibox-zai    | Subscription | depends on plan       | depends on plan                      | —                                    | pi-coding-agent pointed at z.ai — uses your z.ai subscription.                       | [z.ai](https://z.ai)                                                                                                  |
+| Pibox-zai    | Subscription | depends on plan       | depends on plan                      | —                                    | pi-coding-agent on a [GLM Coding Plan](https://z.ai/subscribe). Metered allowance, not unlimited. | [z.ai](https://z.ai)                                                                                                  |
 | Anthropic    | **Yes**      | tiered                | tiered                               | pay-per-token, no free tier          | Not free. Standard API.                                                              | [docs.anthropic.com/en/api/rate-limits](https://docs.anthropic.com/en/api/rate-limits)                                |
 | OpenAI       | **Yes**      | tiered                | tiered                               | pay-per-token, no free tier          | Not free. Standard API.                                                              | [platform.openai.com/docs/guides/rate-limits](https://platform.openai.com/docs/guides/rate-limits)                    |
 | Local (CPU / CUDA) | N/A    | unlimited             | unlimited                            | unlimited                            | Only constrained by your hardware. Last-resort fallback when all cloud tiers fail.   | —                                                                                                                     |
@@ -28,7 +28,7 @@ What this means for the gateway:
 - **Cohere is a footgun**: 1,000 calls/month at trial is enough for testing, not enough for any real workload. Don't put Cohere first in a custom fallback chain unless you've enabled production billing.
 - **HuggingFace free is ~$0.10/month** — designed for evaluation, not production. Use a custom provider key (your own HF Pro / direct Together / Fireworks / etc.) for sustained use.
 - **OpenRouter $0 → 50 req/day total** across all `:free` models. Bumping to $10 loaded raises it to 1000 RPD.
-- **Cerebras free tier is brutally rate-capped**: 5 RPM (not per-second, not per-day — per **minute**) is the bottleneck long before the 1M TPD budget. And it's only 4 models — anything else needs the paid Developer plan.
+- **Cerebras has no free tier at the last audit**: every model, including the ones previously free-trial eligible, returns `Payment required to access this resource`. Enabling `CEREBRAS=1` without a billing plan adds models that fail at request time and fall through to the next entry in their chain.
 - **Mistral doesn't publish free-tier numbers anywhere** — the "Experiment" plan exists but exact RPS/TPM/TPMonth values live only in your account's Admin → Limits page. Plan accordingly, treat it as low-volume eval-only until you've seen your numbers.
 - **Local models** are the only true "no limit" — at the cost of your own VRAM / CPU / latency.
 
@@ -41,37 +41,49 @@ Sign up: [console.groq.com](https://console.groq.com) — no credit card require
 | openai/gpt-oss-20b             | `groq-gpt-oss-20b`                  | small, fast     |
 | openai/gpt-oss-120b            | `groq-gpt-oss-120b`                 | flagship        |
 | openai/gpt-oss-safeguard-20b   | `groq-gpt-oss-safeguard-20b`        | safety filter   |
+| qwen/qwen3.8-27b               | `groq-qwen3.8-27b`                  | mid-size, newest |
 | qwen/qwen3.6-27b               | `groq-qwen3.6-27b`                  | mid-size        |
-| compound                       | `groq-compound`                     | tool use        |
-| compound-mini                  | `groq-compound-mini`                | tool use, fast  |
+| groq/compound                  | `groq-compound`                     | tool use        |
+| groq/compound-mini             | `groq-compound-mini`                | tool use, fast  |
+| allam-2-7b                     | `groq-allam-2-7b`                   | Arabic          |
+| meta-llama/llama-prompt-guard-2-22m | `groq-prompt-guard-22m`        | prompt-injection score, not chat |
+| meta-llama/llama-prompt-guard-2-86m | `groq-prompt-guard-86m`        | prompt-injection score, not chat |
 | whisper-large-v3               | `groq-whisper-large-v3`             | transcription   |
 | whisper-large-v3-turbo         | `groq-whisper-large-v3-turbo`       | transcription, fast |
 
-## Cerebras (free tier — 5 RPM / 30K TPM / 1M TPD, no CC)
+The two compound models are namespaced `groq/` upstream. Groq also serves the Orpheus TTS voices, left out here because they need a one-time terms acceptance in the Groq console before the API will serve them.
 
-Sign up: [cloud.cerebras.ai](https://cloud.cerebras.ai) — no credit card required. The "Free Trial" plan currently exposes **2 models** (`gpt-oss-120b`, `zai-glm-4.7`) and is capped at **5 requests per minute / 30K tokens per minute / 1M tokens per hour / 1M tokens per day** per model. Token bucketing — quota replenishes continuously, not on a fixed reset. The 5 RPM ceiling burns out long before the 1M TPD budget on any real workload. Limits page: [inference-docs.cerebras.ai/support/rate-limits](https://inference-docs.cerebras.ai/support/rate-limits). Among the fastest inference available.
+## Cerebras (paid only as of the last audit)
 
-| Model                          | Alias                    | Notes                         |
-| ------------------------------ | ------------------------ | ----------------------------- |
-| gpt-oss-120b                   | `cerebras-gpt-oss-120b`  | free-tier eligible            |
-| zai-glm-4.7                    | `cerebras-glm-4.7`       | free-tier eligible            |
+Sign up: [cloud.cerebras.ai](https://cloud.cerebras.ai). At the last provider audit every model returned `Payment required to access this resource`, including the ones previously listed as free-trial eligible, so `CEREBRAS=1` buys nothing without a billing plan. Separately, `zai-glm-4.7` is archived and returns `Model zai-glm-4.7 is archived and unavailable for the organization`. Cerebras now serves `gpt-oss-120b`, `qwen-3.8-27b`, and `gemma-4-31b`. Limits page: [inference-docs.cerebras.ai/support/rate-limits](https://inference-docs.cerebras.ai/support/rate-limits). Among the fastest inference available if you are paying.
+
+| Model                          | Alias                     | Notes             |
+| ------------------------------ | ------------------------- | ----------------- |
+| gpt-oss-120b                   | `cerebras-gpt-oss-120b`   | needs a paid plan |
+| qwen-3.8-27b                   | `cerebras-qwen3.8-27b`    | needs a paid plan |
+| gemma-4-31b                    | `cerebras-gemma-4-31b`    | needs a paid plan |
+
+The previously listed `zai-glm-4.7` is archived upstream and was removed.
 
 ## OpenRouter (free tier — 50 RPD at $0, 1000 RPD at $10+)
 
 Sign up: [openrouter.ai](https://openrouter.ai) — 50 req/day free across all `:free` models with $0 loaded; 1000 req/day once you've loaded ≥$10 in credits (lifetime, not monthly). Limits page: [openrouter.ai/docs/api-reference/limits](https://openrouter.ai/docs/api-reference/limits).
 
-| Model                                | Alias              |
-| ------------------------------------ | ------------------ |
-| nousresearch/hermes-3-llama-3.1-405b | `or-hermes-3-405b` |
-| qwen/qwen3-coder                     | `or-qwen3-coder`   |
-| qwen/qwen3-next-80b-a3b-instruct     | `or-qwen3-80b`     |
-| nvidia/nemotron-3-super-120b-a12b    | `or-nemotron-120b` |
-| nvidia/nemotron-3-ultra-550b-a55b    | `or-nemotron-ultra-550b` |
-| nvidia/nemotron-nano-9b-v2           | `or-nemotron-nano-9b` |
-| nvidia/nemotron-3-nano-30b-a3b       | `or-nemotron-nano-30b` |
-| meta-llama/llama-3.3-70b-instruct    | `or-llama-3.3-70b` |
-| openai/gpt-oss-120b                  | `or-gpt-oss-120b`  |
-| openai/gpt-oss-20b                   | `or-gpt-oss-20b`   |
+The `:free` roster rotates. OpenRouter withdraws a model's free variant without removing the paid one, so a pin that worked last month stops resolving while the model itself still exists. Every alias below returned a completion when the list was last audited. Re-check with `bash tests/test_litellm.sh`.
+
+| Model                                         | Alias                        | Context | Notes                                    |
+| --------------------------------------------- | ---------------------------- | ------- | ---------------------------------------- |
+| nvidia/nemotron-3.5-lightning                 | `or-nemotron-lightning`      | 1M      | largest context here                     |
+| nvidia/nemotron-3-super-120b-a12b             | `or-nemotron-120b`           | 262k    |                                          |
+| dots-studio/dots-3-note-preview               | `or-dots-3-note`             | 512k    | text + image                             |
+| nvidia/nemotron-3-nano-omni-30b-a3b-reasoning | `or-nemotron-omni-30b`       | 256k    | text/image/audio/video, reasoning        |
+| cohere/north-mini-code                        | `or-north-mini-code`         | 256k    | code                                     |
+| liquid/lfm-2.5-2.6b                           | `or-lfm-2.5-2.6b`            | 65k     | small and fast                           |
+| inclusionai/ling-3.0-flash-sante              | `or-ling-3-sante`            | 262k    | health-domain tuned                      |
+| inclusionai/ling-3.0-flash-fin                | `or-ling-3-fin`              | 262k    | finance-domain tuned                     |
+| nvidia/nemotron-3.5-content-safety            | `or-nemotron-content-safety` | 128k    | safety classifier, not general chat      |
+
+The last three answer by name but stay out of the general fallback chains, where a domain-tuned model or a classifier would answer off-target.
 
 ## HuggingFace Inference Providers ($0.10/mo free credits — not really "free")
 
@@ -83,11 +95,12 @@ Sign up: [huggingface.co](https://huggingface.co/settings/tokens). Free users ge
 | meta-llama/Llama-3.3-70B-Instruct            | `hf-llama-3.3-70b`     |                |
 | meta-llama/Llama-4-Scout-17B-16E-Instruct    | `hf-llama-4-scout`     | multimodal     |
 | Qwen/Qwen3-8B                                | `hf-qwen3-8b`          |                |
-| Qwen/QwQ-32B                                 | `hf-qwq-32b`           | reasoning      |
+| Qwen/Qwen3-32B                               | `hf-qwen3-32b`         | reasoning      |
+| Qwen/Qwen3-235B-A22B                         | `hf-qwen3-235b`        | largest here   |
 | deepseek-ai/DeepSeek-R1                      | `hf-deepseek-r1`       | reasoning      |
 | Qwen/Qwen2.5-VL-72B-Instruct                 | `hf-qwen-vl-72b`       | multimodal     |
-| Qwen/Qwen2.5-VL-7B-Instruct                  | `hf-qwen3-vl-8b`       | multimodal     |
 | google/gemma-3-12b-it                        | `hf-gemma-3-12b`       | multimodal     |
+| google/gemma-3-27b-it                        | `hf-gemma-3-27b`       | multimodal     |
 | black-forest-labs/FLUX.1-schnell             | `hf-flux-schnell`      | image gen, fast |
 
 ## Mistral AI (free "Experiment" tier — exact limits not published, no CC)
@@ -114,13 +127,24 @@ Sign up: [dashboard.cohere.com](https://dashboard.cohere.com) — no credit card
 
 | Model                  | Alias                   | Notes                        |
 | ---------------------- | ----------------------- | ---------------------------- |
-| command-a-03-2025      | `cohere-command-a`      | flagship, 256K ctx, tool use |
-| command-r-plus-08-2024 | `cohere-command-r-plus` | strong, 128K ctx             |
-| command-r-08-2024      | `cohere-command-r`      | balanced                     |
-| command-r7b-12-2024    | `cohere-command-r7b`    | fast, small                  |
-| c4ai-aya-expanse-32b   | `cohere-aya-32b`        | multilingual (23 languages)  |
-| embed-v4.0             | `cohere-embed`          | embeddings                   |
-| rerank-v3.5            | `cohere-rerank`         | reranking                    |
+| command-a-plus-05-2026    | `cohere-command-a-plus`      | newest flagship              |
+| command-a-03-2025         | `cohere-command-a`           | flagship, 256K ctx, tool use |
+| command-a-reasoning-08-2025 | `cohere-command-a-reasoning` | reasoning                  |
+| command-a-vision-07-2025  | `cohere-command-a-vision`    | multimodal                   |
+| command-a-translate-08-2025 | `cohere-command-a-translate` | translation                |
+| north-mini-code-1-0       | `cohere-north-mini-code`     | code                         |
+| command-r-plus-08-2024    | `cohere-command-r-plus`      | strong, 128K ctx             |
+| command-r-08-2024         | `cohere-command-r`           | balanced                     |
+| command-r7b-12-2024       | `cohere-command-r7b`         | fast, small                  |
+| command-r7b-arabic-02-2025 | `cohere-command-r7b-arabic` | Arabic                       |
+| c4ai-aya-expanse-32b      | `cohere-aya-32b`             | multilingual (23 languages)  |
+| c4ai-aya-vision-32b       | `cohere-aya-vision-32b`      | multilingual multimodal      |
+| tiny-aya-global           | `cohere-tiny-aya-global`     | small multilingual           |
+| tiny-aya-earth            | `cohere-tiny-aya-earth`      | small multilingual           |
+| tiny-aya-fire             | `cohere-tiny-aya-fire`       | small multilingual           |
+| tiny-aya-water            | `cohere-tiny-aya-water`      | small multilingual           |
+| embed-v4.0                | `cohere-embed`               | embeddings                   |
+| rerank-v3.5               | `cohere-rerank`              | reranking                    |
 
 ## Claudebox (requires Claude subscription or API key)
 
@@ -134,31 +158,33 @@ Set up with `claude setup-token` or generate at [console.anthropic.com](https://
 | `claudebox-sonnet` | Claude Sonnet 4.6     | Daily coding, balanced speed/intelligence        |
 | `claudebox-opus`   | Claude Opus 4.6       | Complex reasoning, architecture, hard debugging  |
 
-## Pibox-zai — pi-coding-agent via z.ai (requires z.ai account)
+## Pibox-zai, pi-coding-agent on a GLM Coding Plan (subscription)
 
-[z.ai](https://z.ai) provides an Anthropic-compatible API backed by GLM models. Routed through [pibox](https://github.com/psyb0t/docker-pibox) — [pi-coding-agent](https://github.com/earendil-works/pi-mono) wrapped in an API server, pointed at z.ai. Same agentic capabilities (shell, files, tools, MCP) as claudebox. Why pibox over a second claudebox: pi speaks the Anthropic wire protocol natively, no Claude Code license/OAuth ceremony, and pibox adds a `/files/*` CRUD API plus optional Telegram + cron modes for free. The `-zai` suffix names the upstream — future `PIBOX_*` flags can run pi against OpenAI, OpenRouter, etc.
+Buy the [GLM Coding Plan](https://z.ai/subscribe), not pay-as-you-go API credits. The plan is the supported path here: a flat monthly fee that buys a credit allowance, rather than per-token billing. The allowance is metered, so it is not unlimited use. Routed through [pibox](https://github.com/psyb0t/docker-pibox) — [pi-coding-agent](https://github.com/earendil-works/pi-mono) wrapped in an API server, pointed at z.ai's Anthropic-compatible endpoint. Same agentic capabilities (shell, files, tools, MCP) as claudebox. Why pibox over a second claudebox: pi speaks the Anthropic wire protocol natively, no Claude Code license/OAuth ceremony, and pibox adds a `/files/*` CRUD API plus optional Telegram + cron modes for free. The `-zai` suffix names the upstream — future `PIBOX_*` flags can run pi against OpenAI, OpenRouter, etc.
 
-| Alias                       | Underlying model | Notes                                                              |
-| --------------------------- | ---------------- | ------------------------------------------------------------------ |
-| `pibox-zai-glm-5.2`         | GLM-5.2          | Newest flagship (2026-06-17). 3× quota peak / 2× off-peak.         |
-| `pibox-zai-glm-5.1`         | GLM-5.2          | **Alias** — z.ai serves this as GLM-5.2. Kept for compatibility.   |
-| `pibox-zai-glm-5-turbo`     | GLM-5-Turbo      | Fast tier. 3× quota peak / 2× off-peak.                            |
-| `pibox-zai-glm-5`           | GLM-5.2          | **Alias** — z.ai serves this as GLM-5.2. Kept for compatibility.   |
-| `pibox-zai-glm-4.7`         | GLM-4.7          | Baseline 1× quota. Default for batch / catalog work.               |
-| `pibox-zai-glm-4.6`         | GLM-4.6          | Baseline 1× quota.                                                 |
-| `pibox-zai-glm-4.5`         | GLM-4.5          | Baseline 1× quota.                                                 |
-| `pibox-zai-glm-4.5-air`     | GLM-4.7          | **Alias** — z.ai serves this as GLM-4.7. Kept for compatibility.   |
+The plan serves two models:
 
-All eight aliases are accepted by z.ai, but three resolve to another model on their
-end rather than a distinct one — verified 2026-08-13 by inspecting the `model`
-field z.ai echoes back per request: `glm-5.1` and `glm-5` both serve **GLM-5.2**,
-and `glm-4.5-air` serves **GLM-4.7**. The remaining five (`glm-5.2`, `glm-5-turbo`,
-`glm-4.7`, `glm-4.6`, `glm-4.5`) serve themselves. The aliases stay exposed for
-backwards compatibility.
+| Alias                     | Underlying model | Notes                                   |
+| ------------------------- | ---------------- | --------------------------------------- |
+| `pibox-zai-glm-5.3`       | GLM-5.3          | Flagship. Reserve for hard tasks.       |
+| `pibox-zai-glm-5.3-flash` | GLM-5.3-Flash    | Default. 1M context, native multimodal. |
 
-Override the exposed list with `PIBOX_ZAI_AVAILABLE_MODELS=glm-4.5,glm-4.5-air,glm-4.6,glm-4.7,glm-5,glm-5-turbo,glm-5.1,glm-5.2` and the default model with `PIBOX_ZAI_DEFAULT_MODEL=glm-4.7` in `.env`. The full list is also the compose default — set the override only to subset.
+Retired ids still resolve, because z.ai routes them on their end: `glm-5.2` and `glm-5.1` serve **GLM-5.3**, and `glm-4.7` serves **GLM-5.3-Flash**. Only the two live ids are exposed as aliases here, so the alias you call always names the model that actually runs.
 
-**Quota note.** GLM Coding Plan meters the 5-series at **3× during Beijing peak (14:00–18:00)** and 2× off-peak (or 1× off-peak under z.ai's current promo through end of September 2026). The 4-series bills at the flat 1× rate. Pick `glm-4.7` for routine / batch / catalog work to stretch the subscription quota; reserve the 5-series for hard tasks.
+Override the exposed list with `PIBOX_ZAI_AVAILABLE_MODELS=glm-5.3,glm-5.3-flash` and the default with `PIBOX_ZAI_DEFAULT_MODEL=glm-5.3-flash` in `.env`. Both are already the compose defaults; set the override only to subset.
+
+**How the allowance is spent.** The plan meters credits, not requests, against both a 5-hour and a weekly limit. z.ai converts tokens to credits per model:
+
+```
+credits = (input_tokens × in + cached_input_tokens × cached + output_tokens × out) / 10,000
+```
+
+| Model         | in  | cached | out |
+| ------------- | --- | ------ | --- |
+| GLM-5.3       | 6.9 | 1.7    | 24  |
+| GLM-5.3-Flash | 2.3 | 0.56   | 8   |
+
+Read these as conversion rates, not as multipliers against some 1x baseline. Comparing them to the older peak/off-peak scheme, which scaled a prompt quota rather than tokens, does not give a like-for-like answer. What they do show is the gap between the two current models: Flash costs exactly a third of GLM-5.3 on both input and output, which is why it is the default for routine, batch, and catalog work. Output dominates either way, at roughly 3.5x the input rate, so a chatty run costs far more than a long prompt with a short answer.
 
 ## Anthropic (optional, API key required)
 
@@ -346,4 +372,4 @@ Same wrapper as the CPU variant but with `--n-gpu-layers 999` and the CUDA base 
 
 Every model has its own fallback chain. When a provider fails, is rate-limited, or returns an error, LiteLLM automatically tries the next model in the chain. Free providers are always tried first.
 
-For example, `groq-gpt-oss-120b` falls back through `cerebras-gpt-oss-120b` → `mistral-large` → `or-gpt-oss-120b` → `hf-llama-3.3-70b` → `openai-gpt-4o`. See `litellm/config/fallbacks.json` for all chains.
+For example, `groq-gpt-oss-120b` falls back through `cerebras-gpt-oss-120b` → `mistral-large` → `or-nemotron-omni-30b` → `hf-llama-3.3-70b` → `openai-gpt-4o`. See `litellm/config/fallbacks.json` for all chains.

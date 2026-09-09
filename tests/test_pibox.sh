@@ -28,12 +28,12 @@ test_pibox_zai_chat() {
     # PiAdapter layer. glm-4.7 follows the echo instruction reliably.
     local out
     out=$(post "$BASE_URL/chat/completions" \
-        '{"model":"pibox-zai-glm-4.7","messages":[{"role":"system","content":"You are a test echo bot. Reply with exactly what is asked, no commentary."},{"role":"user","content":"Reply with exactly: PIBOXPONG7742"}]}')
+        '{"model":"pibox-zai-glm-5.3-flash","messages":[{"role":"system","content":"You are a test echo bot. Reply with exactly what is asked, no commentary."},{"role":"user","content":"Reply with exactly: PIBOXPONG7742"}]}')
     if echo "$out" | grep -qi "authentication_error\|Failed to authenticate\|invalid api key"; then
         echo "  FAIL: pibox-zai z.ai token rejected — check PIBOX_ZAI_AUTH_TOKEN in .env"
         return 1
     fi
-    assert_contains "$out" "PIBOXPONG7742" "pibox-zai-glm-4.7 responds" || return 1
+    assert_contains "$out" "PIBOXPONG7742" "pibox-zai-glm-5.3-flash responds" || return 1
     assert_contains "$out" "choices" "response has choices" || return 1
     echo "OK: pibox_zai_chat"
 }
@@ -116,9 +116,8 @@ test_pibox_zai_via_litellm_models() {
     _pibox_zai_enabled || { echo "  SKIP: PIBOX_ZAI=0"; return 0; }
     local out
     out=$(get "$BASE_URL/v1/models")
-    assert_contains "$out" "pibox-zai-glm-4.5-air" "litellm registers pibox-zai-glm-4.5-air" || return 1
-    assert_contains "$out" "pibox-zai-glm-4.7" "litellm registers pibox-zai-glm-4.7" || return 1
-    assert_contains "$out" "pibox-zai-glm-5.1" "litellm registers pibox-zai-glm-5.1" || return 1
+    assert_contains "$out" "pibox-zai-glm-5.3" "litellm registers pibox-zai-glm-5.3" || return 1
+    assert_contains "$out" "pibox-zai-glm-5.3-flash" "litellm registers pibox-zai-glm-5.3-flash" || return 1
     echo "OK: pibox_zai_via_litellm_models"
 }
 

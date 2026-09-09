@@ -1,8 +1,15 @@
+# Seed the local runtime config from the tracked examples. This runs while make
+# parses the file, before the -include below, so a freshly created .env is read
+# by this same invocation. Both files are gitignored, so an update never
+# overwrites your edits.
+$(shell [ -f docker-compose.yml ] || cp docker-compose.yml.example docker-compose.yml)
+$(shell [ -f .env ] || cp .env.example .env)
+
 -include .env
 -include .env.limits
 export
 
-.PHONY: run run-bg down restart test logs limits build-config help
+.PHONY: run run-bg down restart test logs limits build-config bootstrap help
 
 # ── Profile detection ─────────────────────────────────────────────────────────
 
@@ -199,6 +206,17 @@ endef
 
 # ── Targets ───────────────────────────────────────────────────────────────────
 
+# The copies themselves happen at parse time (top of this file), so every target
+# already has them. This target reports the state and is the documented way to
+# create the files without starting anything.
+bootstrap:
+	@echo "docker-compose.yml: present (copy of docker-compose.yml.example unless you changed it)"
+	@echo ".env:               present"
+	@echo ""
+	@echo "Both are gitignored. Edit them freely; updates change only the .example files."
+	@echo "To take a new upstream default, diff against the example:"
+	@echo "  diff -u docker-compose.yml docker-compose.yml.example"
+
 build-config:
 	@docker run --rm \
 		-v "$(CURDIR):/workspace" \
@@ -238,6 +256,7 @@ help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "Targets:"
+	@echo "  bootstrap     Create .env and docker-compose.yml from their .example (run targets do this for you)"
 	@echo "  run           Start the stack in foreground (auto-detects profiles from .env)"
 	@echo "  run-bg        Start the stack in background"
 	@echo "  down          Stop everything"

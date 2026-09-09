@@ -1,3 +1,8 @@
+- model_name: groq-qwen3.8-27b
+  litellm_params:
+    model: groq/qwen/qwen3.8-27b
+    api_key: os.environ/GROQ_API_KEY
+
 - model_name: groq-qwen3.6-27b
   litellm_params:
     model: groq/qwen/qwen3.6-27b
@@ -18,14 +23,33 @@
     model: groq/openai/gpt-oss-safeguard-20b
     api_key: os.environ/GROQ_API_KEY
 
+# Groq namespaced these two under groq/ upstream. The doubled prefix is
+# intentional: the first groq/ selects the provider, the second is part of the
+# model id. The unprefixed ids no longer resolve.
 - model_name: groq-compound
   litellm_params:
-    model: groq/compound
+    model: groq/groq/compound
     api_key: os.environ/GROQ_API_KEY
 
 - model_name: groq-compound-mini
   litellm_params:
-    model: groq/compound-mini
+    model: groq/groq/compound-mini
+    api_key: os.environ/GROQ_API_KEY
+
+- model_name: groq-allam-2-7b
+  litellm_params:
+    model: groq/allam-2-7b
+    api_key: os.environ/GROQ_API_KEY
+
+# Prompt-injection classifiers. These return a probability score, not chat text.
+- model_name: groq-prompt-guard-22m
+  litellm_params:
+    model: groq/meta-llama/llama-prompt-guard-2-22m
+    api_key: os.environ/GROQ_API_KEY
+
+- model_name: groq-prompt-guard-86m
+  litellm_params:
+    model: groq/meta-llama/llama-prompt-guard-2-86m
     api_key: os.environ/GROQ_API_KEY
 
 - model_name: groq-whisper-large-v3

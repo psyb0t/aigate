@@ -1,9 +1,18 @@
+# Cerebras requires a paid plan. At the last provider audit every model here
+# returned "Payment required to access this resource" on a free account, so
+# enabling CEREBRAS=1 without billing adds models that fail at request time and
+# fall through to the next entry in their chain.
 - model_name: cerebras-gpt-oss-120b
   litellm_params:
     model: cerebras/gpt-oss-120b
     api_key: os.environ/CEREBRAS_API_KEY
 
-- model_name: cerebras-glm-4.7
+- model_name: cerebras-qwen3.8-27b
   litellm_params:
-    model: cerebras/zai-glm-4.7
+    model: cerebras/qwen-3.8-27b
+    api_key: os.environ/CEREBRAS_API_KEY
+
+- model_name: cerebras-gemma-4-31b
+  litellm_params:
+    model: cerebras/gemma-4-31b
     api_key: os.environ/CEREBRAS_API_KEY

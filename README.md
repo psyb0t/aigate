@@ -10,7 +10,7 @@ Everything an AI-powered workflow needs — inference, tool use, browser automat
 
 ### Models and routing
 
-Models across multiple providers. Six providers offer free tiers (Groq, Cerebras, OpenRouter, HuggingFace, Mistral, Cohere) — **but "free" means rate-limited and capped**, not unlimited. See [free-tier reality check](docs/providers.md#free-tier-reality-check) for exact RPM/RPD/monthly caps before relying on a tier. Local providers run on your own hardware — CPU or NVIDIA GPU — with no network calls, no rate limits, and no usage costs (Ollama, talkies for ASR+TTS, vllm-wrap for text LLMs+embeddings, llamacpp-wrap for vision-VLMs incl. Surya OCR 2, stable-diffusion.cpp CPU, stable-diffusion.cpp CUDA, audiolla for audio production, predictalot for time-series forecasting). The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
+Models across multiple providers. Five providers offer free tiers (Groq, OpenRouter, HuggingFace, Mistral, Cohere) — **but "free" means rate-limited and capped**, not unlimited. Cerebras needs a paid plan as of the last audit. See [free-tier reality check](docs/providers.md#free-tier-reality-check) for exact RPM/RPD/monthly caps before relying on a tier. Local providers run on your own hardware — CPU or NVIDIA GPU — with no network calls, no rate limits, and no usage costs (Ollama, talkies for ASR+TTS, vllm-wrap for text LLMs+embeddings, llamacpp-wrap for vision-VLMs incl. Surya OCR 2, stable-diffusion.cpp CPU, stable-diffusion.cpp CUDA, audiolla for audio production, predictalot for time-series forecasting). The gateway burns through providers in priority order and falls back automatically when one rate-limits or fails, so you're never paying for tokens you could have gotten free.
 
 ### Tools and capabilities
 
@@ -76,7 +76,7 @@ nginx :4000                                          ┌────────
   ├─► /piston/               → piston (sandboxed multi-language code execution, PISTON=1)
   └─► /                      → LiteLLM (sync)
                                   ├─ Groq               (free: 30 RPM, 1K-14.4K RPD per model, GROQ=1)
-                                  ├─ Cerebras           (free: 5 RPM / 30K TPM / 1M TPD, 4 models only, CEREBRAS=1)
+                                  ├─ Cerebras           (paid plan required, CEREBRAS=1)
                                   ├─ OpenRouter         (free: 50 RPD $0 / 1K RPD with $10+, OPENROUTER=1)
                                   ├─ HuggingFace        (free: $0.10/mo credits — eval only, HUGGINGFACE=1)
                                   ├─ Mistral            (free "Experiment" tier — exact limits not published, MISTRAL=1)
@@ -91,8 +91,8 @@ nginx :4000                                          ┌────────
                                   ├─ vLLM CUDA          (local, NVIDIA, text LLM + embeddings, VLLM_CUDA=1)
                                   ├─ llama.cpp CPU      (local, GGUF + vision-VLM incl. Surya OCR 2, LLAMACPP=1)
                                   ├─ llama.cpp CUDA     (local, NVIDIA, GGUF + vision-VLM incl. Surya OCR 2, LLAMACPP_CUDA=1)
-                                  ├─ claudebox          (flat-rate, CLAUDEBOX=1)
-                                  ├─ pibox-zai          (flat-rate, PIBOX_ZAI=1)
+                                  ├─ claudebox          (subscription, CLAUDEBOX=1)
+                                  ├─ pibox-zai          (subscription, PIBOX_ZAI=1)
                                   ├─ Anthropic          (pay-per-token, ANTHROPIC=1)
                                   └─ OpenAI             (pay-per-token, OPENAI=1)
 
@@ -202,8 +202,8 @@ Models across multiple providers. Six offer free tiers with no credit card requi
 
 | Priority    | Tier             | Providers                                                | Reality                                                                                   |
 | ----------- | ---------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| 1st         | Free cloud       | Groq, Cerebras, OpenRouter, HuggingFace, Mistral, Cohere | Capped — see [free-tier reality check](docs/providers.md#free-tier-reality-check)         |
-| 2nd         | Flat-rate        | claudebox (Max sub), pibox-zai (z.ai)                    | Costs the subscription, no extra per-call                                                 |
+| 1st         | Free cloud       | Groq, OpenRouter, HuggingFace, Mistral, Cohere | Capped — see [free-tier reality check](docs/providers.md#free-tier-reality-check)         |
+| 2nd         | Subscription     | claudebox (Max sub), pibox-zai (GLM Coding Plan)         | No per-token billing, but the allowance is metered                                        |
 | 3rd         | Pay-per-token    | Anthropic, OpenAI                                        | Real money per token — last resort before going local                                     |
 | Last resort | Local (CPU/CUDA) | Ollama, talkies (ASR + Kokoro + Qwen3-TTS), sd.cpp       | No external limits — bounded only by your hardware                                        |
 
@@ -221,7 +221,7 @@ cerebras-gpt-oss-120b → 503 unavailable
 mistral-large → 200 ✓
 ```
 
-For LLM chat models, chains follow the priority tiers: free cloud first, then flat-rate, then pay-per-token, then local. For image, TTS, and STT models, local models are preferred over paid cloud (they're free and have no rate limits). Small models fall back to other small models. Code models fall back to other code models. Local CUDA models fall back to local CPU models.
+For LLM chat models, chains follow the priority tiers: free cloud first, then subscription, then pay-per-token, then local. For image, TTS, and STT models, local models are preferred over paid cloud (they're free and have no rate limits). Small models fall back to other small models. Code models fall back to other code models. Local CUDA models fall back to local CPU models.
 
 Chains are filtered at startup — `make run` regenerates the LiteLLM config and strips out any provider you haven't enabled. If you only have `GROQ=1` and `OLLAMA=1`, the chain skips everything in between.
 
@@ -370,8 +370,20 @@ cd aigate
 ### 2. Configure
 
 ```bash
-cp .env.example .env
+make bootstrap
 ```
+
+This creates `.env` and `docker-compose.yml` from `.env.example` and `docker-compose.yml.example`. Any `make` target does it for you, so you can skip straight to `make run` if you prefer.
+
+Both created files are gitignored and yours to edit. Pulling an update changes only the `.example` files, so your compose tweaks and secrets survive. To pick up new upstream defaults after an update, diff and merge what you want:
+
+```bash
+diff -u docker-compose.yml docker-compose.yml.example
+```
+
+Reach for `.env` first. Profile flags, API keys, data directories, rate limits, and timeouts are all env vars already, and per-service memory/CPU limits live in `.env.limits` (see `make limits` below), so most changes need no compose edit at all. Edit `docker-compose.yml` for the rest: pinning a different image tag, publishing a port, adding your own service alongside the stack, or changing a healthcheck. Nothing overwrites it.
+
+Sending a change upstream is the one case that works the other way round: `docker-compose.yml` is gitignored, so edit `docker-compose.yml.example` instead or the change will not land in the commit.
 
 Fill in the values — every variable is documented with comments in [`.env.example`](.env.example).
 
@@ -383,7 +395,7 @@ Everything is opt-in via flags in `.env`. API keys are stored separately and nev
 | `ANTHROPIC=1`     | Direct Anthropic API models                                                               |
 | `CLAUDEBOX=1`     | claudebox service + models + MCP server (Claude Code via OAuth or API key)                |
 | `PIBOX_ZAI=1`     | pibox-zai service + GLM models + MCP server (pi-coding-agent via z.ai)                    |
-| `CEREBRAS=1`      | Cerebras models (free: 5 RPM / 30K TPM / 1M TPD, 4 models only — see [limits](docs/providers.md#free-tier-reality-check)) |
+| `CEREBRAS=1`      | Cerebras models (paid plan required as of the last audit, see [limits](docs/providers.md#free-tier-reality-check)) |
 | `OPENROUTER=1`    | OpenRouter models (free: 50 RPD at $0, 1K RPD at $10+ credits — see [limits](docs/providers.md#free-tier-reality-check)) |
 | `HUGGINGFACE=1`   | HuggingFace models (free: **$0.10/mo credits only**, eval tier — see [limits](docs/providers.md#free-tier-reality-check)) |
 | `MISTRAL=1`       | Mistral AI models (free "Experiment" tier — exact limits not published, see your Admin dashboard) |
@@ -688,7 +700,7 @@ Ollama and talkies log to stdout by default — visible in `docker compose logs`
 
 **Slow local inference** — expected if the resource manager just swapped models. The first request after a swap includes model load time (seconds for Ollama, up to minutes for sd.cpp FLUX on CPU). Subsequent requests are fast until the idle timeout unloads the model. Increase idle timeouts to keep models warm longer.
 
-**Rate limited on every provider** — all free tiers have hard caps. Quick reference: Groq 30 RPM + 1K-14.4K RPD per model, Cerebras **5 RPM / 30K TPM / 1M TPD on 4 models only**, OpenRouter 20 RPM on `:free` + 50 RPD ($0) or 1K RPD ($10+ credits), Mistral free "Experiment" tier (exact numbers not published — check your dashboard), Cohere 20 RPM chat with a **1K calls/month total cap**, HuggingFace **$0.10/mo credits** (eval only). Full table with official limit pages: [free-tier reality check](docs/providers.md#free-tier-reality-check). If you're hitting all of them at once, the fallback chain lands on flat-rate (claudebox), then pay-per-token (Anthropic/OpenAI), then local. Check `docker compose logs litellm | grep fallback` to see the chain in action. Consider enabling more free providers, or going local (`OLLAMA=1` / `OLLAMA_CUDA=1`) for unlimited.
+**Rate limited on every provider** — all free tiers have hard caps. Quick reference: Groq 30 RPM + 1K-14.4K RPD per model, Cerebras **no free tier, paid plan required**, OpenRouter 20 RPM on `:free` + 50 RPD ($0) or 1K RPD ($10+ credits), Mistral free "Experiment" tier (exact numbers not published — check your dashboard), Cohere 20 RPM chat with a **1K calls/month total cap**, HuggingFace **$0.10/mo credits** (eval only). Full table with official limit pages: [free-tier reality check](docs/providers.md#free-tier-reality-check). If you're hitting all of them at once, the fallback chain lands on subscription (claudebox), then pay-per-token (Anthropic/OpenAI), then local. Check `docker compose logs litellm | grep fallback` to see the chain in action. Consider enabling more free providers, or going local (`OLLAMA=1` / `OLLAMA_CUDA=1`) for unlimited.
 
 **predictalot first request is slow / times out** — the five forecasters lazy-load on first call. Each downloads ~50-800MB of HuggingFace snapshots into `.data/predictalot/models/` and warms up before responding. `TIMEOUT_PREDICTALOT` defaults to `600s` for exactly this reason. Subsequent calls are fast until `PREDICTALOT_MODEL_IDLE_TIMEOUT` (default 30m) unloads them. Use `PREDICTALOT_PREFETCH` / `PREDICTALOT_PRELOAD` (see [`.env.example`](.env.example)) to download or load models at startup instead of on first request.
 

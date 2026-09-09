@@ -1,4 +1,7 @@
+# Local runtime config. Both are created from their tracked .example on first
+# `make run` and are yours to edit; updates never overwrite them.
 .env
+docker-compose.yml
 .env.limits
 *.key
 *.pem

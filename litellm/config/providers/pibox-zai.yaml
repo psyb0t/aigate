@@ -45,7 +45,7 @@
 #
 # OpenAI SDK usage:
 #   client.chat.completions.create(
-#       model="pibox-zai-glm-4.7",
+#       model="pibox-zai-glm-5.3-flash",
 #       messages=[...],
 #       extra_headers={
 #           "x-aicodebox-workspace": "my-project",
@@ -57,58 +57,28 @@
 #       },
 #   )
 
-# z.ai accepts all eight ids below, but three are aliases on their end rather
-# than distinct models. Verified 2026-08-13 from the `model` field z.ai echoes
-# back per request: glm-5.1 -> glm-5.2, glm-5 -> glm-5.2, glm-4.5-air -> glm-4.7.
-# The other five serve themselves. Aliases are kept exposed for backwards compat.
+# The GLM Coding Plan serves two models. z.ai auto-routes the retired ids on
+# their end: glm-5.2 and glm-5.1 resolve to GLM-5.3, glm-4.7 resolves to
+# GLM-5.3-Flash. Only the two live ids are exposed so an alias always names the
+# model that actually runs.
+#
+# The plan meters credits against a 5-hour and a weekly limit. z.ai converts
+# tokens to credits per model:
+#   credits = (input*in + cached_input*cached + output*out) / 10000
+#   GLM-5.3        in 6.9  cached 1.7   out 24
+#   GLM-5.3-Flash  in 2.3  cached 0.56  out 8
+# These are conversion rates, not multipliers on a 1x baseline. Flash costs a
+# third of GLM-5.3 on both input and output, so it is the default for routine
+# and batch work.
 
-- model_name: pibox-zai-glm-5.2
+- model_name: pibox-zai-glm-5.3
   litellm_params:
-    model: openai/glm-5.2
+    model: openai/glm-5.3
     api_base: http://pibox-zai:8080/openai/v1
     api_key: os.environ/PIBOX_ZAI_API_TOKEN
 
-# Alias: z.ai serves glm-5.1 as glm-5.2.
-- model_name: pibox-zai-glm-5.1
+- model_name: pibox-zai-glm-5.3-flash
   litellm_params:
-    model: openai/glm-5.1
-    api_base: http://pibox-zai:8080/openai/v1
-    api_key: os.environ/PIBOX_ZAI_API_TOKEN
-
-- model_name: pibox-zai-glm-5-turbo
-  litellm_params:
-    model: openai/glm-5-turbo
-    api_base: http://pibox-zai:8080/openai/v1
-    api_key: os.environ/PIBOX_ZAI_API_TOKEN
-
-# Alias: z.ai serves glm-5 as glm-5.2.
-- model_name: pibox-zai-glm-5
-  litellm_params:
-    model: openai/glm-5
-    api_base: http://pibox-zai:8080/openai/v1
-    api_key: os.environ/PIBOX_ZAI_API_TOKEN
-
-- model_name: pibox-zai-glm-4.7
-  litellm_params:
-    model: openai/glm-4.7
-    api_base: http://pibox-zai:8080/openai/v1
-    api_key: os.environ/PIBOX_ZAI_API_TOKEN
-
-- model_name: pibox-zai-glm-4.6
-  litellm_params:
-    model: openai/glm-4.6
-    api_base: http://pibox-zai:8080/openai/v1
-    api_key: os.environ/PIBOX_ZAI_API_TOKEN
-
-- model_name: pibox-zai-glm-4.5
-  litellm_params:
-    model: openai/glm-4.5
-    api_base: http://pibox-zai:8080/openai/v1
-    api_key: os.environ/PIBOX_ZAI_API_TOKEN
-
-# Alias: z.ai serves glm-4.5-air as glm-4.7.
-- model_name: pibox-zai-glm-4.5-air
-  litellm_params:
-    model: openai/glm-4.5-air
+    model: openai/glm-5.3-flash
     api_base: http://pibox-zai:8080/openai/v1
     api_key: os.environ/PIBOX_ZAI_API_TOKEN

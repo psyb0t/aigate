@@ -1,14 +1,15 @@
 # aigate setup
 
-Accurate to the aigate `README.md` / `docker-compose.yml` / `.env.example` at time of writing. Re-check those files if this drifts.
+Accurate to the aigate `README.md` / `docker-compose.yml.example` / `.env.example` at time of writing. Re-check those files if this drifts. The tracked files are the `.example` pair; `docker-compose.yml` and `.env` are the operator's local copies and are gitignored.
 
 ## Bring-up
 
 ```bash
 git clone https://github.com/psyb0t/aigate
 cd aigate
-cp .env.example .env
+make bootstrap   # creates .env + docker-compose.yml from the .example files (any target does this)
 # edit .env — see "Required env" below, then flip service flags to 1
+# both created files are gitignored, so updates never overwrite your edits
 make limits      # writes .env.limits sized to this machine's RAM/swap/CPU
 make run-bg      # start detached
 # or: make run   # start in foreground with logs
@@ -66,7 +67,7 @@ Per-service keys/tokens only matter once you flip that service's flag to `1`. Ev
 LiteLLM regenerates its config on every `make run`/`make run-bg`, including only enabled providers. Fallback chains (`litellm/config/fallbacks.json`) are priority-ordered and filtered to what's actually enabled:
 
 1. Free cloud (Groq, Cerebras, OpenRouter, HuggingFace, Mistral, Cohere) — rate-limited/capped, not unlimited.
-2. Flat-rate (claudebox, pibox-zai) — costs the subscription, no extra per-call charge.
+2. Subscription (claudebox, pibox-zai) — no per-token billing, but the allowance is metered.
 3. Pay-per-token (Anthropic, OpenAI) — real money per token.
 4. Local (Ollama, talkies, sd.cpp, vLLM, llama.cpp) — no external limits, bounded only by local hardware.
 

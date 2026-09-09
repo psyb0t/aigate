@@ -1,6 +1,31 @@
+- model_name: cohere-command-a-plus
+  litellm_params:
+    model: cohere_chat/command-a-plus-05-2026
+    api_key: os.environ/COHERE_API_KEY
+
 - model_name: cohere-command-a
   litellm_params:
     model: cohere_chat/command-a-03-2025
+    api_key: os.environ/COHERE_API_KEY
+
+- model_name: cohere-command-a-reasoning
+  litellm_params:
+    model: cohere_chat/command-a-reasoning-08-2025
+    api_key: os.environ/COHERE_API_KEY
+
+- model_name: cohere-command-a-vision
+  litellm_params:
+    model: cohere_chat/command-a-vision-07-2025
+    api_key: os.environ/COHERE_API_KEY
+
+- model_name: cohere-command-a-translate
+  litellm_params:
+    model: cohere_chat/command-a-translate-08-2025
+    api_key: os.environ/COHERE_API_KEY
+
+- model_name: cohere-north-mini-code
+  litellm_params:
+    model: cohere_chat/north-mini-code-1-0
     api_key: os.environ/COHERE_API_KEY
 
 - model_name: cohere-command-r-plus
@@ -18,9 +43,40 @@
     model: cohere_chat/command-r7b-12-2024
     api_key: os.environ/COHERE_API_KEY
 
+- model_name: cohere-command-r7b-arabic
+  litellm_params:
+    model: cohere_chat/command-r7b-arabic-02-2025
+    api_key: os.environ/COHERE_API_KEY
+
 - model_name: cohere-aya-32b
   litellm_params:
     model: cohere_chat/c4ai-aya-expanse-32b
+    api_key: os.environ/COHERE_API_KEY
+
+- model_name: cohere-aya-vision-32b
+  litellm_params:
+    model: cohere_chat/c4ai-aya-vision-32b
+    api_key: os.environ/COHERE_API_KEY
+
+# Tiny Aya: four small multilingual models, each tuned on a different domain.
+- model_name: cohere-tiny-aya-global
+  litellm_params:
+    model: cohere_chat/tiny-aya-global
+    api_key: os.environ/COHERE_API_KEY
+
+- model_name: cohere-tiny-aya-earth
+  litellm_params:
+    model: cohere_chat/tiny-aya-earth
+    api_key: os.environ/COHERE_API_KEY
+
+- model_name: cohere-tiny-aya-fire
+  litellm_params:
+    model: cohere_chat/tiny-aya-fire
+    api_key: os.environ/COHERE_API_KEY
+
+- model_name: cohere-tiny-aya-water
+  litellm_params:
+    model: cohere_chat/tiny-aya-water
     api_key: os.environ/COHERE_API_KEY
 
 - model_name: cohere-embed

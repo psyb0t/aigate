@@ -2,11 +2,11 @@
   {
     "anthropic-claude-opus-4": [
       "claudebox-opus",
-      "pibox-zai-glm-5.1",
+      "pibox-zai-glm-5.3",
       "mistral-large",
       "cohere-command-a",
-      "or-hermes-3-405b",
-      "or-qwen3-80b",
+      "or-nemotron-lightning",
+      "or-dots-3-note",
       "hf-llama-3.3-70b",
       "openai-gpt-4o"
     ]
@@ -14,11 +14,11 @@
   {
     "anthropic-claude-sonnet-4": [
       "claudebox-sonnet",
-      "pibox-zai-glm-4.7",
+      "pibox-zai-glm-5.3-flash",
       "mistral-small",
       "cohere-command-a",
-      "or-qwen3-80b",
-      "or-hermes-3-405b",
+      "or-dots-3-note",
+      "or-nemotron-lightning",
       "hf-llama-3.3-70b",
       "openai-gpt-4o"
     ]
@@ -26,10 +26,10 @@
   {
     "anthropic-claude-haiku-4": [
       "claudebox-haiku",
-      "pibox-zai-glm-4.5-air",
+      "pibox-zai-glm-5.3-flash",
       "ministral-8b",
       "cohere-command-r7b",
-      "or-gpt-oss-20b",
+      "or-lfm-2.5-2.6b",
       "hf-llama-3.1-8b",
       "openai-gpt-4o-mini",
       "local-ollama-cpu-llama3.2-3b",
@@ -39,11 +39,11 @@
   },
   {
     "claudebox-opus": [
-      "pibox-zai-glm-5.1",
+      "pibox-zai-glm-5.3",
       "mistral-large",
       "cohere-command-a",
-      "or-hermes-3-405b",
-      "or-qwen3-80b",
+      "or-nemotron-lightning",
+      "or-dots-3-note",
       "or-nemotron-120b",
       "hf-llama-3.3-70b",
       "anthropic-claude-opus-4",
@@ -52,11 +52,11 @@
   },
   {
     "claudebox-sonnet": [
-      "pibox-zai-glm-4.7",
+      "pibox-zai-glm-5.3-flash",
       "mistral-small",
       "cohere-command-a",
-      "or-qwen3-80b",
-      "or-hermes-3-405b",
+      "or-dots-3-note",
+      "or-nemotron-lightning",
       "hf-llama-3.3-70b",
       "anthropic-claude-sonnet-4",
       "openai-gpt-4o"
@@ -64,10 +64,10 @@
   },
   {
     "claudebox-haiku": [
-      "pibox-zai-glm-4.5-air",
+      "pibox-zai-glm-5.3-flash",
       "ministral-8b",
       "cohere-command-r7b",
-      "or-gpt-oss-20b",
+      "or-lfm-2.5-2.6b",
       "hf-llama-3.1-8b",
       "anthropic-claude-haiku-4",
       "openai-gpt-4o-mini",
@@ -77,12 +77,12 @@
     ]
   },
   {
-    "pibox-zai-glm-5.1": [
+    "pibox-zai-glm-5.3": [
       "claudebox-opus",
       "mistral-large",
       "cohere-command-a",
-      "or-hermes-3-405b",
-      "or-qwen3-80b",
+      "or-nemotron-lightning",
+      "or-dots-3-note",
       "or-nemotron-120b",
       "hf-llama-3.3-70b",
       "anthropic-claude-opus-4",
@@ -90,46 +90,35 @@
     ]
   },
   {
-    "pibox-zai-glm-4.7": [
+    "pibox-zai-glm-5.3-flash": [
       "claudebox-sonnet",
       "mistral-small",
       "cohere-command-a",
-      "or-qwen3-80b",
-      "or-hermes-3-405b",
+      "or-dots-3-note",
+      "or-nemotron-lightning",
       "hf-llama-3.3-70b",
       "anthropic-claude-sonnet-4",
       "openai-gpt-4o"
     ]
   },
   {
-    "pibox-zai-glm-4.5-air": [
-      "claudebox-haiku",
-      "ministral-8b",
-      "cohere-command-r7b",
-      "or-gpt-oss-20b",
-      "hf-llama-3.1-8b",
-      "anthropic-claude-haiku-4",
-      "openai-gpt-4o-mini"
-    ]
-  },
-  {
     "cerebras-gpt-oss-120b": [
       "mistral-large",
-      "or-gpt-oss-120b",
+      "or-nemotron-omni-30b",
       "groq-gpt-oss-120b",
-      "or-hermes-3-405b",
+      "or-nemotron-lightning",
       "hf-llama-3.3-70b",
       "claudebox-sonnet",
       "openai-gpt-4o"
     ]
   },
   {
-    "cerebras-glm-4.7": [
-      "pibox-zai-glm-4.7",
+    "cerebras-qwen3.8-27b": [
+      "pibox-zai-glm-5.3-flash",
       "claudebox-sonnet",
       "mistral-small",
       "cohere-command-a",
-      "or-qwen3-80b",
+      "or-dots-3-note",
       "hf-llama-3.3-70b",
       "openai-gpt-4o"
     ]
@@ -138,7 +127,7 @@
     "groq-gpt-oss-20b": [
       "ministral-8b",
       "cohere-command-r7b",
-      "or-gpt-oss-20b",
+      "or-lfm-2.5-2.6b",
       "hf-llama-3.1-8b",
       "openai-gpt-4o-mini"
     ]
@@ -147,7 +136,7 @@
     "groq-gpt-oss-120b": [
       "cerebras-gpt-oss-120b",
       "mistral-large",
-      "or-gpt-oss-120b",
+      "or-nemotron-omni-30b",
       "hf-llama-3.3-70b",
       "openai-gpt-4o"
     ]
@@ -174,7 +163,7 @@
     "hf-llama-3.1-8b": [
       "ministral-8b",
       "cohere-command-r7b",
-      "or-gpt-oss-20b",
+      "or-lfm-2.5-2.6b",
       "claudebox-haiku",
       "openai-gpt-4o-mini"
     ]
@@ -183,7 +172,7 @@
     "hf-llama-3.3-70b": [
       "mistral-small",
       "cohere-command-r",
-      "or-llama-3.3-70b",
+      "or-nemotron-120b",
       "claudebox-sonnet",
       "openai-gpt-4o"
     ]
@@ -206,7 +195,7 @@
     ]
   },
   {
-    "hf-qwq-32b": [
+    "hf-qwen3-32b": [
       "hf-deepseek-r1",
       "mistral-small",
       "claudebox-sonnet",
@@ -215,9 +204,9 @@
   },
   {
     "hf-deepseek-r1": [
-      "hf-qwq-32b",
+      "hf-qwen3-32b",
       "mistral-small",
-      "or-hermes-3-405b",
+      "or-nemotron-lightning",
       "claudebox-sonnet",
       "openai-gpt-4o"
     ]
@@ -231,7 +220,7 @@
     ]
   },
   {
-    "hf-qwen3-vl-8b": [
+    "hf-gemma-3-27b": [
       "hf-llama-4-scout",
       "mistral-small",
       "hf-qwen-vl-72b",
@@ -247,41 +236,27 @@
     ]
   },
   {
-    "or-hermes-3-405b": [
-      "or-qwen3-80b",
+    "or-nemotron-lightning": [
+      "or-nemotron-120b",
       "mistral-large",
       "cohere-command-a",
-      "or-nemotron-120b",
-      "or-gpt-oss-120b",
+      "or-dots-3-note",
+      "or-nemotron-omni-30b",
       "cerebras-gpt-oss-120b",
       "hf-llama-3.3-70b",
       "claudebox-sonnet",
-      "pibox-zai-glm-4.7",
-      "openai-gpt-4o",
-      "anthropic-claude-sonnet-4"
-    ]
-  },
-  {
-    "or-qwen3-80b": [
-      "or-hermes-3-405b",
-      "mistral-large",
-      "cohere-command-a",
-      "or-nemotron-120b",
-      "or-gpt-oss-120b",
-      "hf-llama-3.3-70b",
-      "claudebox-sonnet",
-      "pibox-zai-glm-4.7",
+      "pibox-zai-glm-5.3-flash",
       "openai-gpt-4o",
       "anthropic-claude-sonnet-4"
     ]
   },
   {
     "or-nemotron-120b": [
-      "or-hermes-3-405b",
+      "or-nemotron-lightning",
       "mistral-large",
       "cohere-command-a",
-      "or-qwen3-80b",
-      "or-gpt-oss-120b",
+      "or-dots-3-note",
+      "or-nemotron-omni-30b",
       "cerebras-gpt-oss-120b",
       "hf-llama-3.3-70b",
       "claudebox-sonnet",
@@ -289,48 +264,75 @@
     ]
   },
   {
-    "or-llama-3.3-70b": [
-      "or-qwen3-80b",
+    "or-dots-3-note": [
+      "or-nemotron-lightning",
+      "mistral-large",
+      "cohere-command-a",
+      "or-nemotron-120b",
+      "or-nemotron-omni-30b",
+      "hf-llama-3.3-70b",
+      "claudebox-sonnet",
+      "pibox-zai-glm-5.3-flash",
+      "openai-gpt-4o",
+      "anthropic-claude-sonnet-4"
+    ]
+  },
+  {
+    "or-nemotron-omni-30b": [
+      "or-nemotron-120b",
       "mistral-small",
       "cohere-command-r",
-      "or-gpt-oss-120b",
-      "or-hermes-3-405b",
+      "or-dots-3-note",
+      "or-nemotron-lightning",
       "hf-llama-3.3-70b",
       "claudebox-sonnet",
       "openai-gpt-4o"
     ]
   },
   {
-    "or-gpt-oss-120b": [
-      "or-hermes-3-405b",
-      "mistral-large",
-      "or-qwen3-80b",
-      "or-nemotron-120b",
-      "cerebras-gpt-oss-120b",
-      "groq-gpt-oss-120b",
-      "hf-llama-3.3-70b",
-      "claudebox-sonnet",
-      "openai-gpt-4o"
-    ]
-  },
-  {
-    "or-gpt-oss-20b": [
+    "or-lfm-2.5-2.6b": [
       "ministral-8b",
       "cohere-command-r7b",
-      "or-llama-3.3-70b",
+      "or-nemotron-omni-30b",
       "groq-gpt-oss-20b",
       "hf-llama-3.1-8b",
       "openai-gpt-4o-mini"
     ]
   },
   {
-    "or-qwen3-coder": [
+    "or-north-mini-code": [
       "devstral",
       "codestral",
       "claudebox-sonnet",
-      "pibox-zai-glm-4.7",
+      "pibox-zai-glm-5.3-flash",
       "openai-gpt-4o",
       "local-ollama-cpu-qwen2.5-coder-1.5b"
+    ]
+  },
+  {
+    "or-ling-3-sante": [
+      "or-nemotron-120b",
+      "mistral-large",
+      "cohere-command-a",
+      "claudebox-sonnet",
+      "openai-gpt-4o"
+    ]
+  },
+  {
+    "or-ling-3-fin": [
+      "or-nemotron-120b",
+      "mistral-large",
+      "cohere-command-a",
+      "claudebox-sonnet",
+      "openai-gpt-4o"
+    ]
+  },
+  {
+    "or-nemotron-content-safety": [
+      "or-nemotron-omni-30b",
+      "cohere-command-r7b",
+      "ministral-8b",
+      "openai-gpt-4o-mini"
     ]
   },
   {
@@ -338,7 +340,7 @@
       "mistral-small",
       "cohere-command-a",
       "claudebox-opus",
-      "or-hermes-3-405b",
+      "or-nemotron-lightning",
       "openai-gpt-4o"
     ]
   },
@@ -347,7 +349,7 @@
       "mistral-large",
       "cohere-command-a",
       "claudebox-sonnet",
-      "or-qwen3-80b",
+      "or-dots-3-note",
       "openai-gpt-4o"
     ]
   },
@@ -379,7 +381,7 @@
       "codestral",
       "mistral-small",
       "claudebox-sonnet",
-      "or-qwen3-coder",
+      "or-north-mini-code",
       "openai-gpt-4o",
       "local-ollama-cpu-qwen2.5-coder-1.5b"
     ]
@@ -389,7 +391,7 @@
       "devstral",
       "mistral-small",
       "claudebox-sonnet",
-      "or-qwen3-coder",
+      "or-north-mini-code",
       "openai-gpt-4o",
       "local-ollama-cpu-qwen2.5-coder-1.5b"
     ]
@@ -398,7 +400,7 @@
     "cohere-command-a": [
       "mistral-large",
       "claudebox-sonnet",
-      "or-hermes-3-405b",
+      "or-nemotron-lightning",
       "openai-gpt-4o"
     ]
   },
@@ -662,13 +664,13 @@
   },
   {
     "local-talkies-kokoro-tts": [
-      "local-talkies-cuda-qwen3-tts-0.6b",
+      "local-talkies-cuda-qwen3-tts",
       "openai-tts-1",
       "openai-tts-1-hd"
     ]
   },
   {
-    "local-talkies-cuda-qwen3-tts-0.6b": [
+    "local-talkies-cuda-qwen3-tts": [
       "local-talkies-kokoro-tts",
       "openai-tts-1",
       "openai-tts-1-hd"
@@ -717,14 +719,14 @@
     "openai-tts-1": [
       "openai-tts-1-hd",
       "local-talkies-kokoro-tts",
-      "local-talkies-cuda-qwen3-tts-0.6b"
+      "local-talkies-cuda-qwen3-tts"
     ]
   },
   {
     "openai-tts-1-hd": [
       "openai-tts-1",
       "local-talkies-kokoro-tts",
-      "local-talkies-cuda-qwen3-tts-0.6b"
+      "local-talkies-cuda-qwen3-tts"
     ]
   },
   {
@@ -821,7 +823,7 @@
       "local-ollama-cuda-qwen3-abliterated-16b",
       "local-ollama-cuda-qwen3-8b",
       "local-ollama-cuda-llama3.1-8b",
-      "or-qwen3-80b",
+      "or-dots-3-note",
       "mistral-large",
       "local-ollama-cpu-qwen3-4b"
     ]
@@ -829,7 +831,7 @@
   {
     "local-ollama-cuda-qwen2.5vl-7b": [
       "local-ollama-cuda-gemma4-e4b",
-      "hf-qwen3-vl-8b",
+      "hf-gemma-3-27b",
       "hf-qwen-vl-72b",
       "hf-llama-4-scout",
       "openai-gpt-4o"

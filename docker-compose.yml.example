@@ -181,11 +181,11 @@ services:
       PIBOX_API_MODE_TOKEN: ${PIBOX_ZAI_API_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-zai}}
       PIBOX_MCP_MODE: "1"
       PIBOX_MCP_MODE_TOKEN: ${PIBOX_ZAI_API_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-zai}}
-      PIBOX_AVAILABLE_MODELS: ${PIBOX_ZAI_AVAILABLE_MODELS:-glm-4.5,glm-4.5-air,glm-4.6,glm-4.7,glm-5,glm-5-turbo,glm-5.1,glm-5.2}
+      PIBOX_AVAILABLE_MODELS: ${PIBOX_ZAI_AVAILABLE_MODELS:-glm-5.3,glm-5.3-flash}
       ANTHROPIC_API_KEY: ${PIBOX_ZAI_AUTH_TOKEN}
       ANTHROPIC_AUTH_TOKEN: ${PIBOX_ZAI_AUTH_TOKEN}
       ANTHROPIC_BASE_URL: https://api.z.ai/api/anthropic
-      ANTHROPIC_MODEL: ${PIBOX_ZAI_DEFAULT_MODEL:-glm-4.7}
+      ANTHROPIC_MODEL: ${PIBOX_ZAI_DEFAULT_MODEL:-glm-5.3-flash}
     volumes:
       - ${DATA_DIR_PIBOX_ZAI:-${DATA_DIR:-.data}/pibox-zai}/config:/home/aicode/.aicodebox
       - ${DATA_DIR_PIBOX_ZAI:-${DATA_DIR:-.data}/pibox-zai}/workspace:/workspace

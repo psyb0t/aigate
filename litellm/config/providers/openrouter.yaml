@@ -1,16 +1,6 @@
-- model_name: or-hermes-3-405b
+- model_name: or-nemotron-lightning
   litellm_params:
-    model: openrouter/nousresearch/hermes-3-llama-3.1-405b:free
-    api_key: os.environ/OPENROUTER_API_KEY
-
-- model_name: or-qwen3-coder
-  litellm_params:
-    model: openrouter/qwen/qwen3-coder:free
-    api_key: os.environ/OPENROUTER_API_KEY
-
-- model_name: or-qwen3-80b
-  litellm_params:
-    model: openrouter/qwen/qwen3-next-80b-a3b-instruct:free
+    model: openrouter/nvidia/nemotron-3.5-lightning:free
     api_key: os.environ/OPENROUTER_API_KEY
 
 - model_name: or-nemotron-120b
@@ -18,32 +8,37 @@
     model: openrouter/nvidia/nemotron-3-super-120b-a12b:free
     api_key: os.environ/OPENROUTER_API_KEY
 
-- model_name: or-nemotron-ultra-550b
+- model_name: or-dots-3-note
   litellm_params:
-    model: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+    model: openrouter/dots-studio/dots-3-note-preview:free
     api_key: os.environ/OPENROUTER_API_KEY
 
-- model_name: or-nemotron-nano-9b
+- model_name: or-nemotron-omni-30b
   litellm_params:
-    model: openrouter/nvidia/nemotron-nano-9b-v2:free
+    model: openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
     api_key: os.environ/OPENROUTER_API_KEY
 
-- model_name: or-nemotron-nano-30b
+- model_name: or-north-mini-code
   litellm_params:
-    model: openrouter/nvidia/nemotron-3-nano-30b-a3b:free
+    model: openrouter/cohere/north-mini-code:free
     api_key: os.environ/OPENROUTER_API_KEY
 
-- model_name: or-llama-3.3-70b
+- model_name: or-lfm-2.5-2.6b
   litellm_params:
-    model: openrouter/meta-llama/llama-3.3-70b-instruct:free
+    model: openrouter/liquid/lfm-2.5-2.6b:free
     api_key: os.environ/OPENROUTER_API_KEY
 
-- model_name: or-gpt-oss-120b
+- model_name: or-ling-3-sante
   litellm_params:
-    model: openrouter/openai/gpt-oss-120b:free
+    model: openrouter/inclusionai/ling-3.0-flash-sante:free
     api_key: os.environ/OPENROUTER_API_KEY
 
-- model_name: or-gpt-oss-20b
+- model_name: or-ling-3-fin
   litellm_params:
-    model: openrouter/openai/gpt-oss-20b:free
+    model: openrouter/inclusionai/ling-3.0-flash-fin:free
+    api_key: os.environ/OPENROUTER_API_KEY
+
+- model_name: or-nemotron-content-safety
+  litellm_params:
+    model: openrouter/nvidia/nemotron-3.5-content-safety:free
     api_key: os.environ/OPENROUTER_API_KEY

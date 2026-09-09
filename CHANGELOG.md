@@ -2,6 +2,93 @@
 
 All notable changes to this project are documented here.
 
+## [v4.0.0] — 2026-09-09
+
+**`docker-compose.yml` and `.env` are now local files created from tracked
+`.example` copies, so an update never overwrites them. Every cloud provider's
+model list was audited against the live APIs and the dead entries removed.**
+
+### Breaking
+
+- **`docker-compose.yml` is no longer tracked.** The repository ships
+  `docker-compose.yml.example`; `make` copies it to `docker-compose.yml` on
+  first run, and `.gitignore` covers the copy. Pulling this release deletes the
+  tracked file from your checkout. If you had local edits to it, save them
+  first, then reapply them after any `make` target recreates the file. To change
+  the shipped defaults for everyone, edit `docker-compose.yml.example` instead;
+  edits to `docker-compose.yml` cannot be committed.
+- **Model aliases removed.** Each of these returned a result before and no
+  longer resolves. The ones marked as already failing answered with a fallback
+  model behind an HTTP 200 rather than an error, so callers may not have
+  noticed.
+  - pibox-zai, all of which worked because z.ai auto-routed them:
+    `pibox-zai-glm-5.2`, `pibox-zai-glm-5.1`, `pibox-zai-glm-5-turbo`,
+    `pibox-zai-glm-5`, `pibox-zai-glm-4.7`, `pibox-zai-glm-4.6`,
+    `pibox-zai-glm-4.5`, `pibox-zai-glm-4.5-air`. Replace with
+    `pibox-zai-glm-5.3` (for 5.2, 5.1, 5) or `pibox-zai-glm-5.3-flash` (for 4.7
+    and below).
+  - OpenRouter, already failing: `or-hermes-3-405b`, `or-qwen3-coder`,
+    `or-qwen3-80b`, `or-llama-3.3-70b`, `or-gpt-oss-120b`, `or-gpt-oss-20b`,
+    `or-nemotron-ultra-550b`, `or-nemotron-nano-9b`, `or-nemotron-nano-30b`.
+  - HuggingFace, already failing: `hf-qwq-32b`, replaced by `hf-qwen3-32b`, and
+    `hf-qwen3-vl-8b`, replaced by `hf-gemma-3-27b`.
+  - Cerebras, archived upstream: `cerebras-glm-4.7`.
+- **`PIBOX_ZAI_AVAILABLE_MODELS` and `PIBOX_ZAI_DEFAULT_MODEL` defaults
+  changed** to `glm-5.3,glm-5.3-flash` and `glm-5.3-flash`. An `.env` pinning
+  the old values will fail. Drop the override or set the new ids.
+
+### Added
+
+- `make bootstrap` creates `.env` and `docker-compose.yml` from their `.example`
+  files. Every other target seeds them first, so `make run` on a fresh clone
+  works with no manual copy step. The copy runs while `make` parses the
+  Makefile, before it reads `.env`, so profile flags in a freshly created `.env`
+  take effect on that same invocation.
+- OpenRouter: nine free models replacing the nine that no longer resolve.
+  `or-nemotron-lightning` (1M context), `or-nemotron-120b`, `or-dots-3-note`
+  (text and image), `or-nemotron-omni-30b` (omni, reasoning),
+  `or-north-mini-code`, `or-lfm-2.5-2.6b`, `or-ling-3-sante`, `or-ling-3-fin`,
+  and `or-nemotron-content-safety`. The last three answer by name but stay out
+  of the general fallback chains, where a domain-tuned model or a classifier
+  would answer off-target.
+- Groq: `groq-qwen3.8-27b`, `groq-allam-2-7b` for Arabic, and the
+  `groq-prompt-guard-22m` and `groq-prompt-guard-86m` prompt-injection
+  classifiers, which return a probability score rather than chat text.
+- Cohere: `cohere-command-a-plus`, `cohere-command-a-reasoning`,
+  `cohere-command-a-vision`, `cohere-command-a-translate`,
+  `cohere-north-mini-code`, `cohere-command-r7b-arabic`,
+  `cohere-aya-vision-32b`, and `cohere-tiny-aya-global`, `-earth`, `-fire`,
+  `-water`.
+- HuggingFace: `hf-qwen3-235b` and `hf-gemma-3-27b`.
+- Cerebras: `cerebras-qwen3.8-27b` and `cerebras-gemma-4-31b`.
+
+### Fixed
+
+- **`groq-compound` and `groq-compound-mini` reached the wrong vendor.** Groq
+  namespaced both ids under `groq/` upstream, so the old pins stopped resolving
+  and the fallback chain answered with a Cohere model behind an HTTP 200. The
+  pins are now `groq/groq/compound` and `groq/groq/compound-mini`: the first
+  `groq/` selects the provider, the second belongs to the model id.
+- Fallback chains no longer point at models that do not exist. Every chain key
+  and every fallback target resolves to a registered model. That includes
+  `local-talkies-cuda-qwen3-tts-0.6b`, a long-standing typo for
+  `local-talkies-cuda-qwen3-tts`.
+
+### Changed
+
+- pibox-zai is documented as running on a [GLM Coding
+  Plan](https://z.ai/subscribe) rather than generic z.ai credits, and the plan's
+  two models are the only exposed aliases. The provider page carries the
+  token-to-credit formula and the per-model rates, with a note that those rates
+  are conversion factors and not multipliers against an older baseline.
+- The routing tier previously called "flat-rate" is now "subscription". The
+  claim that it costs the subscription with "no extra per-call charge" is
+  replaced with the accurate statement that the allowance is metered.
+- Cerebras is documented as requiring a paid plan. At the last audit every model
+  returned `Payment required to access this resource` on a free account, so the
+  free-tier claims in the README, the provider page, and `.env.example` were
+  wrong.
+
 ## [v3.24.0] — 2026-09-06
 
 **Bump the claudebox and pibox agent images. Both are rebuilt on the aicodebox

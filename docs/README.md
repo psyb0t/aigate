@@ -23,6 +23,7 @@ The big ones at a glance:
 
 ## By topic
 
+- [Configuration](../README.md#2-configure). `make bootstrap` creates `.env` and `docker-compose.yml` from the tracked `.example` files. Both copies are gitignored, so edit them freely; an update only changes the `.example` files.
 - [Providers + model aliases](providers.md) — every LLM / embedding / ASR / TTS model registered through LiteLLM, with its slug and provider.
 - [Testing](testing.md) — what the test suite covers per service + how to run it.
 - [Resource management](resource-management.md) — cross-cutting LiteLLM resource_manager: single-job-per-hardware semaphores, competing-group eviction, who unloads whom.

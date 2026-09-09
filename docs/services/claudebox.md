@@ -15,7 +15,7 @@ curl http://localhost:4000/chat/completions \
   }'
 ```
 
-Available models: `claudebox-haiku`, `claudebox-sonnet`, `claudebox-opus`, `pibox-zai-glm-4.5-air`, `pibox-zai-glm-4.7`, `pibox-zai-glm-5.1`
+Available models: `claudebox-haiku`, `claudebox-sonnet`, `claudebox-opus`, `pibox-zai-glm-5.3`, `pibox-zai-glm-5.3-flash`
 
 ### Direct API endpoints
 
@@ -150,7 +150,7 @@ curl -X POST http://localhost:4000/claudebox/run \
 Two agentic services wrap a coding agent in a Docker container and expose it as an API. Each request runs the agent's full loop — read/write files, run shell commands, install packages, browse the web, use tools, all within an isolated workspace.
 
 - **[Claudebox](https://github.com/psyb0t/docker-claudebox)** — Claude Code, OAuth token or Anthropic API key. Models: `claudebox-haiku`, `claudebox-sonnet`, `claudebox-opus`.
-- **[Pibox-zai](https://github.com/psyb0t/docker-pibox)** — [pi-coding-agent](https://github.com/earendil-works/pi-mono) pointed at z.ai for GLM models. Models: `pibox-zai-glm-4.5-air`, `pibox-zai-glm-4.7`, `pibox-zai-glm-5.1`. Adds `/files/*` CRUD plus optional Telegram + cron modes.
+- **[Pibox-zai](https://github.com/psyb0t/docker-pibox)** — [pi-coding-agent](https://github.com/earendil-works/pi-mono) on a GLM Coding Plan. Models: `pibox-zai-glm-5.3`, `pibox-zai-glm-5.3-flash`. Adds `/files/*` CRUD plus optional Telegram + cron modes.
 
 Both speak the Anthropic wire protocol and expose the same shape of API (sync + async `/run`, OpenAI-compatible `/v1/chat/completions`, MCP server).
 
