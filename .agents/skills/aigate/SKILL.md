@@ -29,7 +29,7 @@ A self-hosted AI platform. One `docker-compose up` stands up inference, tool use
 **This is a very high-capability, very high-blast-radius stack. Treat the endpoint and its token like root on the host.** A single `AIGATE_TOKEN` bearer can, depending on what's enabled:
 
 - Hold API keys/credentials for many cloud model providers (Groq, Cerebras, OpenRouter, HuggingFace, Mistral, Cohere, Anthropic, OpenAI) plus subscription agent backends (Claude Code OAuth/API key, z.ai GLM Coding Plan).
-- Execute arbitrary code — two full agentic coding agents (claudebox, pibox-zai) with shell + file access, plus sandboxed multi-language execution (piston).
+- Execute arbitrary code — three full agentic coding agents (claudebox, pibox-zai, pibox) with shell + file access, plus sandboxed multi-language execution (piston).
 - Drive a real browser (stealth Camoufox cluster) that can log into sites, fill forms, and act as the user across the open web.
 - Send email and Telegram messages on the user's behalf (mailbox, Telethon) — mailbox additionally holds plaintext IMAP/SMTP credentials in its YAML config.
 - Read/write S3-compatible object storage with a public-read bucket.
@@ -84,8 +84,8 @@ curl http://localhost:4000/chat/completions \
 
 Everything below sits behind the same `http://localhost:4000` endpoint and the same `AIGATE_TOKEN` bearer — aigate's job is exposing them, not reimplementing them. Enable each with its `.env` flag; disabled services are excluded from routing/fallback entirely.
 
-- **Inference + routing** — `/chat/completions`, `/embeddings`, `/images/generations`, `/audio/*` (OpenAI-compatible, via LiteLLM). Model name picks the provider: free-tier cloud (Groq, Cerebras, OpenRouter, HuggingFace, Mistral, Cohere), subscription agents (claudebox = Claude Code, pibox-zai = pi-coding-agent on a GLM Coding Plan), pay-per-token (Anthropic, OpenAI), or fully local CPU/CUDA (Ollama, vLLM, llama.cpp, talkies, sd.cpp). Fallback chains retry the next provider automatically on 429/5xx.
-- **MCP tool use** — any function-calling model can autonomously invoke `generate_image`, `generate_tts`, `search_web`, `execute_code`, and per-service MCP tools (browser, storage, mailbox, Telethon, predictalot, audiolla, flickies, claudebox/pibox-zai agent tools). Auto-enabled with the underlying service.
+- **Inference + routing** — `/chat/completions`, `/embeddings`, `/images/generations`, `/audio/*` (OpenAI-compatible, via LiteLLM). Model name picks the provider: free-tier cloud (Groq, Cerebras, OpenRouter, HuggingFace, Mistral, Cohere), subscription agents (claudebox = Claude Code, pibox-zai = pi-coding-agent on a GLM Coding Plan), pay-per-token (Anthropic, OpenAI), or fully local CPU/CUDA (Ollama, vLLM, llama.cpp, talkies, sd.cpp). `pibox` runs the same pi agent on whichever of these models you point it at, so it costs whatever that model costs. Fallback chains retry the next provider automatically on 429/5xx.
+- **MCP tool use** — any function-calling model can autonomously invoke `generate_image`, `generate_tts`, `search_web`, `execute_code`, and per-service MCP tools (browser, storage, mailbox, Telethon, predictalot, audiolla, flickies, claudebox/pibox-zai/pibox agent tools). Auto-enabled with the underlying service.
 - **Browser automation** — `stealthy-auto-browse`, 5-replica stealth Camoufox cluster behind HAProxy. REST + MCP (`BROWSER=1`).
 - **Agentic code execution** — claudebox (Claude Code) and pibox-zai (pi-coding-agent/z.ai) for full shell+file agentic tasks; piston at `/piston/` for sandboxed nsjail-isolated one-shot code execution (`CLAUDEBOX=1`, `PIBOX_ZAI=1`, `PISTON=1`).
 - **Object storage** — `hybrids3` at `/storage/`, S3-compatible, plain HTTP + boto3, public-read uploads, presigned URLs (`HYBRIDS3=1`).

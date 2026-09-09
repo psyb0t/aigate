@@ -18,6 +18,7 @@ Numbers below were correct at last check (provider docs change — click through
 | Cohere       | No           | 20 RPM chat, 10 RPM rerank, 2K inputs/min embed | —                          | **1,000 API calls/month** (chat)     | Hard monthly request cap is very low — runs out fast on any real workload.            | [docs.cohere.com/v2/docs/rate-limits](https://docs.cohere.com/v2/docs/rate-limits)                                     |
 | Claudebox    | Subscription | depends on plan       | depends on plan                      | —                                    | Uses your Claude Pro/Max OAuth — no extra cost beyond the sub.                       | [anthropic.com/pricing](https://www.anthropic.com/pricing)                                                            |
 | Pibox-zai    | Subscription | depends on plan       | depends on plan                      | —                                    | pi-coding-agent on a [GLM Coding Plan](https://z.ai/subscribe). Metered allowance, not unlimited. | [z.ai](https://z.ai)                                                                                                  |
+| Pibox        | No           | inherits the model    | inherits the model                   | n/a                                  | pi-coding-agent on this stack's own models. Costs whatever the chosen model costs, nothing on top. | n/a                                                                                                                   |
 | Anthropic    | **Yes**      | tiered                | tiered                               | pay-per-token, no free tier          | Not free. Standard API.                                                              | [docs.anthropic.com/en/api/rate-limits](https://docs.anthropic.com/en/api/rate-limits)                                |
 | OpenAI       | **Yes**      | tiered                | tiered                               | pay-per-token, no free tier          | Not free. Standard API.                                                              | [platform.openai.com/docs/guides/rate-limits](https://platform.openai.com/docs/guides/rate-limits)                    |
 | Local (CPU / CUDA) | N/A    | unlimited             | unlimited                            | unlimited                            | Only constrained by your hardware. Last-resort fallback when all cloud tiers fail.   | —                                                                                                                     |
@@ -185,6 +186,28 @@ credits = (input_tokens × in + cached_input_tokens × cached + output_tokens ×
 | GLM-5.3-Flash | 2.3 | 0.56   | 8   |
 
 Read these as conversion rates, not as multipliers against some 1x baseline. Comparing them to the older peak/off-peak scheme, which scaled a prompt quota rather than tokens, does not give a like-for-like answer. What they do show is the gap between the two current models: Flash costs exactly a third of GLM-5.3 on both input and output, which is why it is the default for routine, batch, and catalog work. Output dominates either way, at roughly 3.5x the input rate, so a chatty run costs far more than a long prompt with a short answer.
+
+## Pibox, the agent running on this stack's own models (no extra account)
+
+The same [pibox](https://github.com/psyb0t/docker-pibox) image as above, with its upstream pointed at this stack's LiteLLM rather than an outside provider. Enable with `PIBOX=1`. Every model in `/v1/models` becomes an agent backend, so a local Ollama or vLLM model can drive shell, file, and MCP tool use with no provider account and no per-token cost. Reachable at `/pibox/`, with the MCP server at `/pibox/mcp/`.
+
+Two variables control which models it offers:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `PIBOX_MODELS` | a set of tool-capable models across groq, Ollama CUDA, Cohere, HuggingFace, and OpenRouter | Models the agent advertises. Trim it to what you have enabled. |
+| `PIBOX_DEFAULT_MODEL` | `groq-qwen3.8-27b` | Model used when the caller does not name one. |
+
+Two things decide whether a model works here:
+
+- **It has to call tools.** The agent loop is tool driven, so a model that replies with text instead of a tool call stalls on the first turn. Capability varies more than size suggests. `local-ollama-cuda-qwen3-8b` calls tools; the larger `local-ollama-cuda-qwen3-30b-a3b` does not. `local-ollama-cuda-deepseek-coder-v2-16b` predates Ollama's tool support entirely and reports no `tools` capability, so it will never work. Check with `ollama show <model>` and look for `tools` in the capability list.
+- **Never point it at another agent.** Keep `claudebox-*` and `pibox-*` out of `PIBOX_MODELS` and out of any fallback chain a listed model reaches. Those route back into an agent and the run recurses.
+
+No GPU is required. Tool capability belongs to the model file, so a `local-ollama-cpu-*` model calls tools exactly as well as the CUDA copy of the same tag; only speed differs, and an agent loop is many turns, so expect a long wait. Of the CPU models, `llama3.2-3b`, `phi4-mini`, `qwen2.5-coder-1.5b`, `qwen2.5-coder-3b`, `qwen3-4b`, `smollm2-1.7b`, and `gemma4-e2b` report `tools`. `gemma3-4b`, `dolphin-phi`, and `nuextract-v1.5` do not.
+
+Two local services cannot back this agent at all. llamacpp serves only `surya-ocr-2`, an OCR model, and vllm serves a 0.6B chat model and an embedding model.
+
+`PIBOX_UPSTREAM_KEY` sets the key the agent presents to LiteLLM. It defaults to `LITELLM_MASTER_KEY`, which itself defaults to `AIGATE_TOKEN`, so it works unconfigured. Point it at a LiteLLM virtual key to track this agent's requests and spend separately from the rest of the gateway.
 
 ## Anthropic (optional, API key required)
 

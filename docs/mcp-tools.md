@@ -24,6 +24,7 @@ Each individual service also exposes its own MCP endpoint directly (routed via n
 | hybrids3             | `http://localhost:4000/storage/mcp/`                |
 | claudebox            | `http://localhost:4000/claudebox/mcp/`              |
 | pibox-zai            | `http://localhost:4000/pibox-zai/mcp/`              |
+| pibox                | `http://localhost:4000/pibox/mcp/`                  |
 | audiolla             | `http://localhost:4000/audiolla/v1/mcp`             |
 | audiolla-cuda        | `http://localhost:4000/audiolla-cuda/v1/mcp`        |
 | flickies             | `http://localhost:4000/flickies/v1/mcp`             |
@@ -153,6 +154,12 @@ claude_run(prompt="task B", workspace="shared")  # 409 if first is still running
 [pi-coding-agent](https://github.com/earendil-works/pi-mono) wrapped by [pibox](https://github.com/psyb0t/docker-pibox) and pointed at [z.ai](https://z.ai)'s Anthropic-compatible API (GLM models). Same agentic capabilities and workspace-scoped file operations as `claudebox`, plus a `/files/*` CRUD API. Use this when you want agentic execution without touching your Claude subscription or API key budget.
 
 The pibox-zai instance runs in a separate container — workspaces are not shared with claudebox.
+
+## pibox (`PIBOX=1`)
+
+The same agent, pointed back at this stack's own LiteLLM instead of an outside provider. Every model in `/v1/models` becomes an agent backend, so a local Ollama or vLLM model can run the loop with no provider account. Set `PIBOX_MODELS` to models you have enabled that can call tools, and keep `claudebox-*` and `pibox-*` out of that list, because they route back into an agent and recurse.
+
+It runs in its own container with its own workspace, shared with neither claudebox nor pibox-zai.
 
 ## mcp_tools (auto-enabled with image/TTS/search providers)
 

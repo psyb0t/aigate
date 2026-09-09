@@ -32,6 +32,11 @@ ifeq ($(strip $(PIBOX_ZAI)),1)
   _PROFILES += pibox-zai
 endif
 
+# pibox: opt-in with PIBOX=1 (pi driven by this stack's own models)
+ifeq ($(strip $(PIBOX)),1)
+  _PROFILES += pibox
+endif
+
 # cloudflared: opt-in with CLOUDFLARED=1
 ifeq ($(strip $(CLOUDFLARED)),1)
   _PROFILES += cloudflared
@@ -256,7 +261,7 @@ run-bg:
 	docker compose up -d --build --force-recreate
 
 down:
-	COMPOSE_PROFILES=claudebox,pibox-zai,cloudflared,hybrids3,browser,ollama,ollama-cuda,sdcpp,sdcpp-cuda,talkies,talkies-cuda,vllm,vllm-cuda,mcp,librechat,searxng,telethon,tailscale,predictalot,predictalot-cuda,audiolla,audiolla-cuda,flickies,flickies-cuda,mailbox \
+	COMPOSE_PROFILES=claudebox,pibox-zai,pibox,cloudflared,hybrids3,browser,ollama,ollama-cuda,sdcpp,sdcpp-cuda,talkies,talkies-cuda,vllm,vllm-cuda,llamacpp,llamacpp-cuda,mcp,librechat,searxng,telethon,tailscale,predictalot,predictalot-cuda,audiolla,audiolla-cuda,flickies,flickies-cuda,piston,mailbox \
 		docker compose down --remove-orphans
 
 restart: down run-bg
@@ -289,6 +294,7 @@ help:
 	@echo "Profiles (set flag to 1 in .env to enable):"
 	@echo "  claudebox     set CLAUDEBOX=1"
 	@echo "  pibox-zai     set PIBOX_ZAI=1 (pi-coding-agent via z.ai/GLM)"
+	@echo "  pibox  set PIBOX=1 (pi-coding-agent on this stack's own models; needs PIBOX_MODELS)"
 	@echo "  cloudflared   set CLOUDFLARED=1"
 	@echo "  hybrids3      set HYBRIDS3=1"
 	@echo "  browser       set BROWSER=1"

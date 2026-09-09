@@ -37,7 +37,7 @@ sab_replicas=5
 litellm_workers=4
 flag_talkies=0; flag_talkies_cuda=0
 flag_ollama=0; flag_ollama_cuda=0; flag_browser=0
-flag_claudebox=0; flag_cbzai=0; flag_hybrids3=0; flag_cloudflared=0
+flag_claudebox=0; flag_cbzai=0; flag_pibox=0; flag_hybrids3=0; flag_cloudflared=0
 flag_librechat=0; flag_mcp=0; flag_sdcpp=0; flag_sdcpp_cuda=0
 flag_vllm=0; flag_vllm_cuda=0; flag_audiolla=0; flag_audiolla_cuda=0
 flag_flickies=0; flag_flickies_cuda=0
@@ -53,6 +53,7 @@ if [ -f .env ]; then
     [ "$(_v BROWSER)" = "1" ]       && flag_browser=1
     [ "$(_v CLAUDEBOX)" = "1" ]     && flag_claudebox=1
     [ "$(_v PIBOX_ZAI)" = "1" ]     && flag_cbzai=1
+    [ "$(_v PIBOX)" = "1" ]         && flag_pibox=1
     [ "$(_v HYBRIDS3)" = "1" ]      && flag_hybrids3=1
     [ "$(_v CLOUDFLARED)" = "1" ]   && flag_cloudflared=1
     [ "$(_v LIBRECHAT)" = "1" ]     && flag_librechat=1
@@ -152,6 +153,7 @@ postgres_raw=$(    raw_mem  3  256 )
 redis_raw=$(       raw_mem  2  128 )
 claudebox_raw=$(   raw_mem  4  256 )
 cbzai_raw=$(       raw_mem  4  256 )
+pibox_raw=$(       raw_mem  4  256 )
 hybrids3_raw=$(    raw_mem  2  128 )
 sab_redis_raw=$(   raw_mem  1   64 )
 sab_raw=$(         raw_mem  3  128 )
@@ -179,6 +181,7 @@ nginx_cpu=$(           cpu  2  2 )
 litellm_cpu=$(         cpu 25  $litellm_workers )
 claudebox_cpu=$(       cpu 15  2 )
 cbzai_cpu=$(           cpu 15  2 )
+pibox_cpu=$(           cpu 15  2 )
 hybrids3_cpu=$(        cpu  3  1 )
 redis_cpu=$(           cpu  2  1 )
 postgres_cpu=$(        cpu  8  1 )
@@ -210,6 +213,7 @@ concurrent=0
 concurrent=$(( concurrent + nginx_raw + postgres_raw + redis_raw + proxq_raw ))
 [ "$flag_claudebox" = "1" ]   && concurrent=$(( concurrent + claudebox_raw ))
 [ "$flag_cbzai" = "1" ]       && concurrent=$(( concurrent + cbzai_raw ))
+[ "$flag_pibox" = "1" ]       && concurrent=$(( concurrent + pibox_raw ))
 [ "$flag_hybrids3" = "1" ]    && concurrent=$(( concurrent + hybrids3_raw ))
 
 # CPU local group: resource manager ensures only one has models loaded at a time.
@@ -259,6 +263,7 @@ postgres_mem=$(    scale_mem $postgres_raw     256 $scale ); postgres_swap=$(   
 redis_mem=$(       scale_mem $redis_raw        128 $scale ); redis_swap=$(       _swap $redis_mem )
 claudebox_mem=$(   scale_mem $claudebox_raw    256 $scale ); claudebox_swap=$(   _swap $claudebox_mem )
 cbzai_mem=$(       scale_mem $cbzai_raw        256 $scale ); cbzai_swap=$(       _swap $cbzai_mem )
+pibox_mem=$(       scale_mem $pibox_raw        256 $scale ); pibox_swap=$(       _swap $pibox_mem )
 hybrids3_mem=$(    scale_mem $hybrids3_raw     128 $scale ); hybrids3_swap=$(    _swap $hybrids3_mem )
 sab_redis_mem=$(   scale_mem $sab_redis_raw     64 $scale ); sab_redis_swap=$(   _swap $sab_redis_mem )
 sab_mem=$(         scale_mem $sab_raw          128 $scale ); sab_swap=$(         _swap $sab_mem )
@@ -293,6 +298,7 @@ row "redis"                         $redis_mem        $redis_swap        $redis_
 row "proxq"                         $proxq_mem        $proxq_swap        $proxq_cpu
 [ "$flag_claudebox" = "1" ] && row "claudebox"              $claudebox_mem  $claudebox_swap  $claudebox_cpu
 [ "$flag_cbzai" = "1" ]     && row "pibox-zai"              $cbzai_mem      $cbzai_swap      $cbzai_cpu
+[ "$flag_pibox" = "1" ]     && row "pibox"                  $pibox_mem      $pibox_swap      $pibox_cpu
 [ "$flag_hybrids3" = "1" ]  && row "hybrids3"               $hybrids3_mem   $hybrids3_swap   $hybrids3_cpu
 if [ "$flag_browser" = "1" ]; then
     row "stealthy-auto-browse-redis"    $sab_redis_mem  $sab_redis_swap  $sab_redis_cpu
@@ -329,6 +335,7 @@ fi
 total_mem=$(( nginx_mem + postgres_mem + redis_mem + proxq_mem ))
 [ "$flag_claudebox" = "1" ]   && total_mem=$(( total_mem + claudebox_mem ))
 [ "$flag_cbzai" = "1" ]       && total_mem=$(( total_mem + cbzai_mem ))
+[ "$flag_pibox" = "1" ]       && total_mem=$(( total_mem + pibox_mem ))
 [ "$flag_hybrids3" = "1" ]    && total_mem=$(( total_mem + hybrids3_mem ))
 [ "$flag_talkies" = "1" ]     && total_mem=$(( total_mem + talkies_mem ))
 [ "$flag_ollama" = "1" ]      && total_mem=$(( total_mem + ollama_mem ))
@@ -370,6 +377,9 @@ CLAUDEBOX_CPUS=${claudebox_cpu}
 PIBOX_ZAI_MEM_LIMIT=$(fmt $cbzai_mem)
 PIBOX_ZAI_MEMSWAP_LIMIT=$(fmt $cbzai_swap)
 PIBOX_ZAI_CPUS=${cbzai_cpu}
+PIBOX_MEM_LIMIT=$(fmt $pibox_mem)
+PIBOX_MEMSWAP_LIMIT=$(fmt $pibox_swap)
+PIBOX_CPUS=${pibox_cpu}
 
 HYBRIDS3_MEM_LIMIT=$(fmt $hybrids3_mem)
 HYBRIDS3_MEMSWAP_LIMIT=$(fmt $hybrids3_swap)

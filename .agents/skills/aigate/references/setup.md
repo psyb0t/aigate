@@ -29,7 +29,7 @@ Single exposed port: **`4000`** (nginx), hardcoded — not env-configurable. Eve
 - LibreChat (if `LIBRECHAT=1`): `http://localhost:4000/librechat/`
 - SearXNG (if `SEARXNG=1`): `http://localhost:4000/searxng/`
 - Async queue (proxq): `http://localhost:4000/q/`
-- Direct-routed services (not via LiteLLM): `/predictalot/`, `/predictalot-cuda/`, `/audiolla/`, `/audiolla-cuda/`, `/flickies/`, `/flickies-cuda/`, `/mailbox/`, `/telethon/`, `/piston/`, `/storage/` (hybrids3), `/claudebox/`, `/pibox-zai/`, `/stealthy-auto-browse/`
+- Direct-routed services (not via LiteLLM): `/predictalot/`, `/predictalot-cuda/`, `/audiolla/`, `/audiolla-cuda/`, `/flickies/`, `/flickies-cuda/`, `/mailbox/`, `/telethon/`, `/piston/`, `/storage/` (hybrids3), `/claudebox/`, `/pibox-zai/`, `/pibox/`, `/stealthy-auto-browse/`
 
 ## Required env / keys
 
@@ -58,6 +58,7 @@ Per-service keys/tokens only matter once you flip that service's flag to `1`. Ev
 - Cloud providers: `GROQ=1`, `CEREBRAS=1`, `OPENROUTER=1`, `HUGGINGFACE=1`, `MISTRAL=1`, `COHERE=1`, `ANTHROPIC=1`, `OPENAI=1` each need their own API key var alongside the flag (e.g. `OPENAI_API_KEY`).
 - `CLAUDEBOX=1` needs Claude OAuth token or Anthropic API key; token defaults to `AIGATE_TOKEN` via `CLAUDEBOX_API_TOKEN`.
 - `PIBOX_ZAI=1` needs a z.ai key; token defaults via `PIBOX_ZAI_API_TOKEN`.
+- `PIBOX=1` needs no outside account; it runs pi on this stack's own models. Set `PIBOX_MODELS` to enabled models that can call tools, and keep agent models (`claudebox-*`, `pibox-*`) out of that list to avoid recursion.
 - `MAILBOX=1` needs `MAILBOX_CONFIG` pointing at an existing host YAML file (copy `mailbox/config.example.yaml`, fill IMAP/SMTP creds, put a token under `auth.tokens:`) and `MAILBOX_AUTH_TOKEN` mirroring that token.
 - `TELETHON=1` needs `TELETHON_API_ID`, `TELETHON_API_HASH`, `TELETHON_SESSION` (generate the string session once via the telethon-plus `login` command — see `docs/services/telethon.md` upstream).
 - `CLOUDFLARED=1` / `TAILSCALE=1` are the two supported ways to expose the gateway beyond localhost without opening host ports — prefer these over publishing `4000` directly.

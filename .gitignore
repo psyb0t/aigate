@@ -71,6 +71,11 @@ Thumbs.db
 !.data/pibox-zai/config/.gitkeep
 !.data/pibox-zai/workspace/
 !.data/pibox-zai/workspace/.gitkeep
+!.data/pibox/
+!.data/pibox/config/
+!.data/pibox/config/.gitkeep
+!.data/pibox/workspace/
+!.data/pibox/workspace/.gitkeep
 !.data/nginx/
 !.data/nginx/.gitkeep
 !.data/cloudflared/

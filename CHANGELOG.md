@@ -2,6 +2,65 @@
 
 All notable changes to this project are documented here.
 
+## [v5.1.0] — 2026-09-09
+
+**Adds `pibox`, an agent that runs on the models this stack already serves. No
+extra provider account and no second subscription. A local Ollama or vLLM model,
+or a free cloud model, drives the agent loop.**
+
+### Added
+
+- `pibox` service, opt-in with `PIBOX=1`, reachable at `/pibox/` with its MCP
+  server at `/pibox/mcp/`. It is [pi-coding-agent](https://github.com/earendil-works/pi-mono)
+  in API mode with its upstream pointed at this stack's own LiteLLM, so any model
+  in `/v1/models` becomes an agent backend with shell, file, and MCP tool use. It
+  exposes the same REST API, OpenAI-compatible endpoint, `/files/*` CRUD, and MCP
+  server as pibox-zai, in its own container with its own workspace.
+  - `PIBOX_MODELS` lists the models it offers and `PIBOX_DEFAULT_MODEL` picks the
+    one used when a caller names none. Both ship with defaults spanning groq,
+    Ollama CUDA, Cohere, HuggingFace, and OpenRouter. Trim them to what you have
+    enabled.
+  - A listed model has to be able to call tools. The agent loop is tool driven,
+    so a model that answers with text instead of a tool call stalls on the first
+    turn. Capability does not track size: `local-ollama-cuda-qwen3-8b` calls
+    tools and the larger `local-ollama-cuda-qwen3-30b-a3b` does not, while
+    `local-ollama-cuda-deepseek-coder-v2-16b` predates Ollama's tool support and
+    reports no `tools` capability at all. `ollama show <model>` lists what a
+    given model supports.
+  - No GPU is required. Tool capability belongs to the model file, so a
+    `local-ollama-cpu-*` model calls tools exactly as well as the CUDA copy of
+    the same tag and only speed differs. An agent loop is many turns, so a CPU
+    run is slow rather than impossible. llamacpp and vllm cannot back this
+    agent: llamacpp serves only an OCR model, and vllm serves a 0.6B chat model
+    and an embedding model.
+  - **Do not list `claudebox-*`, `pibox-*`, or any model whose fallback chain
+    reaches one.** Those route back into an agent and the run recurses.
+  - `PIBOX_UPSTREAM_KEY` sets the key the agent presents to LiteLLM. It defaults
+    to `LITELLM_MASTER_KEY`, which itself defaults to `AIGATE_TOKEN`, so it works
+    unconfigured. Point it at a LiteLLM virtual key to track this agent's
+    requests and spend separately from the rest of the gateway.
+
+### Changed
+
+- pibox image bumped `v0.15.12` to `v0.16.1` for both services. v0.16.0 added
+  generic upstream provider configuration, which is what lets an agent target a
+  LiteLLM endpoint.
+- pibox-zai moved from the `ANTHROPIC_*` variables to `PIBOX_PROVIDER_*`. Same
+  endpoint, same models, same Anthropic Messages protocol. The new path keeps an
+  environment-variable reference to the key in Pi's provider config instead of
+  writing the key value into `models.json`. `PIBOX_ZAI_BASE_URL` overrides the
+  endpoint; z.ai also serves an OpenAI-compatible Coding Plan endpoint at
+  `https://api.z.ai/api/coding/paas/v4`.
+
+### Fixed
+
+- `make down` now tears down the `piston`, `llamacpp`, and `llamacpp-cuda`
+  profiles. They were never listed, so those containers survived a `make down`
+  and had to be stopped by hand.
+- `make limits` sizes the new `pibox` service. Without it the service would have
+  kept the fixed compose fallback on every machine while every other service got
+  limits scaled to the host.
+
 ## [v5.0.0] — 2026-09-09
 
 **Reverses the `docker-compose.yml` change from v4.0.0. The base compose file is

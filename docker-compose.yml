@@ -169,7 +169,7 @@ services:
   pibox-zai:
     logging: *docker-logging
     profiles: ["pibox-zai"]
-    image: psyb0t/pibox:v0.15.12
+    image: psyb0t/pibox:v0.16.1
     restart: unless-stopped
     mem_limit: ${PIBOX_ZAI_MEM_LIMIT:-1g}
     memswap_limit: ${PIBOX_ZAI_MEMSWAP_LIMIT:-2g}
@@ -182,13 +182,74 @@ services:
       PIBOX_MCP_MODE: "1"
       PIBOX_MCP_MODE_TOKEN: ${PIBOX_ZAI_API_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-zai}}
       PIBOX_AVAILABLE_MODELS: ${PIBOX_ZAI_AVAILABLE_MODELS:-glm-5.3,glm-5.3-flash}
-      ANTHROPIC_API_KEY: ${PIBOX_ZAI_AUTH_TOKEN}
-      ANTHROPIC_AUTH_TOKEN: ${PIBOX_ZAI_AUTH_TOKEN}
-      ANTHROPIC_BASE_URL: https://api.z.ai/api/anthropic
-      ANTHROPIC_MODEL: ${PIBOX_ZAI_DEFAULT_MODEL:-glm-5.3-flash}
+      # pibox v0.16.0 generic provider config. Pi keeps an env-var reference to
+      # the key rather than the key value, which the older ANTHROPIC_* path
+      # could not do. Z.AI also serves an OpenAI-compatible Coding Plan
+      # endpoint at https://api.z.ai/api/coding/paas/v4 with
+      # PIBOX_PROVIDER_API=openai-completions.
+      PIBOX_PROVIDER_NAME: zai
+      PIBOX_PROVIDER_API: anthropic-messages
+      PIBOX_PROVIDER_BASE_URL: ${PIBOX_ZAI_BASE_URL:-https://api.z.ai/api/anthropic}
+      PIBOX_PROVIDER_API_KEY: ${PIBOX_ZAI_AUTH_TOKEN}
+      PIBOX_PROVIDER_MODEL: ${PIBOX_ZAI_DEFAULT_MODEL:-glm-5.3-flash}
     volumes:
       - ${DATA_DIR_PIBOX_ZAI:-${DATA_DIR:-.data}/pibox-zai}/config:/home/aicode/.aicodebox
       - ${DATA_DIR_PIBOX_ZAI:-${DATA_DIR:-.data}/pibox-zai}/workspace:/workspace
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - aigate-internal
+      - aigate-public
+
+  # pibox — pi-coding-agent pointed back at this stack's own LiteLLM.
+  # Every model aigate already exposes becomes an agent backend, so a local
+  # Ollama/vLLM model or a free cloud model can drive shell, file, and MCP tool
+  # use without a separate provider subscription. Talks to LiteLLM directly
+  # rather than through nginx, so it is not subject to the gateway's own rate
+  # limits.
+  #
+  # Set PIBOX_MODELS to models this stack actually serves; API mode
+  # refuses to boot without a model list. Pick models with reliable function
+  # calling, because pi drives an agentic tool loop and a model that cannot
+  # call tools will not get past the first turn.
+  #
+  # Never point it at claudebox-*, pibox-*, or any chain that falls back to
+  # one. Those route back into an agent and the run recurses.
+  pibox:
+    logging: *docker-logging
+    profiles: ["pibox"]
+    image: psyb0t/pibox:v0.16.1
+    restart: unless-stopped
+    mem_limit: ${PIBOX_MEM_LIMIT:-1g}
+    memswap_limit: ${PIBOX_MEMSWAP_LIMIT:-2g}
+    cpus: ${PIBOX_CPUS:-2.0}
+    depends_on:
+      - litellm
+    environment:
+      DEBUG: ${PIBOX_DEBUG:-}
+      PIBOX_API_MODE: "1"
+      PIBOX_API_MODE_PORT: "8080"
+      PIBOX_API_MODE_TOKEN: ${PIBOX_API_TOKEN:-${AIGATE_TOKEN:-lulz-4-security}}
+      PIBOX_MCP_MODE: "1"
+      PIBOX_MCP_MODE_TOKEN: ${PIBOX_API_TOKEN:-${AIGATE_TOKEN:-lulz-4-security}}
+      PIBOX_AVAILABLE_MODELS: ${PIBOX_MODELS:-groq-qwen3.8-27b,groq-qwen3.6-27b,groq-gpt-oss-120b,groq-gpt-oss-20b,groq-compound,local-ollama-cuda-qwen3-8b,local-ollama-cuda-qwen2.5-coder-7b,cohere-command-a,cohere-command-a-plus,hf-llama-3.3-70b,or-nemotron-120b,or-nemotron-lightning}
+      PIBOX_PROVIDER_NAME: aigate
+      PIBOX_PROVIDER_API: openai-completions
+      PIBOX_PROVIDER_BASE_URL: http://litellm:4000/v1
+      # Calls LiteLLM directly, so the key has to be one LiteLLM accepts. Follows
+      # the same chain LiteLLM uses for its own master key. Override only to give
+      # this agent a scoped virtual key instead of the master.
+      PIBOX_PROVIDER_API_KEY: ${PIBOX_UPSTREAM_KEY:-${LITELLM_MASTER_KEY:-${AIGATE_TOKEN}}}
+      PIBOX_PROVIDER_MODEL: ${PIBOX_DEFAULT_MODEL:-groq-qwen3.8-27b}
+    volumes:
+      - ${DATA_DIR_PIBOX:-${DATA_DIR:-.data}/pibox}/config:/home/aicode/.aicodebox
+      - ${DATA_DIR_PIBOX:-${DATA_DIR:-.data}/pibox}/workspace:/workspace
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/healthz"]
       interval: 15s
@@ -1748,6 +1809,21 @@ configs:
               set $$upstream_pibox_zai http://pibox-zai:8080;
               rewrite ^/pibox-zai/(.*) /$$1 break;
               proxy_pass $$upstream_pibox_zai;
+              proxy_set_header Host localhost:8080;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_read_timeout ${TIMEOUT_CLAUDEBOX:-24h};
+              proxy_send_timeout ${TIMEOUT_CLAUDEBOX:-24h};
+              proxy_buffering off;
+              proxy_cache off;
+          }
+
+          location /pibox/ {
+              limit_req zone=claudebox burst=${RATELIMIT_CLAUDEBOX_BURST:-10} nodelay;
+              set $$upstream_pibox http://pibox:8080;
+              rewrite ^/pibox/(.*) /$$1 break;
+              proxy_pass $$upstream_pibox;
               proxy_set_header Host localhost:8080;
               proxy_set_header X-Real-IP $$remote_addr;
               proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
