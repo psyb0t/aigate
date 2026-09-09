@@ -373,17 +373,23 @@ cd aigate
 make bootstrap
 ```
 
-This creates `.env` and `docker-compose.yml` from `.env.example` and `docker-compose.yml.example`. Any `make` target does it for you, so you can skip straight to `make run` if you prefer.
+This creates `.env` from `.env.example`. Any `make` target does it for you, so you can skip straight to `make run` if you prefer. `.env` is gitignored, so your keys and flags survive every update.
 
-Both created files are gitignored and yours to edit. Pulling an update changes only the `.example` files, so your compose tweaks and secrets survive. To pick up new upstream defaults after an update, diff and merge what you want:
+Reach for `.env` first for anything you want to change. Profile flags, API keys, data directories, rate limits, and timeouts are all env vars already, and per-service memory/CPU limits live in `.env.limits` (see `make limits` below), so most changes need no compose edit at all.
 
-```bash
-diff -u docker-compose.yml docker-compose.yml.example
+For the rest, **do not edit `docker-compose.yml`**. It is tracked and moves with the repository, because its 46 service definitions, nginx routes, and rate-limit zones have to stay in step with the provider configs, the Makefile profiles, and the LiteLLM config builder. An update overwrites your changes there, and a stale copy silently breaks new services.
+
+Put your changes in `docker-compose.override.yml` instead. It is gitignored, Compose merges it last so it wins, and nothing upstream ever touches it. Write only the keys you are changing:
+
+```yaml
+services:
+  claudebox:
+    mem_limit: 8g
+    ports:
+      - "127.0.0.1:8080:8080"
 ```
 
-Reach for `.env` first. Profile flags, API keys, data directories, rate limits, and timeouts are all env vars already, and per-service memory/CPU limits live in `.env.limits` (see `make limits` below), so most changes need no compose edit at all. Edit `docker-compose.yml` for the rest: pinning a different image tag, publishing a port, adding your own service alongside the stack, or changing a healthcheck. Nothing overwrites it.
-
-Sending a change upstream is the one case that works the other way round: `docker-compose.yml` is gitignored, so edit `docker-compose.yml.example` instead or the change will not land in the commit.
+Everything else about that service still comes from the base file. `make bootstrap` prints the active compose file chain if you want to check what is merged.
 
 Fill in the values — every variable is documented with comments in [`.env.example`](.env.example).
 

@@ -1,15 +1,16 @@
 # aigate setup
 
-Accurate to the aigate `README.md` / `docker-compose.yml.example` / `.env.example` at time of writing. Re-check those files if this drifts. The tracked files are the `.example` pair; `docker-compose.yml` and `.env` are the operator's local copies and are gitignored.
+Accurate to the aigate `README.md` / `docker-compose.yml` / `.env.example` at time of writing. Re-check those files if this drifts. `.env` and `docker-compose.override.yml` are the operator's local files and are gitignored.
 
 ## Bring-up
 
 ```bash
 git clone https://github.com/psyb0t/aigate
 cd aigate
-make bootstrap   # creates .env + docker-compose.yml from the .example files (any target does this)
+make bootstrap   # creates .env from .env.example (any target does this)
 # edit .env — see "Required env" below, then flip service flags to 1
-# both created files are gitignored, so updates never overwrite your edits
+# .env is gitignored. docker-compose.yml is tracked, so put compose changes in
+# docker-compose.override.yml, which is gitignored and merges last
 make limits      # writes .env.limits sized to this machine's RAM/swap/CPU
 make run-bg      # start detached
 # or: make run   # start in foreground with logs

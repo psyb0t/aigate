@@ -1,7 +1,10 @@
-# Local runtime config. Both are created from their tracked .example on first
-# `make run` and are yours to edit; updates never overwrite them.
+# Local runtime config, created from .env.example on first `make run` and yours
+# to edit. `docker-compose.yml` stays tracked because 46 service definitions,
+# the nginx routes, and the rate-limit zones must move together with the rest of
+# the repo. Put your own compose changes in docker-compose.override.yml, which
+# Compose merges on top of the base and which nothing upstream ever touches.
 .env
-docker-compose.yml
+docker-compose.override.yml
 .env.limits
 *.key
 *.pem

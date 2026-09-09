@@ -185,4 +185,12 @@ docker image inspect ghcr.io/engineer-man/piston:latest --format '{{.RepoDigests
 # → ghcr.io/engineer-man/piston@sha256:<NEW_DIGEST>
 ```
 
-Replace the `image:` line in `docker-compose.yml` with the new digest. Test against the existing language set before bumping.
+To pin the new digest locally, put it in `docker-compose.override.yml` rather than editing `docker-compose.yml`, which an update overwrites:
+
+```yaml
+services:
+  piston:
+    image: ghcr.io/engineer-man/piston@sha256:<NEW_DIGEST>
+```
+
+Test against the existing language set before bumping. To change the digest the project ships for everyone, edit `docker-compose.yml` and send that change upstream.

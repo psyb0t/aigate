@@ -61,9 +61,10 @@ Treat aigate as a **trusted host only**. Concretely:
 ```bash
 git clone https://github.com/psyb0t/aigate
 cd aigate
-make bootstrap # creates .env and docker-compose.yml from the .example files (any target does this)
+make bootstrap # creates .env from .env.example (any target does this)
 # edit .env: set AIGATE_TOKEN, flip the flags for the providers/services you want to 1
-# both created files are gitignored, so updates never overwrite your edits
+# .env is gitignored. docker-compose.yml is tracked, so put compose changes in
+# docker-compose.override.yml, which is gitignored and merges last
 make limits    # writes .env.limits sized to this machine's RAM/CPU
 make run-bg    # start the stack in the background
 ```

@@ -2,6 +2,65 @@
 
 All notable changes to this project are documented here.
 
+## [v5.0.0] — 2026-09-09
+
+**Reverses the `docker-compose.yml` change from v4.0.0. The base compose file is
+tracked again, and local changes belong in `docker-compose.override.yml`.**
+
+v4.0.0 made `docker-compose.yml` a local untracked file so an update could not
+overwrite it. That was the wrong mechanism for this file. It carries 46 service
+definitions, 22 nginx routes, and 19 rate-limit zones that have to move together
+with the provider configs, the Makefile profiles, and the LiteLLM config
+builder. A frozen copy silently breaks: a later release adds a service, ships
+its provider YAML and profile flag, and the local compose has no matching
+service, so LiteLLM registers a model pointing at a host that does not resolve
+and nginx has no route for it.
+
+Compose already solves this with an override file, which is what this release
+uses.
+
+### Breaking
+
+- **`docker-compose.yml` is tracked again and an update overwrites edits to it.**
+  Put local changes in `docker-compose.override.yml`, which is gitignored and
+  merged last, so it wins over the base and over any bundled overlay. Write only
+  the keys being changed:
+
+  ```yaml
+  services:
+    claudebox:
+      mem_limit: 8g
+  ```
+
+  **Upgrading from v4.0.0 needs one manual step.** v4.0.0 left an untracked
+  `docker-compose.yml` in the working tree and this release adds that same path
+  as a tracked file, so Git refuses the checkout with `untracked working tree
+  file would be overwritten`. Move the file aside first, then pull, then port
+  any edits into `docker-compose.override.yml`:
+
+  ```bash
+  mv docker-compose.yml docker-compose.yml.mine
+  git pull
+  diff -u docker-compose.yml docker-compose.yml.mine   # port what you changed
+  ```
+
+  Upgrading from v3.24.0 or earlier needs nothing; the file is tracked in both.
+- **`docker-compose.yml.example` is removed.** The base file is the shipped
+  default again, so the copy served no purpose.
+
+### Changed
+
+- `COMPOSE_FILE` is now assembled by the Makefile in merge order: the base file,
+  then `docker-compose.tailscale.yml` when `TAILSCALE=1`, then
+  `docker-compose.override.yml` when it exists. Compose only auto-loads an
+  override file when `COMPOSE_FILE` is unset, and the tailnet overlay sets it, so
+  the override is appended explicitly rather than relying on that default.
+- `make bootstrap` creates `.env` from `.env.example` and prints the active
+  compose file chain. It no longer creates `docker-compose.yml`.
+- `.env` is unchanged: still created from `.env.example` on first run, still
+  gitignored. That file is settings rather than wiring, so a local copy cannot
+  drift out of step with the rest of the repository.
+
 ## [v4.0.0] — 2026-09-09
 
 **`docker-compose.yml` and `.env` are now local files created from tracked

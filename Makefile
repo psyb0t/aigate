@@ -1,8 +1,6 @@
-# Seed the local runtime config from the tracked examples. This runs while make
-# parses the file, before the -include below, so a freshly created .env is read
-# by this same invocation. Both files are gitignored, so an update never
-# overwrites your edits.
-$(shell [ -f docker-compose.yml ] || cp docker-compose.yml.example docker-compose.yml)
+# Seed .env from the tracked example. This runs while make parses the file,
+# before the -include below, so a freshly created .env is read by this same
+# invocation.
 $(shell [ -f .env ] || cp .env.example .env)
 
 -include .env
@@ -18,6 +16,11 @@ empty :=
 space := $(empty) $(empty)
 
 _PROFILES :=
+
+# Compose files, in merge order. The base is always first. Overlays gated by a
+# flag append themselves below, and docker-compose.override.yml goes last so a
+# local change wins over everything the repository ships.
+_COMPOSE_FILES := docker-compose.yml
 
 # claudebox: opt-in with CLAUDEBOX=1
 ifeq ($(strip $(CLAUDEBOX)),1)
@@ -93,8 +96,8 @@ endif
 # tailscale: opt-in with TAILSCALE=1
 ifeq ($(strip $(TAILSCALE)),1)
   _PROFILES += tailscale
-  # Load the tailnet-egress overlay so claudebox/pibox can reach the tailnet.
-  export COMPOSE_FILE := docker-compose.yml:docker-compose.tailscale.yml
+  # Pull in the tailnet-egress overlay so claudebox/pibox can reach the tailnet.
+  _COMPOSE_FILES += docker-compose.tailscale.yml
 endif
 
 # predictalot: opt-in with PREDICTALOT=1 (CPU)
@@ -188,6 +191,15 @@ endif
 override COMPOSE_PROFILES := $(subst $(space),$(comma),$(strip $(_PROFILES)))
 export COMPOSE_PROFILES
 
+# Compose only auto-loads docker-compose.override.yml when COMPOSE_FILE is
+# unset, and setting COMPOSE_FILE here turns that off, so append it explicitly.
+ifneq ($(wildcard docker-compose.override.yml),)
+  _COMPOSE_FILES += docker-compose.override.yml
+endif
+
+override COMPOSE_FILE := $(subst $(space),:,$(strip $(_COMPOSE_FILES)))
+export COMPOSE_FILE
+
 # ── File path env vars that get volume-mounted ───────────────────────────────
 # Add any env var here whose value is a host file path used in a volume mount.
 _FILE_VARS := CLOUDFLARED_CONFIG CLOUDFLARED_CREDS MAILBOX_CONFIG
@@ -210,12 +222,19 @@ endef
 # already has them. This target reports the state and is the documented way to
 # create the files without starting anything.
 bootstrap:
-	@echo "docker-compose.yml: present (copy of docker-compose.yml.example unless you changed it)"
-	@echo ".env:               present"
+	@echo ".env: present (created from .env.example, gitignored, yours to edit)"
 	@echo ""
-	@echo "Both are gitignored. Edit them freely; updates change only the .example files."
-	@echo "To take a new upstream default, diff against the example:"
-	@echo "  diff -u docker-compose.yml docker-compose.yml.example"
+	@echo "Compose files in merge order:"
+	@for f in $(_COMPOSE_FILES); do echo "  $$f"; done
+	@echo ""
+	@echo "docker-compose.yml is tracked and moves with the repository; it carries the"
+	@echo "service definitions, nginx routes, and rate-limit zones that the rest of the"
+	@echo "repo expects, so an edit there is overwritten on update. Put your own changes"
+	@echo "in docker-compose.override.yml, which is gitignored and merges last:"
+	@echo ""
+	@echo "  services:"
+	@echo "    claudebox:"
+	@echo "      mem_limit: 8g"
 
 build-config:
 	@docker run --rm \
@@ -256,7 +275,7 @@ help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "Targets:"
-	@echo "  bootstrap     Create .env and docker-compose.yml from their .example (run targets do this for you)"
+	@echo "  bootstrap     Create .env from .env.example and show the active compose file chain"
 	@echo "  run           Start the stack in foreground (auto-detects profiles from .env)"
 	@echo "  run-bg        Start the stack in background"
 	@echo "  down          Stop everything"
