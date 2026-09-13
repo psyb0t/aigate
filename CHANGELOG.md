@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here.
 
+## [v5.1.1] — 2026-09-13
+
+**Bumps both pibox services to `v0.16.2`, which fixes every advertised model
+except the default one failing on each request.**
+
+### Fixed
+
+- pibox image bumped `v0.16.1` to `v0.16.2`. On v0.16.1 only
+  `PIBOX_PROVIDER_MODEL` was registered in Pi's provider model list, so any
+  other model in `PIBOX_AVAILABLE_MODELS` fell back to Pi's default API shape,
+  disagreed with the configured provider base URL, and failed with
+  `Stream ended without finish_reason`. Both services shipped in v5.1.0 with
+  this fault: `pibox-zai` served `glm-5.3-flash` but not `glm-5.3`, and `pibox`
+  served only its default model out of everything listed in `PIBOX_MODELS`.
+  Picking a model from the advertised list is the point of these services, so
+  v5.1.0 should be skipped. v0.16.2 registers every advertised model under the
+  configured `PIBOX_PROVIDER_API`, and warns at startup when the provider base
+  URL and API protocol describe different protocols rather than surfacing the
+  mismatch as a truncated stream at request time.
+
 ## [v5.1.0] — 2026-09-09
 
 **Adds `pibox`, an agent that runs on the models this stack already serves. No

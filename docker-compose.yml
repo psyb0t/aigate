@@ -169,7 +169,7 @@ services:
   pibox-zai:
     logging: *docker-logging
     profiles: ["pibox-zai"]
-    image: psyb0t/pibox:v0.16.1
+    image: psyb0t/pibox:v0.16.2
     restart: unless-stopped
     mem_limit: ${PIBOX_ZAI_MEM_LIMIT:-1g}
     memswap_limit: ${PIBOX_ZAI_MEMSWAP_LIMIT:-2g}
@@ -224,7 +224,7 @@ services:
   pibox:
     logging: *docker-logging
     profiles: ["pibox"]
-    image: psyb0t/pibox:v0.16.1
+    image: psyb0t/pibox:v0.16.2
     restart: unless-stopped
     mem_limit: ${PIBOX_MEM_LIMIT:-1g}
     memswap_limit: ${PIBOX_MEMSWAP_LIMIT:-2g}
