@@ -83,6 +83,13 @@ services:
     dns_search:
       - "${TS_MAGICDNS_SUFFIX:-}"
 
+  pibox:
+    dns:
+      - 100.100.100.100
+      - "${TS_FALLBACK_DNS:-1.1.1.1}"
+    dns_search:
+      - "${TS_MAGICDNS_SUFFIX:-}"
+
   # Route helpers. Each resolves the tailscale container's bridge IP by name and
   # keeps the 100.64.0.0/10 route present in its target's namespace, re-adding
   # it after a target restart recreates the namespace.
@@ -110,6 +117,23 @@ services:
     network_mode: "service:pibox-zai"
     depends_on:
       - pibox-zai
+    command:
+      - /bin/sh
+      - -c
+      - |
+        while true; do
+          gw="$$(getent hosts tailscale | awk '{print $$1}' | head -1)"
+          [ -n "$$gw" ] && ip route replace 100.64.0.0/10 via "$$gw"
+          sleep 30
+        done
+
+  pibox-tsnet:
+    <<: *tsnet-helper
+    image: alpine:3.20
+    profiles: ["pibox"]
+    network_mode: "service:pibox"
+    depends_on:
+      - pibox
     command:
       - /bin/sh
       - -c

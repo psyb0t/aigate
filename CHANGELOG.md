@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here.
 
+## [v5.2.0] — 2026-09-13
+
+**Gives `pibox` the same tailnet egress wiring `claudebox` and `pibox-zai`
+already had.**
+
+### Added
+
+- `pibox` joins the tailnet egress overlay, so it gets the split DNS and route
+  helper the other two agent containers get when `TAILSCALE=1` is on. Without
+  it the service reached the tailnet only on hosts that already route
+  `100.64.0.0/10` themselves, and had no tailnet access at all on a host that is
+  not a tailnet node.
+
 ## [v5.1.1] — 2026-09-13
 
 **Bumps both pibox services to `v0.16.2`, which fixes every advertised model

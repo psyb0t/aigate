@@ -46,11 +46,13 @@ Default forward port is 80 (`http://<host>.<tailnet>/`). Change with `TS_SERVE_P
 - Forwarding sysctls (`net.ipv4.ip_forward=1`, `net.ipv6.conf.all.forwarding=1`) are set so subnet-routing and exit-node modes work if you add `--advertise-routes=...` or `--advertise-exit-node` via `TS_EXTRA_ARGS`.
 - Stays on the `aigate-public` network so the `nginx:4000` upstream resolves via Docker DNS.
 
-### Tailnet egress for claudebox and pibox-zai
+### Tailnet egress for the agent containers
 
-`tailscale serve` covers the inbound direction: tailnet devices reaching aigate. The reverse, letting the agent containers reach machines on your tailnet, is off by default and turns on when `TAILSCALE=1` runs alongside `CLAUDEBOX=1` or `PIBOX_ZAI=1`. The Makefile then loads the `docker-compose.tailscale.yml` overlay, which routes tailnet traffic out through the existing tailscale node. Both containers stay on the bridge, so nginx and LiteLLM still reach them as before.
+`tailscale serve` covers the inbound direction: tailnet devices reaching aigate. The reverse, letting the agent containers reach machines on your tailnet, is off by default and turns on when `TAILSCALE=1` runs alongside `CLAUDEBOX=1`, `PIBOX_ZAI=1`, or `PIBOX=1`. The Makefile then loads the `docker-compose.tailscale.yml` overlay, which routes tailnet traffic out through the existing tailscale node. Each container stays on the bridge, so nginx and LiteLLM still reach them as before.
 
-With the overlay active, from inside claudebox or pibox-zai you can resolve tailnet names and connect to tailnet peers over any protocol (SSH, HTTP, whatever the peer serves), while container names and public names keep resolving as usual.
+Each enabled agent gets its own route helper, so the wiring does not depend on the Docker host being a tailnet node itself. On a host that already routes `100.64.0.0/10` the containers would reach the tailnet regardless; the overlay is what makes it work when the host does not.
+
+With the overlay active, from inside any of those agent containers you can resolve tailnet names and connect to tailnet peers over any protocol (SSH, HTTP, whatever the peer serves), while container names and public names keep resolving as usual.
 
 How it works:
 
