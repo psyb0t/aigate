@@ -8,9 +8,34 @@
     model: openrouter/nvidia/nemotron-3-super-120b-a12b:free
     api_key: os.environ/OPENROUTER_API_KEY
 
+- model_name: or-nemotron-ultra
+  litellm_params:
+    model: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+    api_key: os.environ/OPENROUTER_API_KEY
+
+- model_name: or-qwen3.8-27b
+  litellm_params:
+    model: openrouter/qwen/qwen3.8-27b:free
+    api_key: os.environ/OPENROUTER_API_KEY
+
 - model_name: or-dots-3-note
   litellm_params:
     model: openrouter/dots-studio/dots-3-note-preview:free
+    api_key: os.environ/OPENROUTER_API_KEY
+
+- model_name: or-ling-3-vl
+  litellm_params:
+    model: openrouter/inclusionai/ling-3.0-flash-vl:free
+    api_key: os.environ/OPENROUTER_API_KEY
+
+- model_name: or-gemma-4-31b
+  litellm_params:
+    model: openrouter/google/gemma-4-31b-it:free
+    api_key: os.environ/OPENROUTER_API_KEY
+
+- model_name: or-inkling
+  litellm_params:
+    model: openrouter/thinkingmachines/inkling:free
     api_key: os.environ/OPENROUTER_API_KEY
 
 - model_name: or-nemotron-omni-30b

@@ -50,7 +50,12 @@ EXPECTED_MODELS=(
     # OpenRouter
     "or-nemotron-lightning"
     "or-nemotron-120b"
+    "or-nemotron-ultra"
+    "or-qwen3.8-27b"
     "or-dots-3-note"
+    "or-ling-3-vl"
+    "or-gemma-4-31b"
+    "or-inkling"
     "or-nemotron-omni-30b"
     "or-north-mini-code"
     "or-lfm-2.5-2.6b"

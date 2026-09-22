@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here.
 
+## [v5.3.0] (2026-09-22)
+
+**Adds five current OpenRouter free models to the gateway.**
+
+### Added
+
+- `or-nemotron-ultra`, backed by NVIDIA Nemotron 3 Ultra.
+- `or-qwen3.8-27b`, backed by Qwen 3.8 27B.
+- `or-ling-3-vl`, `or-gemma-4-31b`, and `or-inkling` for multimodal requests.
+- General and multimodal fallback chains for the new aliases.
+
 ## [v5.2.0] — 2026-09-13
 
 **Gives `pibox` the same tailnet egress wiring `claudebox` and `pibox-zai`

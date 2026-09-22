@@ -9,10 +9,18 @@ docker-compose.override.yml
 *.key
 *.pem
 .research_files
+.agent_notes/
+.agent_knowledge/
 .testing/
 .secaudit/
 AGENTS.md
+CODEX.local.md
 CLAUDE.md
+PLAN.md
+implplan.md
+NOTES.md
+TODO.md
+WIP.md
 git-update.sh
 litellm/config.yaml
 

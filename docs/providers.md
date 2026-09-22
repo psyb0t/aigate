@@ -76,7 +76,12 @@ The `:free` roster rotates. OpenRouter withdraws a model's free variant without 
 | --------------------------------------------- | ---------------------------- | ------- | ---------------------------------------- |
 | nvidia/nemotron-3.5-lightning                 | `or-nemotron-lightning`      | 1M      | largest context here                     |
 | nvidia/nemotron-3-super-120b-a12b             | `or-nemotron-120b`           | 262k    |                                          |
+| nvidia/nemotron-3-ultra-550b-a55b             | `or-nemotron-ultra`          | 1M      | tools, reasoning                         |
+| qwen/qwen3.8-27b                              | `or-qwen3.8-27b`             | 262k    | text/image/video, tools, reasoning       |
 | dots-studio/dots-3-note-preview               | `or-dots-3-note`             | 512k    | text + image                             |
+| inclusionai/ling-3.0-flash-vl                 | `or-ling-3-vl`               | 262k    | text/image/video, tools, reasoning       |
+| google/gemma-4-31b-it                         | `or-gemma-4-31b`             | 262k    | text/image/video, tools, reasoning       |
+| thinkingmachines/inkling                      | `or-inkling`                 | 1M      | text/image/audio, tools, reasoning       |
 | nvidia/nemotron-3-nano-omni-30b-a3b-reasoning | `or-nemotron-omni-30b`       | 256k    | text/image/audio/video, reasoning        |
 | cohere/north-mini-code                        | `or-north-mini-code`         | 256k    | code                                     |
 | liquid/lfm-2.5-2.6b                           | `or-lfm-2.5-2.6b`            | 65k     | small and fast                           |
@@ -84,7 +89,7 @@ The `:free` roster rotates. OpenRouter withdraws a model's free variant without 
 | inclusionai/ling-3.0-flash-fin                | `or-ling-3-fin`              | 262k    | finance-domain tuned                     |
 | nvidia/nemotron-3.5-content-safety            | `or-nemotron-content-safety` | 128k    | safety classifier, not general chat      |
 
-The last three answer by name but stay out of the general fallback chains, where a domain-tuned model or a classifier would answer off-target.
+The domain-tuned models and classifier answer by name but stay out of the general fallback chains, where they would answer off-target.
 
 ## HuggingFace Inference Providers ($0.10/mo free credits — not really "free")
 

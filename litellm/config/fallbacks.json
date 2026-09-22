@@ -6,6 +6,7 @@
       "mistral-large",
       "cohere-command-a",
       "or-nemotron-lightning",
+      "or-nemotron-ultra",
       "or-dots-3-note",
       "hf-llama-3.3-70b",
       "openai-gpt-4o"
@@ -43,6 +44,7 @@
       "mistral-large",
       "cohere-command-a",
       "or-nemotron-lightning",
+      "or-nemotron-ultra",
       "or-dots-3-note",
       "or-nemotron-120b",
       "hf-llama-3.3-70b",
@@ -82,6 +84,7 @@
       "mistral-large",
       "cohere-command-a",
       "or-nemotron-lightning",
+      "or-nemotron-ultra",
       "or-dots-3-note",
       "or-nemotron-120b",
       "hf-llama-3.3-70b",
@@ -96,6 +99,7 @@
       "cohere-command-a",
       "or-dots-3-note",
       "or-nemotron-lightning",
+      "or-nemotron-ultra",
       "hf-llama-3.3-70b",
       "anthropic-claude-sonnet-4",
       "openai-gpt-4o"
@@ -119,6 +123,7 @@
       "mistral-small",
       "cohere-command-a",
       "or-dots-3-note",
+      "or-qwen3.8-27b",
       "hf-llama-3.3-70b",
       "openai-gpt-4o"
     ]
@@ -181,6 +186,9 @@
     "hf-llama-4-scout": [
       "mistral-small",
       "hf-qwen-vl-72b",
+      "or-ling-3-vl",
+      "or-gemma-4-31b",
+      "or-inkling",
       "claudebox-sonnet",
       "openai-gpt-4o",
       "local-ollama-cpu-gemma4-e2b"
@@ -224,6 +232,9 @@
       "hf-llama-4-scout",
       "mistral-small",
       "hf-qwen-vl-72b",
+      "or-ling-3-vl",
+      "or-gemma-4-31b",
+      "or-inkling",
       "openai-gpt-4o"
     ]
   },
@@ -238,6 +249,7 @@
   {
     "or-nemotron-lightning": [
       "or-nemotron-120b",
+      "or-nemotron-ultra",
       "mistral-large",
       "cohere-command-a",
       "or-dots-3-note",
@@ -253,6 +265,7 @@
   {
     "or-nemotron-120b": [
       "or-nemotron-lightning",
+      "or-nemotron-ultra",
       "mistral-large",
       "cohere-command-a",
       "or-dots-3-note",
@@ -269,6 +282,7 @@
       "mistral-large",
       "cohere-command-a",
       "or-nemotron-120b",
+      "or-nemotron-ultra",
       "or-nemotron-omni-30b",
       "hf-llama-3.3-70b",
       "claudebox-sonnet",
@@ -282,10 +296,62 @@
       "or-nemotron-120b",
       "mistral-small",
       "cohere-command-r",
+      "or-qwen3.8-27b",
       "or-dots-3-note",
       "or-nemotron-lightning",
       "hf-llama-3.3-70b",
       "claudebox-sonnet",
+      "openai-gpt-4o"
+    ]
+  },
+  {
+    "or-nemotron-ultra": [
+      "or-nemotron-120b",
+      "or-nemotron-lightning",
+      "mistral-large",
+      "cohere-command-a",
+      "or-dots-3-note",
+      "claudebox-sonnet",
+      "openai-gpt-4o"
+    ]
+  },
+  {
+    "or-qwen3.8-27b": [
+      "or-dots-3-note",
+      "or-nemotron-lightning",
+      "mistral-small",
+      "cohere-command-r",
+      "claudebox-sonnet",
+      "openai-gpt-4o"
+    ]
+  },
+  {
+    "or-ling-3-vl": [
+      "or-gemma-4-31b",
+      "or-inkling",
+      "or-qwen3.8-27b",
+      "hf-llama-4-scout",
+      "hf-qwen-vl-72b",
+      "openai-gpt-4o"
+    ]
+  },
+  {
+    "or-gemma-4-31b": [
+      "or-ling-3-vl",
+      "or-inkling",
+      "or-qwen3.8-27b",
+      "hf-llama-4-scout",
+      "hf-qwen-vl-72b",
+      "openai-gpt-4o"
+    ]
+  },
+  {
+    "or-inkling": [
+      "or-ling-3-vl",
+      "or-gemma-4-31b",
+      "or-qwen3.8-27b",
+      "hf-llama-4-scout",
+      "hf-qwen-vl-72b",
       "openai-gpt-4o"
     ]
   },
