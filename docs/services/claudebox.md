@@ -119,6 +119,8 @@ Custom headers for workspace control:
 | `X-Claude-Continue`             | Set to `1`, `true`, or `yes` to continue the previous session    |
 | `X-Claude-Append-System-Prompt` | Text to append to the system prompt for this request             |
 
+A streaming request can also carry the agent's own event records. Send `"stream_options": {"include_aicodebox_events": true}` together with `"stream": true` and the response adds named `aicodebox.native` SSE events next to the normal OpenAI chunks. Each one wraps a raw record from the agent, such as session start, partial messages, tool calls, and the final result. The content chunks and `[DONE]` are unchanged. Sending the option without `"stream": true` returns `400`. The pibox services accept the same option at `/pibox-zai/openai/v1/chat/completions` and `/pibox/openai/v1/chat/completions`.
+
 Note: `temperature`, `max_tokens`, `tools`, and other standard OpenAI fields are accepted but silently ignored — Claude Code manages these internally.
 
 ### MCP server

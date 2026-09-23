@@ -138,7 +138,7 @@ services:
   claudebox:
     logging: *docker-logging
     profiles: ["claudebox"]
-    image: psyb0t/claudebox:v2.3.10
+    image: psyb0t/claudebox:v2.4.5
     restart: unless-stopped
     mem_limit: ${CLAUDEBOX_MEM_LIMIT:-1g}
     memswap_limit: ${CLAUDEBOX_MEMSWAP_LIMIT:-2g}
@@ -169,7 +169,7 @@ services:
   pibox-zai:
     logging: *docker-logging
     profiles: ["pibox-zai"]
-    image: psyb0t/pibox:v0.16.2
+    image: psyb0t/pibox:v0.18.4
     restart: unless-stopped
     mem_limit: ${PIBOX_ZAI_MEM_LIMIT:-1g}
     memswap_limit: ${PIBOX_ZAI_MEMSWAP_LIMIT:-2g}
@@ -224,7 +224,7 @@ services:
   pibox:
     logging: *docker-logging
     profiles: ["pibox"]
-    image: psyb0t/pibox:v0.16.2
+    image: psyb0t/pibox:v0.18.4
     restart: unless-stopped
     mem_limit: ${PIBOX_MEM_LIMIT:-1g}
     memswap_limit: ${PIBOX_MEMSWAP_LIMIT:-2g}

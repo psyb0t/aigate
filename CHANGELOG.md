@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here.
 
+## [v5.4.0] (2026-09-23)
+
+**Moves claudebox to `v2.4.5` and both pibox services to `v0.18.4`. Streaming chat completions on all three can now carry the agent's native event records.**
+
+### Added
+
+- Streaming requests to `/claudebox/openai/v1/chat/completions`, `/pibox-zai/openai/v1/chat/completions`, and `/pibox/openai/v1/chat/completions` accept `"stream_options": {"include_aicodebox_events": true}`. The response then adds named `aicodebox.native` SSE events next to the normal OpenAI chunks, each wrapping a raw record from the agent. Content chunks and `[DONE]` are unchanged, and a stream without the option carries no extra events. Sending the option without `"stream": true` returns `400`. See `docs/services/claudebox.md`.
+
+### Changed
+
+- claudebox image bumped `v2.3.10` to `v2.4.5`. A container created from the new image installs Claude Code `2.1.280` on first start. Claude Code lives in the container filesystem, not the config volume, so the new version arrives when the container is recreated.
+- pibox image bumped `v0.16.2` to `v0.18.4` for both `pibox-zai` and `pibox`. This updates pi-coding-agent to `0.85.1`.
+- No environment variables changed. Existing `.env` files work as they are.
+
 ## [v5.3.0] (2026-09-22)
 
 **Adds five current OpenRouter free models to the gateway.**
