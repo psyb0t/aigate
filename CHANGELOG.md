@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here.
 
+## [v5.4.1] (2026-09-23)
+
+**Fixes `claudebox-*` models silently answering from pibox-zai instead of Claude when called through the gateway.**
+
+### Fixed
+
+- `claudebox-*` models failed through the gateway unless `CLAUDEBOX_API_TOKEN` was set in `.env`. The claudebox container falls back to `AIGATE_TOKEN` for its API token, but LiteLLM read `CLAUDEBOX_API_TOKEN` with no fallback, sent an empty key, and got `401`. The request then moved down the fallback chain to `pibox-zai-glm-5.3-flash` or `pibox-zai-glm-5.3` and still returned `200`, so the only sign was the `model` field in the response. LiteLLM now gets `CLAUDEBOX_API_TOKEN` and `PIBOX_ZAI_API_TOKEN` with the same `AIGATE_TOKEN` fallback the agent services use. `PIBOX_ZAI_API_TOKEN` had the same gap and only worked when set explicitly.
+- Recreate the `litellm` container to pick up the change.
+
 ## [v5.4.0] (2026-09-23)
 
 **Moves claudebox to `v2.4.5` and both pibox services to `v0.18.4`. Streaming chat completions on all three can now carry the agent's native event records.**

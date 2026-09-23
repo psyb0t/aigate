@@ -110,6 +110,11 @@ services:
       FLICKIES_AUTH_TOKEN: ${FLICKIES_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-flickies}}
       TALKIES_AUTH_TOKEN: ${TALKIES_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-talkies}}
       TALKIES_CUDA_AUTH_TOKEN: ${TALKIES_CUDA_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-talkies-cuda}}
+      # Agent API tokens LiteLLM sends to claudebox and pibox-zai. Each fallback
+      # must match the one on the service's own *_API_MODE_TOKEN, or LiteLLM
+      # gets a 401 and the request moves down the fallback chain.
+      CLAUDEBOX_API_TOKEN: ${CLAUDEBOX_API_TOKEN:-${AIGATE_TOKEN:-lulz-4-security}}
+      PIBOX_ZAI_API_TOKEN: ${PIBOX_ZAI_API_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-zai}}
       UI_USERNAME: ${LITELLM_USERNAME:-}
       UI_PASSWORD: ${LITELLM_PASSWORD:-}
     depends_on:
