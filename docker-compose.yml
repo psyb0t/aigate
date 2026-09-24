@@ -367,7 +367,7 @@ services:
   decidealot:
     logging: *docker-logging
     profiles: ["decidealot"]
-    image: psyb0t/decidealot:v0.4.0
+    image: psyb0t/decidealot:v0.4.1
     restart: unless-stopped
     user: "${DECIDEALOT_UID:-1000}:${DECIDEALOT_GID:-1000}"
     init: true
@@ -383,6 +383,11 @@ services:
       DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS: ${DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS:-600}
       DECIDEALOT_REQUEST_TIMEOUT_SECONDS: ${DECIDEALOT_REQUEST_TIMEOUT_SECONDS:-120}
       DECIDEALOT_PROVIDER_START_TIMEOUT_SECONDS: ${DECIDEALOT_PROVIDER_START_TIMEOUT_SECONDS:-180}
+      # MCP keeps DNS-rebinding protection on and only accepts these Host
+      # values. Loopback covers the nginx route, which pins Host to
+      # 127.0.0.1:8080; the service name covers LiteLLM's MCP client.
+      DECIDEALOT_MCP_ALLOWED_HOSTS: ${DECIDEALOT_MCP_ALLOWED_HOSTS:-127.0.0.1,127.0.0.1:*,localhost,localhost:*,[::1],[::1]:*,decidealot,decidealot:*}
+      DECIDEALOT_MCP_ALLOWED_ORIGINS: ${DECIDEALOT_MCP_ALLOWED_ORIGINS:-http://127.0.0.1:*,http://localhost:*,http://[::1]:*}
       # Optional. The model repos are public; a token only raises the Hugging
       # Face rate limit for the first-start bundle download.
       HF_TOKEN: ${HF_TOKEN:-}
@@ -408,7 +413,7 @@ services:
   decidealot-cuda:
     logging: *docker-logging
     profiles: ["decidealot-cuda"]
-    image: psyb0t/decidealot:v0.4.0-cuda
+    image: psyb0t/decidealot:v0.4.1-cuda
     restart: unless-stopped
     user: "${DECIDEALOT_UID:-1000}:${DECIDEALOT_GID:-1000}"
     init: true
@@ -424,6 +429,10 @@ services:
       DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS: ${DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS:-600}
       DECIDEALOT_REQUEST_TIMEOUT_SECONDS: ${DECIDEALOT_REQUEST_TIMEOUT_SECONDS:-120}
       DECIDEALOT_PROVIDER_START_TIMEOUT_SECONDS: ${DECIDEALOT_PROVIDER_START_TIMEOUT_SECONDS:-180}
+      # Same as the CPU service, with this container's own service name.
+      # Upstream's default list only names `decidealot`.
+      DECIDEALOT_MCP_ALLOWED_HOSTS: ${DECIDEALOT_CUDA_MCP_ALLOWED_HOSTS:-127.0.0.1,127.0.0.1:*,localhost,localhost:*,[::1],[::1]:*,decidealot-cuda,decidealot-cuda:*}
+      DECIDEALOT_MCP_ALLOWED_ORIGINS: ${DECIDEALOT_MCP_ALLOWED_ORIGINS:-http://127.0.0.1:*,http://localhost:*,http://[::1]:*}
       # Optional. The model repos are public; a token only raises the Hugging
       # Face rate limit for the first-start bundle download.
       HF_TOKEN: ${HF_TOKEN:-}
@@ -2015,9 +2024,10 @@ configs:
           # decidealot: local typed decisions, REST + MCP at /decidealot/mcp.
           # Decidealot owns bearer authentication (AIGATE_TOKEN by default).
           # A disabled profile returns 404 instead of a failing upstream.
-          # The MCP SDK's DNS-rebinding check answers 421 to any Host outside
-          # localhost, so a caller on a tailnet or tunnel hostname would fail.
-          # The REST API ignores Host, so pin it for the whole route.
+          # Decidealot's MCP answers 421 to any Host outside
+          # DECIDEALOT_MCP_ALLOWED_HOSTS, and the public hostname (tailnet
+          # name, tunnel domain) is not known here. Pinning Host to loopback
+          # keeps MCP working from any of them. The REST API ignores Host.
           location /decidealot/ {
               set $$decidealot_enabled "${DECIDEALOT:-0}";
               if ($$decidealot_enabled != "1") {

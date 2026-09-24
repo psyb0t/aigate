@@ -3,9 +3,4 @@ decidealot_cuda:
   transport: "http"
   auth_type: "bearer_token"
   auth_value: os.environ/DECIDEALOT_AUTH_TOKEN
-  # The MCP SDK's DNS-rebinding protection rejects Host headers outside its
-  # allowlist (default: localhost / 127.0.0.1). Without this override LiteLLM
-  # sends Host: decidealot-cuda:8080 and gets 421 Misdirected Request.
-  static_headers:
-    Host: "127.0.0.1:8080"
   description: "Local typed decisions (NVIDIA GPU variant of decidealot). Same models and the same 3 tools as the CPU `decidealot` MCP (system_one, list_models, unload_models); see that fragment's description for the request shape and model selectors. Use this for faster inference; use `decidealot` when CPU is enough. Both share ${DATA_DIR_DECIDEALOT}/models. Tools are namespaced as `decidealot_cuda-<tool>` in the aggregated /mcp/."

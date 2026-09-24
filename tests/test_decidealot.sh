@@ -134,9 +134,9 @@ _decidealot_test_rejects_invalid_requests() {
     echo "OK: ${tag} rejects_invalid_requests"
 }
 
-# nginx pins the upstream Host because decidealot's MCP rejects any Host
-# outside localhost with 421. A caller on a tailnet or tunnel name must still
-# get through.
+# decidealot's MCP answers 421 to a Host outside its allowlist, so nginx pins
+# the upstream Host to loopback. A caller on a tailnet or tunnel name must
+# still get through.
 _decidealot_test_mcp_remote_host() {
     local prefix="$1" tag="$2"
     local code
@@ -148,6 +148,22 @@ _decidealot_test_mcp_remote_host() {
         -d "$_DECIDEALOT_MCP_INIT")
     assert_eq "$code" "$_DECIDEALOT_STATUS_OK" "${tag} direct MCP initialize with a non-local Host" || return 1
     echo "OK: ${tag} mcp_remote_host"
+}
+
+# LiteLLM's MCP client calls each container by its service name, which only
+# works while that name is in the container's DECIDEALOT_MCP_ALLOWED_HOSTS.
+_decidealot_test_mcp_aggregated_call() {
+    local namespace="$1" tag="$2"
+    local result_json
+    result_json=$(curl -s -X POST "$BASE_URL/mcp/" \
+        -H "Content-Type: application/json" \
+        -H "$AUTH_HEADER" \
+        -H "$_DECIDEALOT_MCP_ACCEPT" \
+        -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"${namespace}-list_models\",\"arguments\":{}}}" \
+        | grep "^data:" | head -1 | sed 's/^data: //')
+    assert_not_empty "$result_json" "${tag} aggregated ${namespace}-list_models response" || return 1
+    assert_contains "$result_json" 'laya-typed-decisions' "${tag} aggregated ${namespace}-list_models returns the catalog" || return 1
+    echo "OK: ${tag} mcp_aggregated_call"
 }
 
 _decidealot_test_mcp_tools_present() {
@@ -176,6 +192,7 @@ test_decidealot_cpu_choice_decision()         { _decidealot_cpu_enabled  || { ec
 test_decidealot_cpu_rejects_invalid_requests() { _decidealot_cpu_enabled || { echo "  SKIP: DECIDEALOT not enabled"; return 0; }; _decidealot_test_rejects_invalid_requests /decidealot      "decidealot-cpu"; }
 test_decidealot_cpu_mcp_remote_host()         { _decidealot_cpu_enabled  || { echo "  SKIP: DECIDEALOT not enabled"; return 0; }; _decidealot_test_mcp_remote_host         /decidealot      "decidealot-cpu"; }
 test_decidealot_cpu_mcp_tools_present()       { _decidealot_cpu_enabled  || { echo "  SKIP: DECIDEALOT not enabled"; return 0; }; _decidealot_test_mcp_tools_present       decidealot       "decidealot-cpu"; }
+test_decidealot_cpu_mcp_aggregated_call()     { _decidealot_cpu_enabled  || { echo "  SKIP: DECIDEALOT not enabled"; return 0; }; _decidealot_test_mcp_aggregated_call     decidealot       "decidealot-cpu"; }
 
 # ── CUDA variant ───────────────────────────────────────────────────────────
 
@@ -186,6 +203,7 @@ test_decidealot_cuda_choice_decision()         { _decidealot_cuda_enabled || { e
 test_decidealot_cuda_rejects_invalid_requests() { _decidealot_cuda_enabled || { echo "  SKIP: DECIDEALOT_CUDA not enabled"; return 0; }; _decidealot_test_rejects_invalid_requests /decidealot-cuda "decidealot-cuda"; }
 test_decidealot_cuda_mcp_remote_host()         { _decidealot_cuda_enabled || { echo "  SKIP: DECIDEALOT_CUDA not enabled"; return 0; }; _decidealot_test_mcp_remote_host         /decidealot-cuda "decidealot-cuda"; }
 test_decidealot_cuda_mcp_tools_present()       { _decidealot_cuda_enabled || { echo "  SKIP: DECIDEALOT_CUDA not enabled"; return 0; }; _decidealot_test_mcp_tools_present       decidealot_cuda  "decidealot-cuda"; }
+test_decidealot_cuda_mcp_aggregated_call()     { _decidealot_cuda_enabled || { echo "  SKIP: DECIDEALOT_CUDA not enabled"; return 0; }; _decidealot_test_mcp_aggregated_call     decidealot_cuda  "decidealot-cuda"; }
 
 ALL_TESTS+=(
     test_decidealot_cpu_health
@@ -195,6 +213,7 @@ ALL_TESTS+=(
     test_decidealot_cpu_rejects_invalid_requests
     test_decidealot_cpu_mcp_remote_host
     test_decidealot_cpu_mcp_tools_present
+    test_decidealot_cpu_mcp_aggregated_call
     test_decidealot_cuda_health
     test_decidealot_cuda_requires_auth
     test_decidealot_cuda_models_list
@@ -202,4 +221,5 @@ ALL_TESTS+=(
     test_decidealot_cuda_rejects_invalid_requests
     test_decidealot_cuda_mcp_remote_host
     test_decidealot_cuda_mcp_tools_present
+    test_decidealot_cuda_mcp_aggregated_call
 )

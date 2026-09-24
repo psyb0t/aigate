@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented here.
 
+## [v5.6.0] (2026-09-24)
+
+**Moves decidealot to `v0.4.1`, which lets aigate configure the MCP host allowlist instead of overriding the `Host` header in LiteLLM.**
+
+### Changed
+
+- `decidealot` and `decidealot-cuda` bumped `v0.4.0` to `v0.4.1`. The new image keeps the MCP SDK's DNS-rebinding protection on and reads its accepted `Host` and `Origin` values from configuration.
+- Each container now sets `DECIDEALOT_MCP_ALLOWED_HOSTS` to loopback plus its own service name (`decidealot` or `decidealot-cuda`). The LiteLLM MCP fragments no longer override `Host`, and LiteLLM calls each container by its real name. Upstream's default list names only `decidealot`, so the CUDA service needs its own list.
+- The nginx routes still send `Host: 127.0.0.1:8080` upstream, because aigate cannot know the public hostname a client uses, such as a tailnet name or a tunnel domain. Direct MCP through nginx keeps working from any of them without extra config.
+
+### Added
+
+- `DECIDEALOT_MCP_ALLOWED_HOSTS` and `DECIDEALOT_CUDA_MCP_ALLOWED_HOSTS` override the per-variant host allowlists. `DECIDEALOT_MCP_ALLOWED_ORIGINS` sets the browser `Origin` allowlist for both, defaulting to loopback HTTP origins. Add your public origin there for a browser-based MCP client.
+- `tests/test_decidealot.sh` calls `list_models` through the aggregated `/mcp/` for each variant, which fails if a service name drops out of its container's allowlist.
+
 ## [v5.5.0] (2026-09-24)
 
 **Adds decidealot, local typed decisions with the Laya and Von models, as an opt-in CPU and CUDA service with REST and MCP.**
