@@ -32,6 +32,8 @@ Each individual service also exposes its own MCP endpoint directly (routed via n
 | telethon             | `http://localhost:4000/telethon/mcp`                |
 | predictalot          | `http://localhost:4000/predictalot/mcp`             |
 | predictalot-cuda     | `http://localhost:4000/predictalot-cuda/mcp`        |
+| decidealot           | `http://localhost:4000/decidealot/mcp`              |
+| decidealot-cuda      | `http://localhost:4000/decidealot-cuda/mcp`         |
 | mailbox              | `http://localhost:4000/mailbox/mcp`                 |
 | mcp_tools            | via LiteLLM aggregation only (no direct nginx route)|
 
@@ -279,6 +281,22 @@ Via LiteLLM's `/mcp/` aggregator each tool is prefixed `predictalot-` (e.g. `pre
 | `unload`          | bool                | Tear the model down after this call to free RAM/VRAM               | `false`            |
 
 `forecast_ensemble` additionally accepts a `weights: {slug: float}` map — weight `0` disables a model, omitted entries default to `1.0`.
+
+---
+
+## decidealot: typed decisions (`DECIDEALOT=1` or `DECIDEALOT_CUDA=1`)
+
+MCP server backed by [decidealot](https://github.com/psyb0t/decidealot). It runs the local Laya and Von models against a `state` and returns typed answers with model probabilities. The tools share the request contract, model supervisor, body limit, and bearer auth with the REST API, and return the same bodies as structured output.
+
+| Tool            | Arguments                     | Description |
+| --------------- | ----------------------------- | ----------- |
+| `system_one`    | `model`, `state`, `questions` | Run one decision. `questions` maps a name to a question typed `choice` (named `criteria`, returns the picked key and a probability per key), `score` (ordered `criteria` array, returns the position), or `noul` (returns a probability between 0 and 1). |
+| `list_models`   | none                          | The accepted `model` selectors, same catalog as `GET /v1/models`. |
+| `unload_models` | none                          | Release the resident model and its Torch memory. |
+
+Model selectors: `laya` / `laya-auto` / `laya-latest` pick the English or multilingual checkpoint from the input script, `laya-english` and `laya-multilingual` pin one, `laya-typed-decisions` targets repeated structured decisions, and `von` / `von-latest` / `von-1.1` run the English-only Von model for short, well-posed questions. One model is resident at a time, so switching between Laya and Von waits for active work and swaps them.
+
+Via LiteLLM's `/mcp/` aggregator the tools are prefixed `decidealot-` (CPU) and `decidealot_cuda-` (CUDA), for example `decidealot-system_one`. Direct calls to `/decidealot/mcp` see the raw names. See [the decidealot service page](services/decidealot.md) for request and response examples.
 
 ---
 

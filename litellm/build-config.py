@@ -119,6 +119,8 @@ def active_mcp_servers(env):
         ("mailbox",       lambda e: is_flag(e, "MAILBOX")),
         ("predictalot",      lambda e: is_flag(e, "PREDICTALOT")),
         ("predictalot-cuda", lambda e: is_flag(e, "PREDICTALOT_CUDA")),
+        ("decidealot",       lambda e: is_flag(e, "DECIDEALOT")),
+        ("decidealot-cuda",  lambda e: is_flag(e, "DECIDEALOT_CUDA")),
         ("audiolla",      lambda e: is_flag(e, "AUDIOLLA")),
         ("audiolla-cuda", lambda e: is_flag(e, "AUDIOLLA_CUDA")),
         ("flickies",      lambda e: is_flag(e, "FLICKIES")),

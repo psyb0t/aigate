@@ -27,6 +27,7 @@ MCP tools across multiple servers. Any model with function calling can invoke th
 - **Telegram client** — Telethon at `/telethon/`. Send/read/edit/delete messages, list dialogs, forward, send files from URL, manage group membership. REST API + MCP tools.
 - **Email gateway** — mailbox at `/mailbox/`. Stateless IMAP+SMTP across N accounts from one YAML config — unified inbox, per-account list/search/CRUD, SMTP send. REST API + flat MCP tool set (`mailbox` parameter selects account).
 - **Time-series forecasting + tabular ML** — predictalot at `/predictalot/`. Five foundation forecasters (chronos-2, timesfm-2.5, moirai-2, toto-1, sundial-base-128m) across six forecast types (univariate, multivariate, past/future covariates, samples) with per-type weighted ensembles at `/v1/timeseries/<type>/…` + a sibling `/v1/tabular/*` family in v1.0.0 — 9 supervised backends (lightgbm, xgboost, hist-gbt, random-forest, logistic, mlp, svm-rbf, knn, naive-bayes) and 3 meta-learners (calibrated / stacking / diversified). REST API for both families + 26 MCP tools (foundation models only — tabular is REST-only). CPU or CUDA.
+- **Typed decisions**: decidealot at `/decidealot/`. Local Laya and Von decision models behind the TypeSafe System One API. Send a `state` plus named `choice`, `score`, or `noul` questions and get typed answers with model probabilities, so the caller sets its own threshold. Laya routes between English and multilingual checkpoints and has a checkpoint tuned for policy, routing, and triage decisions. Von is English-only, for short questions with clear criteria. REST API + 3 MCP tools. CPU or CUDA.
 - **Audio production** — audiolla at `/audiolla/`. Stem separation (Demucs / UVR), restoration (UVR de-reverb / de-echo / de-noise), mastering (matchering / pedalboard chains + curated presets like `master-for-spotify`, `podcast-cleanup`, `vocal-cleanup`), MIR analysis (BPM / key / LUFS / beats / onsets / melody / chords / segments), DSP transforms (sox + ffmpeg), loudness normalization, speech enhancement (DeepFilterNet), VAD (silero), diarization (pyannote), CLAP embeddings + zero-shot classification, AudioSet tagging (AST), audio→MIDI (basic-pitch), MIDI compose / inspect / transform / render via fluidsynth, **text-to-audio generation** (stable-audio-open / musicgen / riffusion / audioldm2 — CUDA only), ad-hoc op-chain pipelines, async jobs + webhooks. REST API + MCP tools. **v1.0+ contract:** JSON body on every audio endpoint, raw bytes only at `PUT /v1/files/{path}`, `output_path` xor `output_url` mandatory for any audio-producing call.
 - **Video toolkit** — flickies at `/flickies/`. **Lipsync** via LatentSync 1.5 (ByteDance, Apache-2.0, ~8 GB VRAM, default on CUDA) and Wav2Lip / Wav2Lip-GAN (LRS2 non-commercial, gated). **Face restore** via GFPGAN v1.4. **ffmpeg ops** — trim, concat, transcode (incl. gif + fps + codec change), scale, mux audio, extract audio, thumbnail grid. **ffprobe info**. Async jobs + webhooks. REST API + 11 MCP tools. Same JSON-body + `output_path` xor `output_url` contract as audiolla. GFPGAN + LatentSync 1.5 are CUDA-only; CPU image runs ffmpeg ops + slow Wav2Lip-CPU.
 
@@ -69,6 +70,8 @@ nginx :4000                                          ┌────────
   ├─► /telethon/             → Telethon (Telegram client, TELETHON=1)
   ├─► /predictalot/          → predictalot (time-series forecasting, CPU, PREDICTALOT=1)
   ├─► /predictalot-cuda/     → predictalot (time-series forecasting, NVIDIA GPU, PREDICTALOT_CUDA=1)
+  ├─► /decidealot/           → decidealot (typed decisions REST + MCP, CPU, DECIDEALOT=1)
+  ├─► /decidealot-cuda/      → decidealot (typed decisions REST + MCP, NVIDIA GPU, DECIDEALOT_CUDA=1)
   ├─► /audiolla/             → audiolla (audio-production REST + MCP, CPU, AUDIOLLA=1)
   ├─► /audiolla-cuda/        → audiolla (audio-production REST + MCP, NVIDIA GPU, AUDIOLLA_CUDA=1)
   ├─► /flickies/             → flickies (video toolkit REST + MCP, CPU, FLICKIES=1)
@@ -106,6 +109,7 @@ MCP servers (all optional):
   ├─ mcp_tools             — generate_image + generate_tts + search_web + execute_code (auto-enabled when HuggingFace, OpenAI, talkies[-cuda], sd.cpp[-cuda], or SearXNG is active — PISTON=1 alone does NOT enable it; execute_code only appears once mcp_tools is already active for one of those other reasons)
   ├─ telethon              — Telegram send/read/edit messages, dialogs, files, group management (TELETHON=1)
   ├─ predictalot           — time-series forecasting via 5 foundation models × 6 type-routed endpoints + per-type ensemble (PREDICTALOT=1 and/or PREDICTALOT_CUDA=1)
+  ├─ decidealot            typed decisions with Laya and Von via system_one, list_models, unload_models (DECIDEALOT=1 and/or DECIDEALOT_CUDA=1)
   ├─ audiolla              — audio-production: stem separation, restoration, mastering, MIR, DSP, loudness, speech enhancement, diarization, MIDI compose + render, workflow presets + ad-hoc pipelines (AUDIOLLA=1 / AUDIOLLA_CUDA=1)
   ├─ flickies              — video toolkit: lipsync (LatentSync 1.5 + Wav2Lip), face restore (GFPGAN), ffmpeg ops — trim/concat/transcode/scale/mux_audio/extract_audio/thumbnail_grid (FLICKIES=1 / FLICKIES_CUDA=1)
   ├─ mailbox               — IMAP+SMTP gateway: inbox, list/search/send across N accounts (MAILBOX=1)
@@ -134,6 +138,7 @@ Default writable locations:
 | `.data/cloudflared/`                         | cloudflared                  | Tunnel config and credentials (if using named tunnel)                                      |
 | `.data/tailscale/`                           | tailscale                    | Tailscale node state (machine key, DERP info) — auto-created on first run                  |
 | `.data/predictalot/models/`                  | predictalot, predictalot-cuda | Downloaded HuggingFace snapshots for the 5 forecasters (~1.4GB total)                     |
+| `.data/decidealot/models/`                   | decidealot, decidealot-cuda  | Laya and Von model bundles (~5.3GB), downloaded on first start. Must be owned by `DECIDEALOT_UID`/`GID` (default 1000) |
 | `.data/audiolla/`                            | audiolla, audiolla-cuda      | Demucs weights (~6GB) + UVR models + torch hub + staged files (bind-mounted as `/data`; CPU and CUDA variants share the same cache) |
 | `.data/flickies/`                            | flickies, flickies-cuda      | Model weights (~6GB total: S3FD + Wav2Lip ×2 + GFPGAN v1.4 + LatentSync 1.5) + staged file uploads (bind-mounted as `/data`; CPU and CUDA variants share the same cache) |
 | `.data/vllm/models/<org>/<repo>/`            | vllm, vllm-cuda, vllm-pull   | Flat HF-repo layout (no blobs/snapshots dedup) — `vllm-pull` populates via `huggingface-cli download --local-dir`. Shared by CPU and CUDA wrappers and by any other service that mounts the same dir. Default: Nomic embed v2 + Qwen3-0.6B. |
@@ -169,6 +174,7 @@ Default writable locations:
 | **[SearXNG](https://github.com/searxng/searxng)** _(optional, `SEARXNG=1`)_                                    | Self-hosted meta-search engine at `/searxng/`. Aggregates Google, Bing, DuckDuckGo, Wikipedia. No API key needed — runs entirely locally. Also powers the MCP `search_web` tool so any function-calling model can search the web autonomously. Protected by nginx admin auth.                                                                                                 |
 | **[Telethon Plus](https://github.com/psyb0t/docker-telethon-plus)** _(optional, `TELETHON=1`)_                 | Telegram client at `/telethon/`. REST API and MCP server — send/read/edit/delete messages, list dialogs, forward messages, send files from URL, manage group membership. Requires a Telegram API ID/hash and a string session (see [my.telegram.org/apps](https://my.telegram.org/apps)). Bearer token auth.                                                                  |
 | **[predictalot](https://github.com/psyb0t/docker-predictalot)** _(optional, `PREDICTALOT=1` and/or `PREDICTALOT_CUDA=1`)_ | Foundation time-series forecasting **and** supervised tabular ML over caller-engineered features. Bumped to **v1.0.1** in aigate v3.12.0 — **breaking from v0.2.x:** FM endpoints moved from `/v1/<type>/…` to `/v1/timeseries/<type>/…` (no redirect compatibility upstream); MCP tool names unchanged. Tabular surface at `/v1/tabular/*` is REST-only — 9 backends (lightgbm, xgboost, hist-gbt, random-forest, logistic, mlp, svm-rbf, knn, naive-bayes) × 3 modes (direction, value, quantile) + 3 meta-learners (calibrated, stacking, diversified). v1.0.1 itself is docs-only over v1.0.0 (upstream restructured the README into `docs/{timeseries,tabular,mcp,configuration,architecture,accuracy,errors}.md`; image bytes effectively identical). REST + MCP. Direct route (not via LiteLLM). FM models lazy-load on first request, auto-unload when idle. CPU and CUDA variants run side-by-side on distinct routes (`/predictalot/` and `/predictalot-cuda/`) and aliases, both sharing `.data/predictalot/models/`. CUDA needs `nvidia-container-toolkit`. Full API in upstream's [`docs/`](https://github.com/psyb0t/docker-predictalot/tree/main/docs). |
+| **[decidealot](https://github.com/psyb0t/decidealot)** _(optional, `DECIDEALOT=1` and/or `DECIDEALOT_CUDA=1`)_ | Local typed decisions with the Laya and Von models over the TypeSafe System One API. `POST /v1/systemone` takes a `model` selector, a `state`, and named `choice` / `score` / `noul` questions, and returns typed answers with probabilities. REST + MCP (`system_one`, `list_models`, `unload_models`). Direct route (not via LiteLLM). The first start downloads both model bundles (~5.3GB) before the health check passes. One model is resident at a time and unloads after 10 idle minutes. Runs non-root on a read-only root filesystem. CPU and CUDA variants run side-by-side on `/decidealot/` and `/decidealot-cuda/`, both sharing `.data/decidealot/models/`. CUDA needs `nvidia-container-toolkit`. See [the service page](docs/services/decidealot.md). |
 | **[audiolla](https://github.com/psyb0t/docker-audiolla)** _(optional, `AUDIOLLA=1` and/or `AUDIOLLA_CUDA=1`)_ | Self-hosted audio-production REST + MCP. Stem separation, restoration, mastering, MIR analysis, DSP transforms, loudness, speech enhancement, diarization, MIDI transcription + composition. **v1.0.1+ adds text-to-audio generation** (stable-audio-open, musicgen-small/medium [CC-BY-NC, gated on `AUDIOLLA_ENABLE_NONCOMMERCIAL=1`], riffusion, audioldm2 — all CUDA-only). Curated YAML workflow presets + ad-hoc op-chain pipelines that run server-side (intermediates stay in memory). **API contract:** JSON body on every audio endpoint; raw bytes only at `PUT /v1/files/{path}`; audio-producing calls require `output_path` (server stages under FILES_DIR — fetch via `GET /v1/files/<path>`) XOR `output_url` (server PUTs to a presigned URL). Async jobs + webhooks. Direct route (not via LiteLLM). Engines lazy-load + auto-unload. CPU and CUDA variants run side-by-side on distinct routes (`/audiolla/` and `/audiolla-cuda/`) and aliases, both sharing `.data/audiolla/`. CUDA needs `nvidia-container-toolkit`. Full API + v0.23→v1.0 migration cheatsheet in the [upstream README](https://github.com/psyb0t/docker-audiolla). |
 | **[flickies](https://github.com/psyb0t/docker-flickies)** _(optional, `FLICKIES=1` and/or `FLICKIES_CUDA=1`)_ | Self-hosted video-toolkit REST + MCP. Sibling of audiolla (audio) and talkies (speech) — same JSON-body + `output_path` xor `output_url` contract, same async-job model, same bind-mount-`/data` story. **Lipsync** via `LatentSync 1.5` (ByteDance, Apache-2.0, default on CUDA, ~8 GB VRAM) and `wav2lip` / `wav2lip-gan` (LRS2 non-commercial — gated on `FLICKIES_ENABLE_NONCOMMERCIAL=1`; fast and low-VRAM). **Face restore** via `gfpgan v1.4` (TencentARC, Apache-2.0). **ffmpeg ops** (CPU): trim, concat, transcode (incl. gif + fps + codec change), scale, mux audio, extract audio, thumbnail grid. **ffprobe info**. 11 MCP tools total. Hot-swap eviction with idle unload after `FLICKIES_IDLE_UNLOAD_SECS` (default 600s). Tested ceiling: RTX 3060 12 GB — fits LatentSync 1.5 with headroom; Wav2Lip + GFPGAN chain peaks at ~5 GB. GFPGAN + LatentSync 1.5 are CUDA-only — the CPU image refuses to load them. CPU and CUDA variants run side-by-side on distinct routes (`/flickies/` and `/flickies-cuda/`) and aliases, both sharing `.data/flickies/`. CUDA needs `nvidia-container-toolkit`. Full API + `openapi.yaml` + generated Go / Python clients in the [upstream README](https://github.com/psyb0t/docker-flickies). |
 | **[mailbox](https://github.com/psyb0t/docker-mailbox)** _(optional, `MAILBOX=1`)_                               | Stateless IMAP+SMTP gateway at `/mailbox/`. Drives N email accounts from a single YAML config — unified inbox, per-account list/search/CRUD, SMTP send. MCP enabled by default with a flat tool set (`mailbox` parameter selects account). Holds plaintext creds, so `MAILBOX_CONFIG` must point at a gitignored YAML on the host (template at `mailbox/config.example.yaml`). |
@@ -177,7 +183,7 @@ Default writable locations:
 
 ## Security and Exposure
 
-**Network isolation** — internal services live on the private `aigate-internal` Docker network with no host port bindings. PostgreSQL, Redis, and LiteLLM are always internal. Optional services (hybrids3, HAProxy, Ollama, talkies, vllm-wrap, llamacpp-wrap, sdcpp, piston, audiolla, predictalot, etc.) join the same private network when enabled. Services that need to reach the public internet (e.g. cloud LLM providers, HuggingFace model pulls) also join `aigate-public`; the rest are internal-only. Only nginx is exposed.
+**Network isolation** — internal services live on the private `aigate-internal` Docker network with no host port bindings. PostgreSQL, Redis, and LiteLLM are always internal. Optional services (hybrids3, HAProxy, Ollama, talkies, vllm-wrap, llamacpp-wrap, sdcpp, piston, audiolla, predictalot, decidealot, etc.) join the same private network when enabled. Services that need to reach the public internet (e.g. cloud LLM providers, HuggingFace model pulls) also join `aigate-public`; the rest are internal-only. Only nginx is exposed.
 
 **Auth on everything** — every service requires a bearer token. LiteLLM needs `LITELLM_MASTER_KEY`. Claudebox instances each have their own token. Hybrids3 uses per-bucket keys. The stealthy browser cluster has an `AUTH_TOKEN` (defaults to `lulz-4-security` if unset). The MCP tools server validates `MCP_TOOLS_AUTH_TOKEN`. LibreChat has its own email/password auth — first registered user becomes admin; set `LIBRECHAT_ALLOW_REGISTRATION=false` in `.env` and restart after creating your account. The admin UI supports HTTP basic auth with rate limiting.
 
@@ -347,7 +353,7 @@ Supervised single-model wrapper around `vllm serve` (NVIDIA). Only one model res
 
 Local services share limited hardware — a single GPU can't run an LLM, an image generator, and a TTS model simultaneously. The platform handles this automatically so you never have to think about it.
 
-**Automatic unloading** — every local service unloads idle models after a configurable timeout. Ollama unloads after 5 minutes by default. sd.cpp unloads after 5 minutes (`SDCPP_IDLE_TIMEOUT` / `SDCPP_CUDA_IDLE_TIMEOUT`). Talkies unloads ASR models after `TALKIES_MODEL_TTL` (default 10 min) and Qwen3-TTS unloads on demand. predictalot lazy-loads each forecaster on first call and unloads after `PREDICTALOT_MODEL_IDLE_TIMEOUT` (default `30m`) — only the models you've actually asked for occupy memory. This means VRAM and RAM are only held while a model is actively serving or within its idle window.
+**Automatic unloading** — every local service unloads idle models after a configurable timeout. Ollama unloads after 5 minutes by default. sd.cpp unloads after 5 minutes (`SDCPP_IDLE_TIMEOUT` / `SDCPP_CUDA_IDLE_TIMEOUT`). Talkies unloads ASR models after `TALKIES_MODEL_TTL` (default 10 min) and Qwen3-TTS unloads on demand. predictalot lazy-loads each forecaster on first call and unloads after `PREDICTALOT_MODEL_IDLE_TIMEOUT` (default `30m`) — only the models you've actually asked for occupy memory. decidealot keeps one model resident, swaps Laya and Von on demand, and releases it after `DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS` (default 600). This means VRAM and RAM are only held while a model is actively serving or within its idle window.
 
 **Hardware semaphores** — a LiteLLM callback (`resource_manager.py`) enforces mutual exclusion per hardware. An `asyncio.Semaphore(1)` ensures only one CUDA job runs at a time across all groups (LLM, image gen, TTS, STT). The same applies on CPU. If a CUDA image generation request arrives while a CUDA LLM model is loaded, the request waits for the semaphore, then the resource manager unloads the LLM before the image generation proceeds. This prevents GPU OOM without any manual intervention.
 
@@ -428,6 +434,8 @@ Everything is opt-in via flags in `.env`. API keys are stored separately and nev
 | `TAILSCALE=1`     | Tailscale node — tailnet-only HTTP proxy to nginx (no public exposure); also gives claudebox/pibox outbound tailnet reach |
 | `PREDICTALOT=1`   | predictalot at `/predictalot/` — time-series forecasting + MCP (CPU image)                |
 | `PREDICTALOT_CUDA=1` | predictalot CUDA variant (requires `nvidia-container-toolkit`)                         |
+| `DECIDEALOT=1`    | decidealot at `/decidealot/`, typed decisions with Laya and Von + MCP (CPU image)          |
+| `DECIDEALOT_CUDA=1` | decidealot CUDA variant (requires `nvidia-container-toolkit`)                            |
 | `AUDIOLLA=1`      | audiolla at `/audiolla/` — audio-production REST + MCP (CPU image)                         |
 | `AUDIOLLA_CUDA=1` | audiolla CUDA variant — adds text-to-audio generation (requires `nvidia-container-toolkit`) |
 | `FLICKIES=1`      | flickies at `/flickies/` — video toolkit (lipsync + face restore + ffmpeg) REST + MCP (CPU image; runs ffmpeg ops + Wav2Lip-CPU) |
@@ -547,6 +555,26 @@ curl http://localhost:4000/predictalot/v1/timeseries/univariate/forecast \
     "model": "chronos-2",
     "context": [[10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]],
     "config": {"horizon": 5}
+  }'
+
+# typed decision (DECIDEALOT=1 / DECIDEALOT_CUDA=1, direct route, not via LiteLLM)
+# answers.handling.choice is the picked key, with a probability per criteria key
+curl http://localhost:4000/decidealot/v1/systemone \
+  -H "Authorization: Bearer $AIGATE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "laya",
+    "state": "A proposed action would permanently delete protected data.",
+    "questions": {
+      "handling": {
+        "type": "choice",
+        "instructions": "Choose the required handling for this action.",
+        "criteria": {
+          "allow": "The action is reversible and does not affect protected data.",
+          "require_review": "The action is irreversible or affects protected data."
+        }
+      }
+    }
   }'
 
 # mailbox — unified inbox across configured accounts (MAILBOX=1, direct route)
@@ -698,6 +726,7 @@ Per-service debug options:
 | `SDCPP_LOG_LEVEL` / `SDCPP_CUDA_LOG_LEVEL` | `info`  | sd.cpp wrapper log level                                                           |
 | `LIBRECHAT_DEBUG_LOGGING`                  | `true`  | LibreChat verbose logging                                                          |
 | `PREDICTALOT_LOG_LEVEL`                    | `INFO`  | predictalot log level (`DEBUG` for model-load + per-request diagnostics)           |
+| `DECIDEALOT_LOG_LEVEL`                     | `INFO`  | decidealot log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`)                         |
 | `TELETHON_LOG_LEVEL`                       | `INFO`  | Telethon Plus log level                                                            |
 
 Ollama and talkies log to stdout by default — visible in `docker compose logs`. mailbox doesn't expose a log-level env var — its verbosity is set in the YAML config (`MAILBOX_CONFIG`).
@@ -716,11 +745,13 @@ Ollama and talkies log to stdout by default — visible in `docker compose logs`
 
 **predictalot first request is slow / times out** — the five forecasters lazy-load on first call. Each downloads ~50-800MB of HuggingFace snapshots into `.data/predictalot/models/` and warms up before responding. `TIMEOUT_PREDICTALOT` defaults to `600s` for exactly this reason. Subsequent calls are fast until `PREDICTALOT_MODEL_IDLE_TIMEOUT` (default 30m) unloads them. Use `PREDICTALOT_PREFETCH` / `PREDICTALOT_PRELOAD` (see [`.env.example`](.env.example)) to download or load models at startup instead of on first request.
 
+**decidealot stays `health: starting` / crash-loops on `/models`**: the first start downloads both model bundles (~5.3GB) before `/health` passes, so a few minutes of `starting` is normal and the health check allows 15 minutes. A crash that mentions `/models` usually means the models directory is not writable by the container user. The image runs as `DECIDEALOT_UID`/`DECIDEALOT_GID` (default 1000) on a read-only root filesystem, so `${DATA_DIR_DECIDEALOT}/models` must be owned by that UID. Fix with `sudo chown -R 1000:1000 <dir>`, or set the two variables to the directory's owner.
+
 **mailbox refuses to start / `MAILBOX_CONFIG` errors** — the stack's pre-flight check requires `MAILBOX_CONFIG` to point at an existing YAML file on the host (`make run` aborts with a clear error otherwise — see `_FILE_VARS` in the Makefile). Copy `mailbox/config.example.yaml` to a gitignored host path (recommended: `.data/mailbox/config.yaml`), fill in your IMAP/SMTP creds, put at least one token in `auth.tokens:`, and mirror it as `MAILBOX_AUTH_TOKEN` in `.env`.
 
 **Telethon "unauthorized" / no profile returned** — Telethon needs all three of `TELETHON_API_ID`, `TELETHON_API_HASH`, `TELETHON_SESSION` set in `.env`. Generate the string session once via `docker run -it --rm -e TELETHON_API_ID=... -e TELETHON_API_HASH=... psyb0t/telethon-plus:v0.2.0 login` — see [Telethon setup](docs/services/telethon.md). Without a session, the container starts but the API returns auth errors.
 
-**Tests failing** — make sure the stack is running (`make run-bg`) and healthy (`docker compose ps`). Tests require the services they're testing to be enabled — `OLLAMA_CUDA=1` for Ollama CUDA tests, `SDCPP_CUDA=1` for sd.cpp CUDA tests, `PREDICTALOT=1` / `PREDICTALOT_CUDA=1` for forecasting tests, `MAILBOX=1` for mailbox tests, `TELETHON=1` for Telegram tests. The mailbox e2e send→recv→delete is additionally gated on `MAILBOX_TEST_MAILBOX_NAME` + `MAILBOX_TEST_ADDRESS` so it only fires when you've wired a real test mailbox. Run `bash test.sh --help` to see which tests are available and their requirements.
+**Tests failing** — make sure the stack is running (`make run-bg`) and healthy (`docker compose ps`). Tests require the services they're testing to be enabled — `OLLAMA_CUDA=1` for Ollama CUDA tests, `SDCPP_CUDA=1` for sd.cpp CUDA tests, `PREDICTALOT=1` / `PREDICTALOT_CUDA=1` for forecasting tests, `DECIDEALOT=1` / `DECIDEALOT_CUDA=1` for decision tests, `MAILBOX=1` for mailbox tests, `TELETHON=1` for Telegram tests. The mailbox e2e send→recv→delete is additionally gated on `MAILBOX_TEST_MAILBOX_NAME` + `MAILBOX_TEST_ADDRESS` so it only fires when you've wired a real test mailbox. Run `bash test.sh --help` to see which tests are available and their requirements.
 
 ## License
 

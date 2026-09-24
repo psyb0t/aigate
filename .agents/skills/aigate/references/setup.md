@@ -29,7 +29,7 @@ Single exposed port: **`4000`** (nginx), hardcoded — not env-configurable. Eve
 - LibreChat (if `LIBRECHAT=1`): `http://localhost:4000/librechat/`
 - SearXNG (if `SEARXNG=1`): `http://localhost:4000/searxng/`
 - Async queue (proxq): `http://localhost:4000/q/`
-- Direct-routed services (not via LiteLLM): `/predictalot/`, `/predictalot-cuda/`, `/audiolla/`, `/audiolla-cuda/`, `/flickies/`, `/flickies-cuda/`, `/mailbox/`, `/telethon/`, `/piston/`, `/storage/` (hybrids3), `/claudebox/`, `/pibox-zai/`, `/pibox/`, `/stealthy-auto-browse/`
+- Direct-routed services (not via LiteLLM): `/predictalot/`, `/predictalot-cuda/`, `/decidealot/`, `/decidealot-cuda/`, `/audiolla/`, `/audiolla-cuda/`, `/flickies/`, `/flickies-cuda/`, `/mailbox/`, `/telethon/`, `/piston/`, `/storage/` (hybrids3), `/claudebox/`, `/pibox-zai/`, `/pibox/`, `/stealthy-auto-browse/`
 
 ## Required env / keys
 
@@ -37,7 +37,7 @@ Core, always needed regardless of which optional services you enable:
 
 | Variable | Purpose |
 | --- | --- |
-| `AIGATE_TOKEN` | Master bearer token. Every per-service token below defaults to this value when left unset — one token authenticates against LiteLLM, claudebox, pibox-zai, predictalot, mcp_tools, stealthy-auto-browse, hybrids3, telethon, audiolla, flickies, talkies, talkies-cuda. Override a specific `*_AUTH_TOKEN` / `*_API_TOKEN` var to scope that service separately. |
+| `AIGATE_TOKEN` | Master bearer token. Every per-service token below defaults to this value when left unset — one token authenticates against LiteLLM, claudebox, pibox-zai, predictalot, decidealot, mcp_tools, stealthy-auto-browse, hybrids3, telethon, audiolla, flickies, talkies, talkies-cuda. Override a specific `*_AUTH_TOKEN` / `*_API_TOKEN` var to scope that service separately. |
 | `LITELLM_MASTER_KEY` | Optional override; defaults to `AIGATE_TOKEN` when unset. |
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` / `DATABASE_URL` | LiteLLM's key/usage/budget store. |
 | `REDIS_PASSWORD` | LiteLLM response cache + rate limiting + proxq job queue (DB 1). |

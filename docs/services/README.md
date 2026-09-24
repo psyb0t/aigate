@@ -13,6 +13,7 @@ One file per service. Each file contains the deep reference (endpoints, models, 
 | [audiolla / audiolla-cuda](audiolla.md) | `AUDIOLLA=1` / `AUDIOLLA_CUDA=1` | Audio production — stem separation, restoration, mastering, MIR, MIDI, text-to-audio generation. |
 | [flickies / flickies-cuda](flickies.md) | `FLICKIES=1` / `FLICKIES_CUDA=1` | Video toolkit — lipsync (LatentSync 1.5 + Wav2Lip), face restore (GFPGAN), ffmpeg ops. |
 | [predictalot / predictalot-cuda](predictalot.md) | `PREDICTALOT=1` / `PREDICTALOT_CUDA=1` | Foundation time-series forecasting. |
+| [decidealot / decidealot-cuda](decidealot.md) | `DECIDEALOT=1` / `DECIDEALOT_CUDA=1` | Typed decisions (`choice` / `score` / `noul` with probabilities) from the local Laya and Von models. |
 
 ## Agent execution tooling
 

@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here.
 
+## [v5.5.0] (2026-09-24)
+
+**Adds decidealot, local typed decisions with the Laya and Von models, as an opt-in CPU and CUDA service with REST and MCP.**
+
+### Added
+
+- `decidealot` (`DECIDEALOT=1`) and `decidealot-cuda` (`DECIDEALOT_CUDA=1`) on `psyb0t/decidealot:v0.4.0`, routed at `/decidealot/` and `/decidealot-cuda/`. `POST /v1/systemone` takes a `model` selector, a `state`, and named `choice`, `score`, or `noul` questions, and returns typed answers with model probabilities. The routes also serve `GET /v1/models`, `POST /v1/models/unload`, and an unauthenticated `GET /health`. See `docs/services/decidealot.md`.
+- MCP at `/decidealot/mcp` and `/decidealot-cuda/mcp` with `system_one`, `list_models`, and `unload_models`. The tools also join the aggregated `/mcp/` as `decidealot-*` and `decidealot_cuda-*`.
+- `DECIDEALOT_AUTH_TOKEN`, defaulting to `AIGATE_TOKEN` for both the services and LiteLLM's MCP client.
+- Both containers run as `DECIDEALOT_UID:DECIDEALOT_GID` (default `1000:1000`) with a read-only root filesystem, all capabilities dropped, `no-new-privileges`, `init`, and memory, CPU, and PID limits. The CUDA variant adds an exec-allowed `/var/cache` tmpfs, because Triton loads the kernels it compiles at runtime from there.
+- `DATA_DIR_DECIDEALOT` (default `.data/decidealot`) holds the two model bundles (~5.3 GB), shared by both variants. The first start downloads them before `/health` passes, and the health check allows 15 minutes for it. The repo ships `.data/decidealot/models/` so a fresh clone gets it owned by the cloning user. `HF_TOKEN` is passed through to raise the Hugging Face rate limit.
+- Per-route rate limits (`RATELIMIT_DECIDEALOT[_CUDA][_BURST]`, default `120r/m`), a shared `TIMEOUT_DECIDEALOT` (default `10m`), and variables for idle unload, request and start timeouts, body size, and log level. All are listed in `.env.example`.
+- `tests/test_decidealot.sh` covers health, bearer enforcement, the model catalog, a live decision, the 401, 422, and 413 rejections, direct MCP from a non-local hostname, and the aggregated tools for each variant.
+
+### Notes
+
+- decidealot v0.4.0 leaves the MCP SDK's DNS-rebinding protection at its localhost-only default, so its MCP endpoint answers `421` to any other `Host` header. The nginx routes and the LiteLLM MCP fragments send `Host: 127.0.0.1:8080` upstream, so MCP works from the Docker network, a tailnet name, or a tunnel domain.
+
 ## [v5.4.1] (2026-09-23)
 
 **Fixes `claudebox-*` models silently answering from pibox-zai instead of Claude when called through the gateway.**

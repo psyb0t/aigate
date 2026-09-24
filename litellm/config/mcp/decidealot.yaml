@@ -1,0 +1,11 @@
+decidealot:
+  url: "http://decidealot:8080/mcp"
+  transport: "http"
+  auth_type: "bearer_token"
+  auth_value: os.environ/DECIDEALOT_AUTH_TOKEN
+  # The MCP SDK's DNS-rebinding protection rejects Host headers outside its
+  # allowlist (default: localhost / 127.0.0.1). Without this override LiteLLM
+  # sends Host: decidealot:8080 and gets 421 Misdirected Request.
+  static_headers:
+    Host: "127.0.0.1:8080"
+  description: "Local typed decisions with the Laya and Von models (TypeSafe System One). 3 tools: system_one runs one decision from a `model` selector, a `state` (the situation to judge), and named `questions`, each typed `choice` (named criteria, returns the chosen key and a probability per key), `score` (ordered criteria array, returns the position) or `noul` (returns a probability between 0 and 1). Answers carry model probabilities so the caller applies its own threshold. list_models returns the selectors: laya / laya-auto (automatic English or multilingual routing), laya-english, laya-multilingual, laya-typed-decisions (structured policy, routing, triage and approval work), von / von-1.1 (English only, short well-posed questions). unload_models releases the resident model. Only one model is resident; switching between Laya and Von swaps them."

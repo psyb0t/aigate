@@ -110,6 +110,7 @@ services:
       FLICKIES_AUTH_TOKEN: ${FLICKIES_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-flickies}}
       TALKIES_AUTH_TOKEN: ${TALKIES_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-talkies}}
       TALKIES_CUDA_AUTH_TOKEN: ${TALKIES_CUDA_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-talkies-cuda}}
+      DECIDEALOT_AUTH_TOKEN: ${DECIDEALOT_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-decidealot}}
       # Agent API tokens LiteLLM sends to claudebox and pibox-zai. Each fallback
       # must match the one on the service's own *_API_MODE_TOKEN, or LiteLLM
       # gets a 401 and the request moves down the fallback chain.
@@ -342,6 +343,114 @@ services:
       timeout: 10s
       retries: 5
       start_period: 120s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - aigate-internal
+      - aigate-public
+
+  # decidealot: local typed-decision models (Laya + Von) behind the TypeSafe
+  # System One API. CPU + CUDA variants live side-by-side: CPU under
+  # `decidealot` at /decidealot/*, CUDA under `decidealot-cuda` at
+  # /decidealot-cuda/*. Both serve REST (/v1/systemone, /v1/models,
+  # /v1/models/unload) and MCP at /mcp from the same port. Not registered as a
+  # LiteLLM model (no chat surface); its MCP tools join the aggregated /mcp/.
+  #
+  # Both variants share ${DATA_DIR_DECIDEALOT}/models. Startup downloads and
+  # verifies both pinned bundles (~5.3 GB) before /health turns green, so the
+  # first boot can take several minutes; start_period covers that. Only one
+  # model is resident per container, released after the idle timeout.
+  #
+  # The image runs non-root with a read-only root filesystem. The container
+  # user must own the models directory, so DECIDEALOT_UID/GID default to 1000,
+  # the usual owner of a cloned repo. /tmp is 128m to match upstream's sizing.
+  decidealot:
+    logging: *docker-logging
+    profiles: ["decidealot"]
+    image: psyb0t/decidealot:v0.4.0
+    restart: unless-stopped
+    user: "${DECIDEALOT_UID:-1000}:${DECIDEALOT_GID:-1000}"
+    init: true
+    read_only: true
+    mem_limit: ${DECIDEALOT_MEM_LIMIT:-8g}
+    memswap_limit: ${DECIDEALOT_MEMSWAP_LIMIT:-8g}
+    cpus: ${DECIDEALOT_CPUS:-4.0}
+    pids_limit: ${DECIDEALOT_PIDS_LIMIT:-512}
+    environment:
+      DECIDEALOT_API_KEY: ${DECIDEALOT_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-decidealot}}
+      DECIDEALOT_LOG_LEVEL: ${DECIDEALOT_LOG_LEVEL:-INFO}
+      DECIDEALOT_MAX_REQUEST_BYTES: ${DECIDEALOT_MAX_REQUEST_BYTES:-1048576}
+      DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS: ${DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS:-600}
+      DECIDEALOT_REQUEST_TIMEOUT_SECONDS: ${DECIDEALOT_REQUEST_TIMEOUT_SECONDS:-120}
+      DECIDEALOT_PROVIDER_START_TIMEOUT_SECONDS: ${DECIDEALOT_PROVIDER_START_TIMEOUT_SECONDS:-180}
+      # Optional. The model repos are public; a token only raises the Hugging
+      # Face rate limit for the first-start bundle download.
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      - ${DATA_DIR_DECIDEALOT:-${DATA_DIR:-.data}/decidealot}/models:/models
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+      - /var/run:rw,noexec,nosuid,size=8m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health',timeout=3).status==200 else 1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 900s
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - aigate-internal
+      - aigate-public
+
+  decidealot-cuda:
+    logging: *docker-logging
+    profiles: ["decidealot-cuda"]
+    image: psyb0t/decidealot:v0.4.0-cuda
+    restart: unless-stopped
+    user: "${DECIDEALOT_UID:-1000}:${DECIDEALOT_GID:-1000}"
+    init: true
+    read_only: true
+    mem_limit: ${DECIDEALOT_CUDA_MEM_LIMIT:-8g}
+    memswap_limit: ${DECIDEALOT_CUDA_MEMSWAP_LIMIT:-8g}
+    cpus: ${DECIDEALOT_CUDA_CPUS:-4.0}
+    pids_limit: ${DECIDEALOT_CUDA_PIDS_LIMIT:-512}
+    environment:
+      DECIDEALOT_API_KEY: ${DECIDEALOT_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-decidealot}}
+      DECIDEALOT_LOG_LEVEL: ${DECIDEALOT_LOG_LEVEL:-INFO}
+      DECIDEALOT_MAX_REQUEST_BYTES: ${DECIDEALOT_MAX_REQUEST_BYTES:-1048576}
+      DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS: ${DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS:-600}
+      DECIDEALOT_REQUEST_TIMEOUT_SECONDS: ${DECIDEALOT_REQUEST_TIMEOUT_SECONDS:-120}
+      DECIDEALOT_PROVIDER_START_TIMEOUT_SECONDS: ${DECIDEALOT_PROVIDER_START_TIMEOUT_SECONDS:-180}
+      # Optional. The model repos are public; a token only raises the Hugging
+      # Face rate limit for the first-start bundle download.
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      - ${DATA_DIR_DECIDEALOT:-${DATA_DIR:-.data}/decidealot}/models:/models
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+      - /var/run:rw,noexec,nosuid,size=8m
+      # Triton compiles CUDA helpers at runtime and loads them from this cache,
+      # so it is the one writable path that must allow exec. The image points
+      # TORCHINDUCTOR_CACHE_DIR and TRITON_CACHE_DIR here.
+      - /var/cache:rw,exec,nosuid,nodev,size=512m,uid=${DECIDEALOT_UID:-1000},gid=${DECIDEALOT_GID:-1000},mode=0755
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health',timeout=3).status==200 else 1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 900s
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges:true
     networks:
@@ -1903,6 +2012,52 @@ configs:
               proxy_cache off;
           }
 
+          # decidealot: local typed decisions, REST + MCP at /decidealot/mcp.
+          # Decidealot owns bearer authentication (AIGATE_TOKEN by default).
+          # A disabled profile returns 404 instead of a failing upstream.
+          # The MCP SDK's DNS-rebinding check answers 421 to any Host outside
+          # localhost, so a caller on a tailnet or tunnel hostname would fail.
+          # The REST API ignores Host, so pin it for the whole route.
+          location /decidealot/ {
+              set $$decidealot_enabled "${DECIDEALOT:-0}";
+              if ($$decidealot_enabled != "1") {
+                  return 404;
+              }
+              limit_req zone=decidealot burst=${RATELIMIT_DECIDEALOT_BURST:-20} nodelay;
+              set $$upstream_decidealot http://decidealot:8080;
+              rewrite ^/decidealot/(.*) /$$1 break;
+              proxy_pass $$upstream_decidealot;
+              proxy_set_header Host 127.0.0.1:8080;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_read_timeout ${TIMEOUT_DECIDEALOT:-10m};
+              proxy_send_timeout ${TIMEOUT_DECIDEALOT:-10m};
+              proxy_buffering off;
+              proxy_cache off;
+          }
+
+          # decidealot-cuda: GPU sibling, gated independently of the CPU one.
+          # Same pinned Host as the CPU route.
+          location /decidealot-cuda/ {
+              set $$decidealot_cuda_enabled "${DECIDEALOT_CUDA:-0}";
+              if ($$decidealot_cuda_enabled != "1") {
+                  return 404;
+              }
+              limit_req zone=decidealot_cuda burst=${RATELIMIT_DECIDEALOT_CUDA_BURST:-20} nodelay;
+              set $$upstream_decidealot_cuda http://decidealot-cuda:8080;
+              rewrite ^/decidealot-cuda/(.*) /$$1 break;
+              proxy_pass $$upstream_decidealot_cuda;
+              proxy_set_header Host 127.0.0.1:8080;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_read_timeout ${TIMEOUT_DECIDEALOT:-10m};
+              proxy_send_timeout ${TIMEOUT_DECIDEALOT:-10m};
+              proxy_buffering off;
+              proxy_cache off;
+          }
+
           # talkies — raw upstream API. Keep a disabled profile invisible
           # instead of exposing a route which would fail against a missing
           # container. Talkies owns bearer authentication (AIGATE_TOKEN by
@@ -2302,6 +2457,8 @@ configs:
       limit_req_zone $$binary_remote_addr zone=telethon:10m rate=${RATELIMIT_TELETHON:-30r/m};
       limit_req_zone $$binary_remote_addr zone=predictalot:10m rate=${RATELIMIT_PREDICTALOT:-60r/m};
       limit_req_zone $$binary_remote_addr zone=predictalot_cuda:10m rate=${RATELIMIT_PREDICTALOT_CUDA:-60r/m};
+      limit_req_zone $$binary_remote_addr zone=decidealot:10m rate=${RATELIMIT_DECIDEALOT:-120r/m};
+      limit_req_zone $$binary_remote_addr zone=decidealot_cuda:10m rate=${RATELIMIT_DECIDEALOT_CUDA:-120r/m};
       limit_req_zone $$binary_remote_addr zone=talkies:10m rate=${RATELIMIT_TALKIES:-30r/m};
       limit_req_zone $$binary_remote_addr zone=talkies_cuda:10m rate=${RATELIMIT_TALKIES_CUDA:-30r/m};
       limit_req_zone $$binary_remote_addr zone=audiolla:10m rate=${RATELIMIT_AUDIOLLA:-30r/m};
