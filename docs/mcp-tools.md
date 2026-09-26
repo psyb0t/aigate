@@ -243,12 +243,13 @@ All chat references accept: `@username`, phone number, `t.me/...` link, or numer
 
 MCP server backed by [docker-predictalot](https://github.com/psyb0t/docker-predictalot). Exposes five foundation forecasters across six forecast types: **univariate**, **multivariate**, **covariates_past**, **covariates_future**, **covariates_both**, **samples**. A model only has a tool under a type if it implements that modality (e.g. `timesfm-2.5` only appears under `univariate`; `chronos-2` is the only `covariates_future` member).
 
-> **v1.0.0 surface note.** Upstream v1.0.0 also ships a tabular-ML family (`/v1/tabular/*` — 9 supervised backends + 3 meta-learners) but does NOT register those as MCP tools. The 26-tool catalog below is FM-only. Tabular work goes through direct REST against `/predictalot/v1/tabular/*` (see [the predictalot service page](services/predictalot.md#tabular-ml--train-a-direction-classifier-and-forecast) for the train + forecast shape).
+> **v1.0.0 surface note.** Upstream v1.0.0 also ships a tabular-ML family (`/v1/tabular/*` — 9 supervised backends + 3 meta-learners) but does NOT register those as MCP tools. The catalog below is foundation-model forecasting plus the `unload_models` lifecycle tool. Tabular work goes through direct REST against `/predictalot/v1/tabular/*` (see [the predictalot service page](services/predictalot.md#tabular-ml--train-a-direction-classifier-and-forecast) for the train + forecast shape).
 
-**26 tools total**, in three families:
+**27 tools total**: three forecasting families plus one lifecycle tool:
 - `forecast_<type>_<model>` — single-model forecast for a specific (type, model) cell. 18 of these (5+3+2+1+1+2 across types).
 - `forecast_<type>_ensemble` — per-type weighted-mean ensemble across all the type's members. 6 of these.
 - `list_<type>_models` — per-type listing of member slugs + loaded/unloaded status. 6 of these.
+- `unload_models` (upstream v1.2.0): releases every resident foundation model and its Torch and CUDA memory. Fails while a forecast is running.
 
 Naming convention: model slug dashes/dots become underscores (`sundial-base-128m` → `sundial_base_128m`, `timesfm-2.5` → `timesfm_2_5`). Each `forecast_<type>_<model>` argument shape mirrors the HTTP body flattened to kwargs:
 - quantile types: `context`, `horizon`, `quantile_levels=None`, `context_length=None`, `unload=False` (covariate variants add `past_covariates` and/or `future_covariates`).

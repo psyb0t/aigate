@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here.
 
+## [v5.7.0] (2026-09-25)
+
+**Brings predictalot and decidealot under the resource manager and moves predictalot to `v1.2.1`, which adds a model unload endpoint.**
+
+### Added
+
+- The resource manager (`litellm/callbacks/resource_manager.py`) now treats predictalot and decidealot as competing groups on CUDA and CPU. Before any LiteLLM-routed local model runs (Ollama, sd.cpp, talkies, vLLM, llama.cpp), it calls `POST /v1/models/unload` on both, with each service's own token. A `409` means the service is mid-request. The resource manager logs it as a skipped unload and continues, and the service frees its model on its own idle timer.
+- `POST /v1/unload/cuda` and `POST /v1/unload/cpu` include predictalot and decidealot. A service busy with a request reports `"status": "busy"` and keeps its model.
+- The `mcp` service receives `PREDICTALOT_AUTH_TOKEN` and `DECIDEALOT_AUTH_TOKEN`, with the same `AIGATE_TOKEN` fallback the services use.
+- Tests cover the unload endpoint on both services, the new `unload_models` predictalot MCP tool, and eviction by the resource manager on each variant. Each eviction test loads a model, sends a local Ollama embedding through LiteLLM, and checks that LiteLLM logs the unload.
+
+### Changed
+
+- predictalot and predictalot-cuda bumped `v1.0.1` to `v1.2.1`. v1.2.0 added `POST /v1/models/unload` and the `unload_models` MCP tool, for 27 tools in total. It also made `"unload": true` on a forecast wait for concurrent forecasts on the same model, made the Sundial sidecar free its weights, and turned Moirai-2 multivariate forecasts past 64 steps into a `400` instead of a `503`. v1.2.1 only changes how the images are built. No `PREDICTALOT_*` variable changed.
+- Direct requests to audiolla, flickies, predictalot, or decidealot still do not evict LiteLLM-routed models. The docs now say so.
+
+### Fixed
+
+- `tests/test_predictalot.sh` sent `$PREDICTALOT_AUTH_TOKEN` directly, which is empty unless set in `.env`, so every authenticated predictalot test failed with `401` on a default setup. The tests now fall back to `AIGATE_TOKEN`, matching the service.
+
 ## [v5.6.0] (2026-09-24)
 
 **Moves decidealot to `v0.4.1`, which lets aigate configure the MCP host allowlist instead of overriding the `Host` header in LiteLLM.**

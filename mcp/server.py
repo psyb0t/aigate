@@ -883,7 +883,8 @@ async def speech(request: StarletteRequest) -> Response:
 #
 # Auth: gated at the nginx layer via the same bearer as /mcp/.
 # Each downstream call carries its own bearer where required
-# (audiolla + flickies read AIGATE_TOKEN).
+# (audiolla + flickies read AIGATE_TOKEN, predictalot + decidealot
+# read their own PREDICTALOT_AUTH_TOKEN / DECIDEALOT_AUTH_TOKEN).
 
 OLLAMA_CUDA_URL = os.environ.get("OLLAMA_CUDA_URL", "http://ollama-cuda:11434")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://ollama:11434")
@@ -897,7 +898,14 @@ AUDIOLLA_CUDA_URL = os.environ.get("AUDIOLLA_CUDA_URL", "http://audiolla-cuda:80
 AUDIOLLA_URL = os.environ.get("AUDIOLLA_URL", "http://audiolla:8000")
 FLICKIES_CUDA_URL = os.environ.get("FLICKIES_CUDA_URL", "http://flickies-cuda:8000")
 FLICKIES_URL = os.environ.get("FLICKIES_URL", "http://flickies:8000")
+PREDICTALOT_CUDA_URL = os.environ.get("PREDICTALOT_CUDA_URL", "http://predictalot-cuda:8080")
+PREDICTALOT_URL = os.environ.get("PREDICTALOT_URL", "http://predictalot:8080")
+DECIDEALOT_CUDA_URL = os.environ.get("DECIDEALOT_CUDA_URL", "http://decidealot-cuda:8080")
+DECIDEALOT_URL = os.environ.get("DECIDEALOT_URL", "http://decidealot:8080")
 AIGATE_TOKEN = os.environ.get("AIGATE_TOKEN", "")
+PREDICTALOT_AUTH_TOKEN = os.environ.get("PREDICTALOT_AUTH_TOKEN", "")
+DECIDEALOT_AUTH_TOKEN = os.environ.get("DECIDEALOT_AUTH_TOKEN", "")
+MODELS_UNLOAD_PATH = "/v1/models/unload"
 
 
 def _bearer_headers() -> dict:
@@ -998,6 +1006,50 @@ async def _unload_flickies(client: httpx.AsyncClient, base: str) -> dict:
         return {"status": "error", "error": str(exc)}
 
 
+async def _unload_models_endpoint(
+    client: httpx.AsyncClient,
+    base: str,
+    token: str,
+    items_key: str,
+    name_key: str,
+) -> dict:
+    """predictalot / decidealot: POST /v1/models/unload.
+
+    Both answer 409 while a request is running. That is reported as
+    `busy`, not an error, because the service frees the model on its own
+    idle timer once the request finishes.
+    """
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    try:
+        r = await client.post(f"{base}{MODELS_UNLOAD_PATH}", headers=headers)
+    except httpx.HTTPError as exc:
+        return {"status": "error", "error": str(exc)}
+    if r.status_code == httpx.codes.CONFLICT:
+        return {"status": "busy", "http": r.status_code}
+    if r.status_code != httpx.codes.OK:
+        return {"status": "error", "http": r.status_code}
+    try:
+        items = r.json().get(items_key, [])
+    except ValueError as exc:
+        return {"status": "error", "error": str(exc)}
+    unloaded = [item.get(name_key) for item in items if item.get("wasLoaded")]
+    if not unloaded:
+        return {"status": "empty", "unloaded": []}
+    return {"status": "ok", "unloaded": unloaded}
+
+
+async def _unload_predictalot(client: httpx.AsyncClient, base: str) -> dict:
+    return await _unload_models_endpoint(
+        client, base, PREDICTALOT_AUTH_TOKEN, "models", "slug",
+    )
+
+
+async def _unload_decidealot(client: httpx.AsyncClient, base: str) -> dict:
+    return await _unload_models_endpoint(
+        client, base, DECIDEALOT_AUTH_TOKEN, "providers", "name",
+    )
+
+
 # Per-hardware-class fan-out plan. (label, url, unload_fn).
 _UNLOAD_PLAN_CUDA = [
     ("ollama-cuda", OLLAMA_CUDA_URL, _unload_ollama),
@@ -1007,6 +1059,8 @@ _UNLOAD_PLAN_CUDA = [
     ("llamacpp-cuda", LLAMACPP_CUDA_URL, _unload_api_ps),
     ("audiolla-cuda", AUDIOLLA_CUDA_URL, _unload_audiolla),
     ("flickies-cuda", FLICKIES_CUDA_URL, _unload_flickies),
+    ("predictalot-cuda", PREDICTALOT_CUDA_URL, _unload_predictalot),
+    ("decidealot-cuda", DECIDEALOT_CUDA_URL, _unload_decidealot),
 ]
 _UNLOAD_PLAN_CPU = [
     ("ollama", OLLAMA_URL, _unload_ollama),
@@ -1016,6 +1070,8 @@ _UNLOAD_PLAN_CPU = [
     ("llamacpp", LLAMACPP_URL, _unload_api_ps),
     ("audiolla", AUDIOLLA_URL, _unload_audiolla),
     ("flickies", FLICKIES_URL, _unload_flickies),
+    ("predictalot", PREDICTALOT_URL, _unload_predictalot),
+    ("decidealot", DECIDEALOT_URL, _unload_decidealot),
 ]
 
 
@@ -1041,9 +1097,11 @@ async def unload_cuda(_request: StarletteRequest) -> JSONResponse:
     """Evict every model / engine loaded on any CUDA service.
 
     Fans out concurrently to ollama-cuda, sdcpp-cuda, talkies-cuda,
-    vllm-cuda, llamacpp-cuda, audiolla-cuda, flickies-cuda. Returns
-    a per-service outcome map. Services with an empty URL env are
-    skipped. Per-service errors do not fail the whole call.
+    vllm-cuda, llamacpp-cuda, audiolla-cuda, flickies-cuda,
+    predictalot-cuda, decidealot-cuda. Returns a per-service outcome
+    map. Services with an empty URL env are skipped. Per-service errors
+    do not fail the whole call. A service busy with a request reports
+    `busy` and keeps its model.
     """
     return JSONResponse({"class": "cuda",
                          "results": await _run_unload_plan(_UNLOAD_PLAN_CUDA)})

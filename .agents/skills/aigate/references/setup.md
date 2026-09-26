@@ -75,7 +75,7 @@ LiteLLM regenerates its config on every `make run`/`make run-bg`, including only
 
 Model names encode the route, e.g. `groq-gpt-oss-120b`, `local-ollama-cpu-llama3.2-3b`, `local-sdcpp-cuda-sd-turbo`. On a rate-limit or failure, LiteLLM automatically retries the next model in that model's fallback chain; the response's `model` field reports who actually served it. Async/long-running calls can go through `/q/` (proxq) instead of the sync path — submit, get a job ID back immediately, poll `/q/__jobs/{id}`.
 
-Resource contention on local CUDA/CPU services (LLM vs image-gen vs TTS/STT all fighting for the same GPU) is handled automatically by a LiteLLM callback (`resource_manager.py`) — one job per hardware class at a time, idle models auto-unload, competing services get told to free VRAM/RAM before a request proceeds. No manual model management needed.
+Resource contention on local CUDA/CPU services (LLM vs image-gen vs TTS/STT all fighting for the same GPU) is handled automatically by a LiteLLM callback (`resource_manager.py`) — one job per hardware class at a time, idle models auto-unload, competing services get told to free VRAM/RAM before a request proceeds. No manual model management needed. The direct-routed services (audiolla, flickies, predictalot, decidealot) get evicted this way too, but a request sent straight to one of them does not evict LiteLLM-routed models. `POST /v1/unload/{cuda,cpu}` frees everything on one hardware class by hand.
 
 ## Data / persistence
 

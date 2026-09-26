@@ -279,7 +279,7 @@ services:
   predictalot:
     logging: *docker-logging
     profiles: ["predictalot"]
-    image: psyb0t/predictalot:v1.0.1
+    image: psyb0t/predictalot:v1.2.1
     restart: unless-stopped
     mem_limit: ${PREDICTALOT_MEM_LIMIT:-6g}
     memswap_limit: ${PREDICTALOT_MEMSWAP_LIMIT:-12g}
@@ -312,7 +312,7 @@ services:
   predictalot-cuda:
     logging: *docker-logging
     profiles: ["predictalot-cuda"]
-    image: psyb0t/predictalot:v1.0.1-cuda
+    image: psyb0t/predictalot:v1.2.1-cuda
     restart: unless-stopped
     mem_limit: ${PREDICTALOT_CUDA_MEM_LIMIT:-12g}
     memswap_limit: ${PREDICTALOT_CUDA_MEMSWAP_LIMIT:-24g}
@@ -1602,6 +1602,10 @@ services:
       # token is set). Other unload endpoints (ollama / sdcpp / talkies
       # / vllm / llamacpp) are on-network with no auth wall.
       AIGATE_TOKEN: ${AIGATE_TOKEN}
+      # predictalot and decidealot check their own tokens on
+      # POST /v1/models/unload. Fallbacks match their services.
+      PREDICTALOT_AUTH_TOKEN: ${PREDICTALOT_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-predictalot}}
+      DECIDEALOT_AUTH_TOKEN: ${DECIDEALOT_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-decidealot}}
     depends_on:
       litellm:
         condition: service_healthy

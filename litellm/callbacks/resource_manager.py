@@ -22,6 +22,10 @@ Groups (CPU):
   cpu-vllm          : local-vllm-*  (text LLMs + embeddings via vllm serve)
   cpu-llamacpp      : local-llamacpp-*  (vision-VLM serving via llama-server + mmproj)
 
+Competing-only groups (CUDA and CPU), for direct-HTTP services that never
+route through LiteLLM but still hold memory: audiolla, flickies,
+predictalot, decidealot. They are evicted before any group above runs.
+
 Each group is unloaded before a request lands on a competing group (so
 qwen3-tts frees VRAM before talkies-cuda needs it, etc.). Within a service,
 the wrapper handles its own intra-service eviction (only one model resident
@@ -79,8 +83,8 @@ _ALL_CUDA_GROUPS = {
     "cuda-vllm",
     "cuda-llamacpp",
     # Direct-HTTP CUDA services (not routed via LiteLLM completions):
-    # audiolla + flickies expose their own HTTP APIs through nginx.
-    # No `local-audiolla-*` / `local-flickies-*` model_name is defined
+    # audiolla, flickies, predictalot, and decidealot expose their own
+    # HTTP APIs through nginx. No `local-<service>-*` model_name is defined
     # so `_get_group()` never returns these — they only appear here as
     # COMPETING groups so LiteLLM-routed calls (talkies / ollama / vllm /
     # llamacpp / sdcpp) evict them before allocating VRAM. Without this
@@ -88,6 +92,8 @@ _ALL_CUDA_GROUPS = {
     # talkies-cuda the moment it tries to load a Whisper model.
     "cuda-audiolla",
     "cuda-flickies",
+    "cuda-predictalot",
+    "cuda-decidealot",
 }
 _ALL_CPU_GROUPS = {
     "cpu-llm",
@@ -97,6 +103,8 @@ _ALL_CPU_GROUPS = {
     "cpu-llamacpp",
     "cpu-audiolla",
     "cpu-flickies",
+    "cpu-predictalot",
+    "cpu-decidealot",
 }
 
 
@@ -554,6 +562,120 @@ async def _unload_cpu_flickies():
     await _unload_via_engines_delete(_FLICKIES_CPU_URL, "cpu-flickies")
 
 
+# predictalot + decidealot: POST /v1/models/unload releases every resident
+# model plus its Torch and CUDA memory. Each checks its own bearer token.
+# Both answer 409 while a request is running. That is a skip, not a
+# failure: the busy service keeps its model and frees it on its own idle
+# timer. The responses list per-model `wasLoaded` flags under a different
+# key per service.
+_PREDICTALOT_CUDA_URL = "http://predictalot-cuda:8080"
+_PREDICTALOT_CPU_URL = "http://predictalot:8080"
+_DECIDEALOT_CUDA_URL = "http://decidealot-cuda:8080"
+_DECIDEALOT_CPU_URL = "http://decidealot:8080"
+_MODELS_UNLOAD_PATH = "/v1/models/unload"
+_MODELS_UNLOAD_TIMEOUT_SECONDS = 30.0
+_PREDICTALOT_TOKEN_ENV = "PREDICTALOT_AUTH_TOKEN"
+_DECIDEALOT_TOKEN_ENV = "DECIDEALOT_AUTH_TOKEN"
+
+
+def _service_bearer_headers(token_env: str) -> dict:
+    """Bearer header from a per-service token env var. Absent env → no
+    header, upstream returns 401 which we log and move on."""
+    tok = os.environ.get(token_env, "")
+    return {"Authorization": f"Bearer {tok}"} if tok else {}
+
+
+async def _unload_via_models_endpoint(
+    base_url: str,
+    group: str,
+    token_env: str,
+    items_key: str,
+    name_key: str,
+) -> None:
+    """POST /v1/models/unload and log which models were resident."""
+    async with httpx.AsyncClient(timeout=_MODELS_UNLOAD_TIMEOUT_SECONDS) as client:
+        try:
+            r = await client.post(
+                f"{base_url}{_MODELS_UNLOAD_PATH}",
+                headers=_service_bearer_headers(token_env),
+            )
+        except httpx.HTTPError as e:
+            logger.warning("[resource_manager] %s unload error: %s", group, e)
+            return
+
+    if r.status_code == httpx.codes.CONFLICT:
+        logger.warning(
+            "[resource_manager] %s: request in flight, unload skipped", group
+        )
+        return
+    if r.status_code != httpx.codes.OK:
+        logger.warning(
+            "[resource_manager] %s: unload status=%s", group, r.status_code
+        )
+        return
+
+    try:
+        items = r.json().get(items_key, [])
+    except ValueError as e:
+        logger.warning(
+            "[resource_manager] %s: unreadable unload response: %s", group, e
+        )
+        return
+    unloaded = [item.get(name_key) for item in items if item.get("wasLoaded")]
+    if not unloaded:
+        logger.warning("[resource_manager] %s: no models were loaded", group)
+        return
+    logger.warning("[resource_manager] %s: unloaded %s", group, unloaded)
+
+
+async def _unload_cuda_predictalot():
+    """Evict every foundation model loaded on predictalot-cuda to free VRAM."""
+    logger.warning("[resource_manager] unloading cuda-predictalot models")
+    await _unload_via_models_endpoint(
+        _PREDICTALOT_CUDA_URL,
+        "cuda-predictalot",
+        _PREDICTALOT_TOKEN_ENV,
+        "models",
+        "slug",
+    )
+
+
+async def _unload_cpu_predictalot():
+    """Evict every foundation model loaded on predictalot to free RAM."""
+    logger.warning("[resource_manager] unloading cpu-predictalot models")
+    await _unload_via_models_endpoint(
+        _PREDICTALOT_CPU_URL,
+        "cpu-predictalot",
+        _PREDICTALOT_TOKEN_ENV,
+        "models",
+        "slug",
+    )
+
+
+async def _unload_cuda_decidealot():
+    """Evict the resident Laya or Von model on decidealot-cuda to free VRAM."""
+    logger.warning("[resource_manager] unloading cuda-decidealot models")
+    await _unload_via_models_endpoint(
+        _DECIDEALOT_CUDA_URL,
+        "cuda-decidealot",
+        _DECIDEALOT_TOKEN_ENV,
+        "providers",
+        "name",
+    )
+
+
+async def _unload_cpu_decidealot():
+    """Evict the resident Laya or Von model on decidealot to free RAM."""
+    logger.warning("[resource_manager] unloading cpu-decidealot models")
+    await _unload_via_models_endpoint(
+        _DECIDEALOT_CPU_URL,
+        "cpu-decidealot",
+        _DECIDEALOT_TOKEN_ENV,
+        "providers",
+        "name",
+    )
+
+
 _UNLOAD_FNS = {
     "cuda-llm": _unload_cuda_llm,
     "cuda-img": _unload_cuda_img,
@@ -562,6 +684,8 @@ _UNLOAD_FNS = {
     "cuda-llamacpp": _unload_cuda_llamacpp,
     "cuda-audiolla": _unload_cuda_audiolla,
     "cuda-flickies": _unload_cuda_flickies,
+    "cuda-predictalot": _unload_cuda_predictalot,
+    "cuda-decidealot": _unload_cuda_decidealot,
     "cpu-llm": _unload_cpu_llm,
     "cpu-img": _unload_cpu_img,
     "cpu-stt-talkies": _unload_cpu_stt_talkies,
@@ -569,6 +693,8 @@ _UNLOAD_FNS = {
     "cpu-llamacpp": _unload_cpu_llamacpp,
     "cpu-audiolla": _unload_cpu_audiolla,
     "cpu-flickies": _unload_cpu_flickies,
+    "cpu-predictalot": _unload_cpu_predictalot,
+    "cpu-decidealot": _unload_cpu_decidealot,
 }
 
 # ---------------------------------------------------------------------------

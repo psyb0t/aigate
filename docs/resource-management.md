@@ -1,7 +1,7 @@
 # Resource Management (cross-cutting)
 
 
-Local services (Ollama, sd.cpp, talkies, vllm, llamacpp) share limited hardware. The platform coordinates them automatically — no manual model management needed.
+Local services (Ollama, sd.cpp, talkies, vllm, llamacpp, audiolla, flickies, predictalot, decidealot) share limited hardware. The platform coordinates them automatically — no manual model management needed.
 
 ### Idle auto-unload
 
@@ -18,6 +18,8 @@ Every local service unloads models after a period of inactivity:
 | vllm (CPU) | 10 minutes | `VLLM_MODEL_TTL` (wrapper idle sweeper); resource manager also triggers `DELETE /api/ps/{model}` |
 | llamacpp CUDA | 600 seconds | `LLAMACPP_CUDA_MODEL_TTL` (wrapper idle sweeper); resource manager also triggers `DELETE /api/ps/{model}` |
 | llamacpp (CPU) | 600 seconds | `LLAMACPP_MODEL_TTL` (wrapper idle sweeper); resource manager also triggers `DELETE /api/ps/{model}` |
+| predictalot (CPU/CUDA) | 30 minutes | `PREDICTALOT_MODEL_IDLE_TIMEOUT`; resource manager also triggers `POST /v1/models/unload` |
+| decidealot (CPU/CUDA) | 600 seconds | `DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS`; resource manager also triggers `POST /v1/models/unload` |
 
 ### Auto-load on demand
 
@@ -58,10 +60,16 @@ Each service has its own unload API:
 | talkies / vllm-cuda / llamacpp-cuda | `DELETE /api/ps/{model_id}` (per model) or `POST /unload` (kill any loaded) |
 | audiolla | `POST /v1/unload` (bulk evict every loaded engine) |
 | flickies | `GET /v1/engines` + `DELETE /v1/engines/{slug}` (per loaded engine) |
+| predictalot | `POST /v1/models/unload` (every resident foundation model, plus Torch and CUDA caches). `409` while a forecast runs |
+| decidealot | `POST /v1/models/unload` (the resident Laya or Von model, plus Torch memory). `409` while a decision runs |
 
 ### Direct-HTTP services in the competing-group unload
 
-Audiolla and flickies expose their own HTTP APIs through nginx rather than routing through LiteLLM completions. No `local-audiolla-*` / `local-flickies-*` model aliases exist, so the resource manager never resolves a request to them as own-group. They participate ONLY as COMPETING groups — every LiteLLM-routed call (ollama / sdcpp / talkies / vllm / llamacpp) will evict them before allocating VRAM. Without this coupling a LatentSync or Wav2Lip session hoarding 7+ GiB of VRAM would OOM-kill talkies-cuda or ollama-cuda the moment they tried to load a model.
+Audiolla, flickies, predictalot, and decidealot expose their own HTTP APIs through nginx rather than routing through LiteLLM completions. No `local-audiolla-*` / `local-flickies-*` / `local-predictalot-*` / `local-decidealot-*` model aliases exist, so the resource manager never resolves a request to them as own-group. They participate ONLY as COMPETING groups. Every LiteLLM-routed call (ollama / sdcpp / talkies / vllm / llamacpp) evicts them before allocating VRAM. Without this coupling a LatentSync or Wav2Lip session hoarding 7+ GiB of VRAM would OOM-kill talkies-cuda or ollama-cuda the moment they tried to load a model.
+
+predictalot and decidealot answer `409` to an unload while they are serving a request. The resource manager logs that as a skipped unload and continues, and the busy service frees its model on its own idle timer. Each unload call carries that service's own token (`PREDICTALOT_AUTH_TOKEN`, `DECIDEALOT_AUTH_TOKEN`), which LiteLLM gets with the same `AIGATE_TOKEN` fallback the services use.
+
+The coupling runs one way. A request sent straight to one of these four services does not pass through LiteLLM, so it does not evict LiteLLM-routed models or take the hardware semaphore. On a small GPU, a cold start on one of them can still run out of memory next to a loaded Ollama or talkies model.
 
 ### Operator-facing unload endpoints
 
@@ -69,8 +77,8 @@ For manual VRAM cleanup — after a bad run, before running a benchmark, or from
 
 | Method + path | Effect |
 | ------------- | ------ |
-| `POST /v1/unload/cuda` | Concurrent fan-out to `ollama-cuda`, `sdcpp-cuda`, `talkies-cuda`, `vllm-cuda`, `llamacpp-cuda`, `audiolla-cuda`, `flickies-cuda`. |
-| `POST /v1/unload/cpu` | CPU counterpart — same 7 services. |
+| `POST /v1/unload/cuda` | Concurrent fan-out to `ollama-cuda`, `sdcpp-cuda`, `talkies-cuda`, `vllm-cuda`, `llamacpp-cuda`, `audiolla-cuda`, `flickies-cuda`, `predictalot-cuda`, `decidealot-cuda`. |
+| `POST /v1/unload/cpu` | CPU counterpart, same 9 services. |
 | `POST /v1/unload` | Convenience — runs both in sequence. |
 
 Response shape:
@@ -80,12 +88,13 @@ Response shape:
   "results": {
     "ollama-cuda":   {"status": "empty", "unloaded": []},
     "audiolla-cuda": {"status": "ok",    "unloaded": ["htdemucs"]},
-    "flickies-cuda": {"status": "ok",    "unloaded": ["latentsync-1.5"]}
+    "flickies-cuda": {"status": "ok",    "unloaded": ["latentsync-1.5"]},
+    "decidealot-cuda": {"status": "busy", "http": 409}
   }
 }
 ```
 
-Per-service errors do not fail the whole call (`status: "error"` on the offending entry, others still evict). Auth: same bearer as the rest of aigate. Implemented in `mcp/server.py` via `@mcp.custom_route`; nginx proxies `/v1/unload/{cuda,cpu,''}` to `mcp:8000` with a 120s timeout since some unloads take a few seconds to actually release VRAM.
+Per-service errors do not fail the whole call (`status: "error"` on the offending entry, others still evict). A service that is serving a request reports `status: "busy"` and keeps its model. Auth: same bearer as the rest of aigate. Implemented in `mcp/server.py` via `@mcp.custom_route`; nginx proxies `/v1/unload/{cuda,cpu,''}` to `mcp:8000` with a 120s timeout since some unloads take a few seconds to actually release VRAM.
 
 ### Non-blocking rejection
 

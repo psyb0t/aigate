@@ -27,7 +27,7 @@ Auth: `Authorization: Bearer $DECIDEALOT_AUTH_TOKEN`, which defaults to `AIGATE_
 | `laya-typed-decisions` | Laya's checkpoint tuned for structured decisions | Repeated policy, routing, triage, or approval decisions. Validate on your own cases first. |
 | `von`, `von-latest`, `von-1.1`, `von-1.1.0` | Von 1.1, English only | Short questions with clear criteria, or a second opinion next to Laya |
 
-One model is resident per container. Moving between Laya selectors stays on Laya. Moving between Laya and Von waits for active work, releases the old model and its Torch memory, then starts the other one. An idle model is released after `DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS` (600 by default).
+One model is resident per container. Moving between Laya selectors stays on Laya. Moving between Laya and Von waits for active work, releases the old model and its Torch memory, then starts the other one. An idle model is released after `DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS` (600 by default). aigate's resource manager also calls `POST /v1/models/unload` before any LiteLLM-routed local model runs on the same hardware, and `POST /v1/unload/{cuda,cpu}` includes decidealot. A decision in flight answers `409`, so the unload is skipped and the model stays until its idle timer (see [resource management](../resource-management.md)). A request sent straight to decidealot does not evict LiteLLM-routed models.
 
 Measured on this stack, CPU with the bundles on a network share: a cold Laya start plus the first decision took about 75 seconds, a warm Laya decision about 1 second, and a swap to Von about 80 seconds. On CUDA the cold starts ran 2 to 2.5 minutes because of first-run kernel compilation, then warm decisions returned in under a second.
 

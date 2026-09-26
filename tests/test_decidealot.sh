@@ -23,6 +23,13 @@ _DECIDEALOT_STATUS_OK="200"
 _DECIDEALOT_STATUS_UNAUTHORIZED="401"
 _DECIDEALOT_STATUS_TOO_LARGE="413"
 _DECIDEALOT_STATUS_INVALID="422"
+# A cheap local embedding call routed through LiteLLM. Its group competes
+# with decidealot on the same hardware, so the resource manager must evict
+# decidealot's resident model before the embedding runs.
+_DECIDEALOT_CUDA_EVICTION_TRIGGER_MODEL="local-ollama-cuda-bge-m3"
+_DECIDEALOT_CPU_EVICTION_TRIGGER_MODEL="local-ollama-cpu-bge-m3"
+_DECIDEALOT_EVICTION_TRIGGER_TIMEOUT_SECONDS=300
+_DECIDEALOT_LOG_WINDOW_SLACK_SECONDS=5
 
 _decidealot_cpu_enabled()  { [ "${DECIDEALOT:-0}" = "1" ]; }
 _decidealot_cuda_enabled() { [ "${DECIDEALOT_CUDA:-0}" = "1" ]; }
@@ -134,6 +141,47 @@ _decidealot_test_rejects_invalid_requests() {
     echo "OK: ${tag} rejects_invalid_requests"
 }
 
+_decidealot_test_models_unload() {
+    local prefix="$1" tag="$2"
+    local out
+    out=$(curl -sf -X POST "$BASE_URL${prefix}/v1/models/unload" \
+        -H "Authorization: Bearer $(_decidealot_token)")
+    assert_json_field "$out" "['status']" "unloaded" "${tag} unload reports unloaded" || return 1
+    assert_contains "$out" '"name":"laya"' "${tag} unload lists laya" || return 1
+    assert_contains "$out" '"name":"von"' "${tag} unload lists von" || return 1
+    echo "OK: ${tag} models_unload"
+}
+
+# Load laya, then send a LiteLLM request whose group competes on the same
+# hardware. The resource manager must log that it evicted laya.
+_decidealot_test_evicted_by_resource_manager() {
+    local prefix="$1" tag="$2" group="$3" trigger_model="$4"
+    local code
+    code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE_URL${prefix}/v1/systemone" \
+        -H "Authorization: Bearer $(_decidealot_token)" \
+        -H "Content-Type: application/json" \
+        --max-time "$_DECIDEALOT_DECISION_TIMEOUT_SECONDS" \
+        -d "{\"model\":\"laya\",\"state\":\"x\",\"questions\":{$_DECIDEALOT_NOUL_QUESTION}}")
+    assert_eq "$code" "$_DECIDEALOT_STATUS_OK" "${tag} laya loaded by a decision" || return 1
+
+    local started
+    started=$(date -u +%s)
+    code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE_URL/v1/embeddings" \
+        -H "$AUTH_HEADER" \
+        -H "Content-Type: application/json" \
+        --max-time "$_DECIDEALOT_EVICTION_TRIGGER_TIMEOUT_SECONDS" \
+        -d "{\"model\":\"${trigger_model}\",\"input\":\"resource manager eviction check\"}")
+    assert_eq "$code" "$_DECIDEALOT_STATUS_OK" "${tag} ${trigger_model} embedding" || return 1
+
+    local window logs
+    window=$(( $(date -u +%s) - started + _DECIDEALOT_LOG_WINDOW_SLACK_SECONDS ))
+    # stderr dropped on purpose: compose prints project warnings there, and
+    # only the LiteLLM log lines on stdout are asserted on.
+    logs=$(docker compose -f "$WORKDIR/docker-compose.yml" logs --since "${window}s" litellm 2>/dev/null)
+    assert_contains "$logs" "${group}: unloaded ['laya']" "${tag} resource manager evicted laya" || return 1
+    echo "OK: ${tag} evicted_by_resource_manager"
+}
+
 # decidealot's MCP answers 421 to a Host outside its allowlist, so nginx pins
 # the upstream Host to loopback. A caller on a tailnet or tunnel name must
 # still get through.
@@ -193,6 +241,12 @@ test_decidealot_cpu_rejects_invalid_requests() { _decidealot_cpu_enabled || { ec
 test_decidealot_cpu_mcp_remote_host()         { _decidealot_cpu_enabled  || { echo "  SKIP: DECIDEALOT not enabled"; return 0; }; _decidealot_test_mcp_remote_host         /decidealot      "decidealot-cpu"; }
 test_decidealot_cpu_mcp_tools_present()       { _decidealot_cpu_enabled  || { echo "  SKIP: DECIDEALOT not enabled"; return 0; }; _decidealot_test_mcp_tools_present       decidealot       "decidealot-cpu"; }
 test_decidealot_cpu_mcp_aggregated_call()     { _decidealot_cpu_enabled  || { echo "  SKIP: DECIDEALOT not enabled"; return 0; }; _decidealot_test_mcp_aggregated_call     decidealot       "decidealot-cpu"; }
+test_decidealot_cpu_models_unload()           { _decidealot_cpu_enabled  || { echo "  SKIP: DECIDEALOT not enabled"; return 0; }; _decidealot_test_models_unload           /decidealot      "decidealot-cpu"; }
+test_decidealot_cpu_evicted_by_resource_manager() {
+    _decidealot_cpu_enabled || { echo "  SKIP: DECIDEALOT not enabled"; return 0; }
+    [ "${OLLAMA:-0}" = "1" ] || { echo "  SKIP: OLLAMA not enabled (eviction trigger)"; return 0; }
+    _decidealot_test_evicted_by_resource_manager /decidealot "decidealot-cpu" cpu-decidealot "$_DECIDEALOT_CPU_EVICTION_TRIGGER_MODEL"
+}
 
 # ── CUDA variant ───────────────────────────────────────────────────────────
 
@@ -204,6 +258,12 @@ test_decidealot_cuda_rejects_invalid_requests() { _decidealot_cuda_enabled || { 
 test_decidealot_cuda_mcp_remote_host()         { _decidealot_cuda_enabled || { echo "  SKIP: DECIDEALOT_CUDA not enabled"; return 0; }; _decidealot_test_mcp_remote_host         /decidealot-cuda "decidealot-cuda"; }
 test_decidealot_cuda_mcp_tools_present()       { _decidealot_cuda_enabled || { echo "  SKIP: DECIDEALOT_CUDA not enabled"; return 0; }; _decidealot_test_mcp_tools_present       decidealot_cuda  "decidealot-cuda"; }
 test_decidealot_cuda_mcp_aggregated_call()     { _decidealot_cuda_enabled || { echo "  SKIP: DECIDEALOT_CUDA not enabled"; return 0; }; _decidealot_test_mcp_aggregated_call     decidealot_cuda  "decidealot-cuda"; }
+test_decidealot_cuda_models_unload()           { _decidealot_cuda_enabled || { echo "  SKIP: DECIDEALOT_CUDA not enabled"; return 0; }; _decidealot_test_models_unload           /decidealot-cuda "decidealot-cuda"; }
+test_decidealot_cuda_evicted_by_resource_manager() {
+    _decidealot_cuda_enabled || { echo "  SKIP: DECIDEALOT_CUDA not enabled"; return 0; }
+    [ "${OLLAMA_CUDA:-0}" = "1" ] || { echo "  SKIP: OLLAMA_CUDA not enabled (eviction trigger)"; return 0; }
+    _decidealot_test_evicted_by_resource_manager /decidealot-cuda "decidealot-cuda" cuda-decidealot "$_DECIDEALOT_CUDA_EVICTION_TRIGGER_MODEL"
+}
 
 ALL_TESTS+=(
     test_decidealot_cpu_health
@@ -214,6 +274,8 @@ ALL_TESTS+=(
     test_decidealot_cpu_mcp_remote_host
     test_decidealot_cpu_mcp_tools_present
     test_decidealot_cpu_mcp_aggregated_call
+    test_decidealot_cpu_models_unload
+    test_decidealot_cpu_evicted_by_resource_manager
     test_decidealot_cuda_health
     test_decidealot_cuda_requires_auth
     test_decidealot_cuda_models_list
@@ -222,4 +284,6 @@ ALL_TESTS+=(
     test_decidealot_cuda_mcp_remote_host
     test_decidealot_cuda_mcp_tools_present
     test_decidealot_cuda_mcp_aggregated_call
+    test_decidealot_cuda_models_unload
+    test_decidealot_cuda_evicted_by_resource_manager
 )
