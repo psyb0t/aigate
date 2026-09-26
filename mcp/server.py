@@ -64,10 +64,12 @@ IMAGE_PATTERNS = [
     re.compile(r"^local-sdcpp-"),
 ]
 
+# Local models first, like TTS_DEFAULT_ORDER: a hosted default breaks every
+# call when the provider drops the model.
 IMAGE_DEFAULT_ORDER = [
-    "hf-flux-schnell",
     "local-sdcpp-cuda-flux-schnell",
     "local-sdcpp-cpu-sd-turbo",
+    "hf-flux-schnell",
     "openai-dall-e-3",
 ]
 TTS_DEFAULT_ORDER = [
@@ -76,6 +78,19 @@ TTS_DEFAULT_ORDER = [
     "local-talkies-cuda-qwen3-tts",
     "openai-tts-1",
 ]
+
+# Kokoro voices are prefixed by language and gender (af_heart, af_alloy, ...)
+# and talkies rejects OpenAI's bare names for them, so the default voice
+# depends on the model.
+KOKORO_MODEL_MARKER = "kokoro"
+KOKORO_DEFAULT_VOICE = "af_heart"
+OPENAI_DEFAULT_VOICE = "alloy"
+
+
+def default_tts_voice(model: str) -> str:
+    if KOKORO_MODEL_MARKER in model:
+        return KOKORO_DEFAULT_VOICE
+    return OPENAI_DEFAULT_VOICE
 
 
 def log(msg):
@@ -370,9 +385,11 @@ if tts_models:
         f"mention the voice and model used. "
         f"Available models: {_tts_models_str}. "
         f"Default: {tts_default}. "
-        f"Common voices: alloy, echo, shimmer, nova, "
-        f"fable, onyx. "
-        f"The local Kokoro model also supports af_heart. "
+        f"Default voice: {KOKORO_DEFAULT_VOICE} for Kokoro models, "
+        f"{OPENAI_DEFAULT_VOICE} for the others. "
+        f"Kokoro voices are prefixed (af_heart, af_alloy, am_adam, ...); "
+        f"OpenAI-style models take alloy, echo, shimmer, nova, fable, onyx. "
+        f"GET /v1/audio/voices lists every voice per model. "
         f"If the user mentions a model but it is not clear "
         f"which one they mean, ask them to clarify."
     )
@@ -381,9 +398,10 @@ if tts_models:
     async def generate_tts(
         text: str,
         model: str = tts_default or "",
-        voice: str = "alloy",
+        voice: str = "",
         speed: float = 1.0,
     ) -> list[TextContent]:
+        voice = voice or default_tts_voice(model)
         if model not in tts_models:
             return [
                 TextContent(

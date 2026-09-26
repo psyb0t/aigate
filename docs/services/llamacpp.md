@@ -490,6 +490,10 @@ If the probe fails entirely (no `nvidia-smi`, no `/proc/meminfo`, command timeou
 
 If the probe succeeds but probed memory is already under the weights + safety budget (i.e. another CUDA tenant is eating most of the card), it falls back to `floor` and logs the deficit. Better to attempt the spawn at a small ctx (which often still works since the safety margin is conservative) than refuse.
 
+## Auto-sizing `--threads` to the CPU limit
+
+CPU models pass `"--threads", "auto"`. At spawn time the supervisor replaces it with the number of CPUs the container may use: the cgroup quota from `/sys/fs/cgroup/cpu.max` (set by `LLAMACPP_CPUS`), capped by the scheduler affinity. llama.cpp's own `--threads -1` counts every host core and ignores the quota. Running more threads than the quota allows makes the kernel throttle the workers at each sync point, and decoding slows by an order of magnitude. The resolved value is logged as `threads auto → N`.
+
 ## Adding a new model
 
 Per-model GGUF + mmproj filenames + `llama-server` extra args are declared in `llamacpp/models.{cpu,cuda}.json`.

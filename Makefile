@@ -7,7 +7,7 @@ $(shell [ -f .env ] || cp .env.example .env)
 -include .env.limits
 export
 
-.PHONY: run run-bg down restart test logs limits build-config bootstrap help
+.PHONY: run run-bg down restart test test-unit logs limits build-config bootstrap help
 
 # ── Profile detection ─────────────────────────────────────────────────────────
 
@@ -279,6 +279,9 @@ restart: down run-bg
 test:
 	bash test.sh
 
+test-unit:
+	bash tests/unit/run.sh
+
 logs:
 	docker compose logs -f
 
@@ -296,8 +299,9 @@ help:
 	@echo "  down          Stop everything"
 	@echo "  restart       Full restart (down + build-config + run-bg)"
 	@echo "  build-config  Regenerate litellm/config.yaml from fragments"
-	@echo "  limits        Generate .env.limits with recommended resource limits"
+	@echo "  limits        Check enabled services fit this machine, write CPU caps to .env.limits"
 	@echo "  test          Run test suite (stack must be running)"
+	@echo "  test-unit     Run LiteLLM callback unit tests against a throwaway Redis (no running stack)"
 	@echo "  logs          Follow logs"
 	@echo "  help          Show this help"
 	@echo ""

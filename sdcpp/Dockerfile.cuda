@@ -1,11 +1,11 @@
-FROM golang:1.26-bookworm AS wrapper-build
+FROM golang:1.26-bookworm@sha256:a688600ca24f8a4d3ca77f95b0dd40704a9fc787c826660eb7ba0b641b8b175d AS wrapper-build
 WORKDIR /src
 COPY wrapper/go.mod wrapper/go.sum ./
 RUN go mod download
 COPY wrapper/ ./
 RUN CGO_ENABLED=0 go build -o /sdcpp-wrapper ./cmd
 
-FROM nvidia/cuda:12.6.3-cudnn-devel-ubuntu24.04 AS sdcpp-build
+FROM nvidia/cuda:12.6.3-cudnn-devel-ubuntu24.04@sha256:50efab398f76258daa91ceebb33b6467e40217c67ea44fb5a2cebc6be7d9cce3 AS sdcpp-build
 RUN apt-get update && \
     apt-get install -y --no-install-recommends build-essential git ccache cmake && \
     rm -rf /var/lib/apt/lists/*
@@ -19,7 +19,7 @@ RUN git clone https://github.com/leejet/stable-diffusion.cpp . && \
 RUN cmake . -B ./build -DSD_CUDA=ON && \
     cmake --build ./build --config Release -j$(nproc)
 
-FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04
+FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04@sha256:8aef630a54bc5c5146ae5ce68e6af5caa3df0fb690bb91544175c91f307e4356
 RUN apt-get update && \
     apt-get install -y --no-install-recommends libgomp1 && \
     rm -rf /var/lib/apt/lists/*

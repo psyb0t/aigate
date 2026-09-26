@@ -14,6 +14,12 @@ fi
 # shellcheck disable=SC1090
 source "$ENV_FILE"
 
+# The same token fallbacks docker-compose.yml applies, so the tests send the
+# tokens the services actually run with when .env leaves them unset.
+CLAUDEBOX_API_TOKEN="${CLAUDEBOX_API_TOKEN:-${AIGATE_TOKEN:-lulz-4-security}}"
+PIBOX_ZAI_API_TOKEN="${PIBOX_ZAI_API_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-zai}}"
+STEALTHY_AUTO_BROWSE_AUTH_TOKEN="${STEALTHY_AUTO_BROWSE_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security}}"
+
 if [ -z "${LITELLM_MASTER_KEY:-}" ]; then
     echo "LITELLM_MASTER_KEY not set in .env" >&2
     exit 1

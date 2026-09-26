@@ -5,7 +5,7 @@
 # format: label|path|expected_in_body
 ROUTE_CASES=(
     "root to litellm|/health/liveliness|alive"
-    "claudebox proxy|/claudebox/health|ok"
+    "claudebox proxy|/claudebox/healthz|ok"
     "pibox-zai proxy|/pibox-zai/healthz|true"
     "stealthy-auto-browse proxy|/stealthy-auto-browse/__queue/health|ok"
     "hybrids3 proxy|/storage/health|ok"

@@ -49,25 +49,29 @@ except Exception:
 
 _vllm_test_healthz() {
     local host="$1" tag="$2"
-    local out
+    shift 2
+    local out model
     out=$(_vllm_wrap_exec "$host" "/healthz") || {
         echo "  FAIL: ${tag} /healthz unreachable"; return 1
     }
     assert_contains "$out" "\"ok\":true" "${tag} /healthz ok=true" || return 1
-    assert_contains "$out" "nomic-embed-v2" "${tag} /healthz lists nomic-embed-v2" || return 1
-    assert_contains "$out" "qwen3-0.6b" "${tag} /healthz lists qwen3-0.6b" || return 1
+    for model in "$@"; do
+        assert_contains "$out" "$model" "${tag} /healthz lists ${model}" || return 1
+    done
     echo "OK: ${tag} vllm_wrap_healthz"
 }
 
 _vllm_test_models_list() {
     local host="$1" tag="$2"
-    local out
+    shift 2
+    local out model
     out=$(_vllm_wrap_exec "$host" "/v1/models") || {
         echo "  FAIL: ${tag} /v1/models unreachable"; return 1
     }
     assert_contains "$out" "\"object\":\"list\"" "${tag} /v1/models openai shape" || return 1
-    assert_contains "$out" "nomic-embed-v2" "${tag} /v1/models has nomic-embed-v2" || return 1
-    assert_contains "$out" "qwen3-0.6b" "${tag} /v1/models has qwen3-0.6b" || return 1
+    for model in "$@"; do
+        assert_contains "$out" "$model" "${tag} /v1/models has ${model}" || return 1
+    done
     echo "OK: ${tag} vllm_wrap_models_list"
 }
 
@@ -121,7 +125,7 @@ _vllm_test_embed_live() {
     [ "$dim" -gt 0 ] || {
         echo "  FAIL: ${tag} embedding vector empty (dim=$dim)"; return 1
     }
-    echo "OK: ${tag} embed_nomic_live (dim=$dim)"
+    echo "OK: ${tag} embed_live ${alias} (dim=$dim)"
 }
 
 _vllm_test_chat_live() {
@@ -142,20 +146,24 @@ _vllm_test_chat_live() {
     echo "OK: ${tag} chat_qwen3_live (content=\"${content:0:120}\")"
 }
 
+_VLLM_CPU_MODELS=(bge-m3 nomic-embed-v1.5 qwen3-0.6b)
+_VLLM_CUDA_MODELS=(nomic-embed-v2 qwen3-0.6b)
+
 # ── CPU variant ────────────────────────────────────────────────────────────
 
-test_vllm_cpu_healthz()                       { _vllm_cpu_enabled || { echo "  SKIP: VLLM not enabled"; return 0; }; _vllm_test_healthz vllm "vllm-cpu"; }
-test_vllm_cpu_models_list()                   { _vllm_cpu_enabled || { echo "  SKIP: VLLM not enabled"; return 0; }; _vllm_test_models_list vllm "vllm-cpu"; }
+test_vllm_cpu_healthz()                       { _vllm_cpu_enabled || { echo "  SKIP: VLLM not enabled"; return 0; }; _vllm_test_healthz vllm "vllm-cpu" "${_VLLM_CPU_MODELS[@]}"; }
+test_vllm_cpu_models_list()                   { _vllm_cpu_enabled || { echo "  SKIP: VLLM not enabled"; return 0; }; _vllm_test_models_list vllm "vllm-cpu" "${_VLLM_CPU_MODELS[@]}"; }
 test_vllm_cpu_api_ps()                        { _vllm_cpu_enabled || { echo "  SKIP: VLLM not enabled"; return 0; }; _vllm_test_api_ps vllm "vllm-cpu"; }
 test_vllm_cpu_unload_all()                    { _vllm_cpu_enabled || { echo "  SKIP: VLLM not enabled"; return 0; }; _vllm_test_unload_all vllm "vllm-cpu"; }
 test_vllm_cpu_delete_unknown_returns_404()    { _vllm_cpu_enabled || { echo "  SKIP: VLLM not enabled"; return 0; }; _vllm_test_delete_unknown_returns_404 vllm "vllm-cpu"; }
-test_vllm_cpu_embed_nomic_live()              { _vllm_cpu_enabled || { echo "  SKIP: VLLM not enabled"; return 0; }; _vllm_test_embed_live local-vllm-nomic-embed-v2 "vllm-cpu"; }
+test_vllm_cpu_embed_bge_m3_live()             { _vllm_cpu_enabled || { echo "  SKIP: VLLM not enabled"; return 0; }; _vllm_test_embed_live local-vllm-bge-m3 "vllm-cpu"; }
+test_vllm_cpu_embed_nomic_v15_live()          { _vllm_cpu_enabled || { echo "  SKIP: VLLM not enabled"; return 0; }; _vllm_test_embed_live local-vllm-nomic-embed-v1.5 "vllm-cpu"; }
 test_vllm_cpu_chat_qwen3_live()               { _vllm_cpu_enabled || { echo "  SKIP: VLLM not enabled"; return 0; }; _vllm_test_chat_live  local-vllm-qwen3-0.6b "vllm-cpu"; }
 
 # ── CUDA variant ───────────────────────────────────────────────────────────
 
-test_vllm_cuda_healthz()                      { _vllm_cuda_enabled || { echo "  SKIP: VLLM_CUDA not enabled"; return 0; }; _vllm_test_healthz vllm-cuda "vllm-cuda"; }
-test_vllm_cuda_models_list()                  { _vllm_cuda_enabled || { echo "  SKIP: VLLM_CUDA not enabled"; return 0; }; _vllm_test_models_list vllm-cuda "vllm-cuda"; }
+test_vllm_cuda_healthz()                      { _vllm_cuda_enabled || { echo "  SKIP: VLLM_CUDA not enabled"; return 0; }; _vllm_test_healthz vllm-cuda "vllm-cuda" "${_VLLM_CUDA_MODELS[@]}"; }
+test_vllm_cuda_models_list()                  { _vllm_cuda_enabled || { echo "  SKIP: VLLM_CUDA not enabled"; return 0; }; _vllm_test_models_list vllm-cuda "vllm-cuda" "${_VLLM_CUDA_MODELS[@]}"; }
 test_vllm_cuda_api_ps()                       { _vllm_cuda_enabled || { echo "  SKIP: VLLM_CUDA not enabled"; return 0; }; _vllm_test_api_ps vllm-cuda "vllm-cuda"; }
 test_vllm_cuda_unload_all()                   { _vllm_cuda_enabled || { echo "  SKIP: VLLM_CUDA not enabled"; return 0; }; _vllm_test_unload_all vllm-cuda "vllm-cuda"; }
 test_vllm_cuda_delete_unknown_returns_404()   { _vllm_cuda_enabled || { echo "  SKIP: VLLM_CUDA not enabled"; return 0; }; _vllm_test_delete_unknown_returns_404 vllm-cuda "vllm-cuda"; }
@@ -168,7 +176,8 @@ ALL_TESTS+=(
     test_vllm_cpu_api_ps
     test_vllm_cpu_unload_all
     test_vllm_cpu_delete_unknown_returns_404
-    test_vllm_cpu_embed_nomic_live
+    test_vllm_cpu_embed_bge_m3_live
+    test_vllm_cpu_embed_nomic_v15_live
     test_vllm_cpu_chat_qwen3_live
     test_vllm_cuda_healthz
     test_vllm_cuda_models_list

@@ -25,27 +25,33 @@ Every local service unloads models after a period of inactivity:
 
 Models load automatically when a request arrives. Send a chat completion to `local-ollama-cuda-qwen3-8b` and Ollama pulls/loads it. Send an image generation to `local-sdcpp-cuda-flux-schnell` and the sd.cpp wrapper spawns sd-server with that model. No pre-loading required.
 
-### Hardware semaphores
+### Hardware locks
 
-A LiteLLM callback (`resource_manager.py`) enforces mutual exclusion per hardware class:
+A LiteLLM callback (`resource_manager.py`) allows one job at a time per hardware class:
 
-- **CUDA semaphore** — one CUDA job at a time across all groups: LLM (`cuda-llm`), image gen (`cuda-img`), TTS (`cuda-tts`), STT (`cuda-stt`)
-- **CPU semaphore** — one CPU job at a time across: LLM (`cpu-llm`), image gen (`cpu-img`), TTS (`cpu-tts`), STT (`cpu-stt`)
+- **CUDA lock:** one CUDA job at a time across every CUDA group (Ollama, sd.cpp, talkies, vLLM, llama.cpp, and the predictalot and decidealot MCP tools).
+- **CPU lock:** the same for the CPU groups.
+
+The locks live in Redis (`hardware_lock.py`), so they hold across all of LiteLLM's worker processes (`LITELLM_WORKERS`, 4 by default). Before v6.0.0 each worker had its own in-memory lock, so up to four jobs could run on the GPU at once.
 
 When a request arrives for a local model:
 
 1. The resource manager identifies which group it belongs to (e.g. `local-sdcpp-cuda-flux-schnell` → `cuda-img`)
-2. It acquires the hardware semaphore (waits if another job is running)
-3. It unloads all competing groups on the same hardware (e.g. unloads `cuda-llm`, `cuda-tts`, `cuda-stt`)
-4. **For sd.cpp (`cuda-img` / `cpu-img`) only:** it explicitly POSTs `/sdcpp/v1/load?model=<key>` and blocks until the backend has the requested model loaded — see "sd.cpp pre-load" below for why.
+2. It takes the hardware lock and waits while another job holds it
+3. It unloads all competing groups on the same hardware (e.g. unloads `cuda-llm`, `cuda-stt-talkies`, `cuda-vllm`)
+4. **For sd.cpp (`cuda-img` / `cpu-img`) only:** it explicitly POSTs `/sdcpp/v1/load?model=<key>` and blocks until the backend has the requested model loaded. See "sd.cpp pre-load" below for why.
 5. The request proceeds
-6. On completion (success or failure), the semaphore is released
+6. On completion (success or failure), the lock is released
+
+The holder refreshes the lock while the job runs. A worker that crashes stops refreshing, and its lock expires after `RESOURCE_LOCK_TTL_SECONDS` (60 by default), so other requests go ahead. A lock whose release was missed stops being refreshed after `RESOURCE_LOCK_MAX_HOLD_SECONDS` (86400 by default, the same as the inference timeout). If Redis is down, requests for local models fail instead of running unlocked.
+
+LiteLLM connects to Redis as the `litellm` ACL user, which can only touch the lock keys (`aigate:hwlock:*`) and its response cache keys (`aigate:cache:*`). Its password is `LITELLM_REDIS_PASSWORD`, falling back to `REDIS_PASSWORD`. proxq connects as the `proxq` user with `REDIS_PASSWORD`, limited to its queue and cache keys. The `default` user is disabled.
 
 ### sd.cpp pre-load (image generation only)
 
 sd.cpp's image handler uses `TryLockModel` — if the requested model isn't already loaded, the FIRST call triggers a ~5-20 s load (depending on model size) while holding the lock. Any concurrent call inside that window returns 503 `another load or generation in progress`. LiteLLM's image-gen path reacts to a 503 by retrying (`num_retries: 3`) and walking the fallback chain. Every retry hits the same lock, every retry 503s, and the entire fallback chain ends with LiteLLM returning HTTP 200 with an EMPTY `data` array (a router-side bug where image-gen fallback exhaustion masquerades as success).
 
-The resource manager fixes this by issuing the explicit `POST /sdcpp/v1/load?model=<key>` blocking call inside the pre-call hook — while the cuda-img / cpu-img semaphore is still held. By the time LiteLLM dispatches the actual `POST /v1/images/generations`, the backend is fully warm and the call succeeds on attempt 1. No 503 storm, no fallback amplification, no empty-data response.
+The resource manager fixes this by issuing the explicit `POST /sdcpp/v1/load?model=<key>` blocking call inside the pre-call hook, while the hardware lock is still held. By the time LiteLLM dispatches the actual `POST /v1/images/generations`, the backend is fully warm and the call succeeds on attempt 1. No 503 storm, no fallback amplification, no empty-data response.
 
 The pre-load is a no-op (~ms) when the model is already loaded. A failed pre-load (model missing, weights corrupt, GPU OOM) is LOGGED rather than raised — LiteLLM then dispatches the call normally and the caller sees the real backend error rather than an indefinitely-blocked request.
 
@@ -69,7 +75,9 @@ Audiolla, flickies, predictalot, and decidealot expose their own HTTP APIs throu
 
 predictalot and decidealot answer `409` to an unload while they are serving a request. The resource manager logs that as a skipped unload and continues, and the busy service frees its model on its own idle timer. Each unload call carries that service's own token (`PREDICTALOT_AUTH_TOKEN`, `DECIDEALOT_AUTH_TOKEN`), which LiteLLM gets with the same `AIGATE_TOKEN` fallback the services use.
 
-The coupling runs one way. A request sent straight to one of these four services does not pass through LiteLLM, so it does not evict LiteLLM-routed models or take the hardware semaphore. On a small GPU, a cold start on one of them can still run out of memory next to a loaded Ollama or talkies model.
+predictalot and decidealot tool calls made through LiteLLM's aggregated MCP server (`/mcp`) also run under the hardware lock. An inference tool (anything except `list_*`, `get_*`, and `unload_models`) takes the lock and evicts the competing groups first, the same as a LiteLLM-routed model. The CUDA variants (`predictalot_cuda`, `decidealot_cuda`) take the CUDA lock and the CPU variants take the CPU lock.
+
+Requests sent straight to audiolla, flickies, predictalot, or decidealot through their own nginx routes (`/decidealot-cuda/`, `/predictalot-cuda/`, and so on) still bypass LiteLLM. They do not evict LiteLLM-routed models or take the hardware lock. On a small GPU, a cold start on one of them can still run out of memory next to a loaded Ollama or talkies model.
 
 ### Operator-facing unload endpoints
 
@@ -98,4 +106,4 @@ Per-service errors do not fail the whole call (`status: "error"` on the offendin
 
 ### Non-blocking rejection
 
-The sd.cpp wrapper uses `TryLock` — if a generation or model swap is in progress, new requests get 503 immediately instead of queuing. Scheduling happens at the LiteLLM layer via the semaphore, not inside individual services.
+The sd.cpp wrapper uses `TryLock`. If a generation or model swap is in progress, new requests get 503 immediately instead of queuing. Scheduling happens at the LiteLLM layer via the hardware lock, not inside individual services.

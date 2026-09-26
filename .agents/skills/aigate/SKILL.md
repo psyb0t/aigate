@@ -65,7 +65,7 @@ make bootstrap # creates .env from .env.example (any target does this)
 # edit .env: set AIGATE_TOKEN, flip the flags for the providers/services you want to 1
 # .env is gitignored. docker-compose.yml is tracked, so put compose changes in
 # docker-compose.override.yml, which is gitignored and merges last
-make limits    # writes .env.limits sized to this machine's RAM/CPU
+make limits    # checks enabled services fit this machine, writes CPU caps to .env.limits
 make run-bg    # start the stack in the background
 ```
 

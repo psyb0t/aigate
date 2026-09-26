@@ -1,7 +1,16 @@
 # Build stage: pull official litellm image
 # v1.83.14-stable.patch.2 — patched for CVE-2026-42208 (pre-auth SQLi, fixed in v1.83.7+)
 # and post-supply-chain-incident (clean v1.83.x line, new CI/CD v2 pipeline). Cosign-signed.
-FROM ghcr.io/berriai/litellm:v1.83.14-stable.patch.2 AS base
+FROM ghcr.io/berriai/litellm:v1.83.14-stable.patch.2@sha256:73cbb215d3d43ae5b42816217b200386eb08d567767fcb36cba163152c5f3c79 AS base
+
+# ── Extra Python packages ────────────────────────────────────────────────────
+# The upstream image has no pip or uv. uv is copied in for this one install
+# and removed afterwards. Both pins are older than the seven-day age gate.
+COPY --from=ghcr.io/astral-sh/uv:0.12.17@sha256:10787c682e4184e4f290de1171fd4703dc63de99221f10fe1c99002ce7fa9acc /uv /tmp/uv
+COPY requirements-extra.txt /tmp/requirements-extra.txt
+RUN /tmp/uv pip install --python /app/.venv/bin/python --no-cache --require-hashes \
+        -r /tmp/requirements-extra.txt \
+    && rm /tmp/uv /tmp/requirements-extra.txt
 
 # ── Custom callbacks ─────────────────────────────────────────────────────────
 COPY callbacks/ /app/callbacks/

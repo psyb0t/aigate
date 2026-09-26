@@ -130,7 +130,7 @@ SEC_CLAUDEBOX_REJECT_CASES=(
 )
 
 SEC_CLAUDEBOX_ALLOW_CASES=(
-    "health no auth|none|/claudebox/health|200"
+    "health no auth|none|/claudebox/healthz|200"
     "health zai no auth|none|/pibox-zai/healthz|200"
 )
 
@@ -377,7 +377,7 @@ test_sec_browser_redis_auth() {
 test_sec_health_no_leak() {
     local endpoints=(
         "/health/liveliness"
-        "/claudebox/health"
+        "/claudebox/healthz"
         "/pibox-zai/healthz"
         "/storage/health"
         "/stealthy-auto-browse/__queue/health"
@@ -504,7 +504,7 @@ test_sec_model_name_injection() {
 SEC_METHOD_ABUSE_CASES=(
     "DELETE health|DELETE|/health/liveliness"
     "PUT health|PUT|/health/liveliness"
-    "DELETE claudebox health|DELETE|/claudebox/health"
+    "DELETE claudebox health|DELETE|/claudebox/healthz"
     "PUT models|PUT|/models"
     "DELETE models|DELETE|/models"
 )

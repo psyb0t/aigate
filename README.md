@@ -152,7 +152,7 @@ Default writable locations:
 | **LiteLLM**                                                                                                    | OpenAI-compatible API proxy. Latency-based routing, Redis response caching (10-minute TTL), automatic retries, per-model fallback chains, and client-side JSON schema validation. Manages API keys and usage via PostgreSQL.                                                                                                                                                  |
 | **[proxq](https://github.com/psyb0t/docker-proxq)**                                                            | Async HTTP job queue proxy. Sits in front of LiteLLM at `/q/` — queues inference requests in Redis, returns a job ID instantly, forwards to upstream in the background. Poll `/__jobs/{id}` for status, `/__jobs/{id}/content` for the raw response. Only OpenAI API paths are queued (chat/completions, embeddings, audio, images); everything else passes through directly. |
 | **PostgreSQL**                                                                                                 | Key management, budget tracking, usage analytics for LiteLLM.                                                                                                                                                                                                                                                                                                                 |
-| **Redis**                                                                                                      | LiteLLM response cache and rate limiting. Also used by proxq (DB 1) for job queue storage.                                                                                                                                                                                                                                                                                    |
+| **Redis**                                                                                                      | LiteLLM response cache (10-minute TTL) and the resource manager's hardware locks. Also holds proxq's job queue (DB 1). LiteLLM and proxq each connect as their own ACL user, limited to their own keys. The `default` user is disabled.                                                                                                                                      |
 | **[claudebox](https://github.com/psyb0t/docker-claudebox)** _(optional, `CLAUDEBOX=1`)_ | Claude Code CLI in API mode. Full agentic loop — shell access, file I/O, tool use, persistent workspaces. Uses your OAuth token (Pro/Max/Team subscription) or Anthropic API key. Exposes REST API, OpenAI-compatible endpoint, and MCP server.                                                                                                 |
 | **[pibox-zai](https://github.com/psyb0t/docker-pibox)** _(optional, `PIBOX_ZAI=1`)_ | [pi-coding-agent](https://github.com/earendil-works/pi-mono) in API mode at `/pibox-zai/`, pointed at z.ai for GLM models on a [GLM Coding Plan](https://z.ai/subscribe). Same agentic capabilities (shell, files, tools) as claudebox. REST API, OpenAI-compatible endpoint, `/files/*` CRUD, MCP server. The `-zai` suffix names the upstream. |
 | **[pibox](https://github.com/psyb0t/docker-pibox)** _(optional, `PIBOX=1`)_ | The same agent at `/pibox/`, pointed back at this stack's own LiteLLM, so any model in `/v1/models` becomes an agent backend. A local Ollama or vLLM model, or a free cloud model, drives the loop with no extra provider account. Set `PIBOX_MODELS` to models you have enabled that can call tools; the loop is tool driven, and a model that cannot call tools stalls on the first turn. Do not list `claudebox-*` or `pibox-*`, those route back into an agent and recurse. |
@@ -335,7 +335,8 @@ Supervised single-model wrapper around `vllm serve` (CPU). Only one model reside
 
 | Model name                          | Description                                                       |
 | ----------------------------------- | ----------------------------------------------------------------- |
-| `local-vllm-nomic-embed-v2`         | Nomic Embed v2 (MoE, 305M active) — embeddings, 8192 ctx          |
+| `local-vllm-bge-m3`                 | BGE-M3, multilingual embeddings, 8192-token context               |
+| `local-vllm-nomic-embed-v1.5`       | Nomic Embed v1.5, English embeddings, 2048-token context          |
 | `local-vllm-qwen3-0.6b`             | Qwen 3 0.6B — chat / completions, 8192 ctx                        |
 
 ### Local text LLM + embeddings (vllm-cuda — `VLLM_CUDA=1`)
@@ -344,7 +345,7 @@ Supervised single-model wrapper around `vllm serve` (NVIDIA). Only one model res
 
 | Model name                              | Description                                                                |
 | --------------------------------------- | -------------------------------------------------------------------------- |
-| `local-vllm-cuda-nomic-embed-v2`        | Nomic Embed v2 (MoE, 305M active) — embeddings, 8192 ctx                  |
+| `local-vllm-cuda-nomic-embed-v2`        | Nomic Embed v2 (MoE, 305M active), embeddings, 512 ctx                    |
 | `local-vllm-cuda-qwen3-0.6b`            | Qwen 3 0.6B — chat / completions, 16384 ctx                                |
 
 → [Full provider and model list](docs/providers.md)
@@ -355,17 +356,17 @@ Local services share limited hardware — a single GPU can't run an LLM, an imag
 
 **Automatic unloading** — every local service unloads idle models after a configurable timeout. Ollama unloads after 5 minutes by default. sd.cpp unloads after 5 minutes (`SDCPP_IDLE_TIMEOUT` / `SDCPP_CUDA_IDLE_TIMEOUT`). Talkies unloads ASR models after `TALKIES_MODEL_TTL` (default 10 min) and Qwen3-TTS unloads on demand. predictalot lazy-loads each forecaster on first call and unloads after `PREDICTALOT_MODEL_IDLE_TIMEOUT` (default `30m`) — only the models you've actually asked for occupy memory. decidealot keeps one model resident, swaps Laya and Von on demand, and releases it after `DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS` (default 600). This means VRAM and RAM are only held while a model is actively serving or within its idle window.
 
-**Hardware semaphores** — a LiteLLM callback (`resource_manager.py`) enforces mutual exclusion per hardware. An `asyncio.Semaphore(1)` ensures only one CUDA job runs at a time across all groups (LLM, image gen, TTS, STT). The same applies on CPU. If a CUDA image generation request arrives while a CUDA LLM model is loaded, the request waits for the semaphore, then the resource manager unloads the LLM before the image generation proceeds. This prevents GPU OOM without any manual intervention.
+**Hardware locks**: a LiteLLM callback (`resource_manager.py`) runs one CUDA job at a time across all groups (LLM, image gen, TTS, STT, and predictalot and decidealot MCP tool calls), and the same on CPU. The lock lives in Redis, so it holds across every LiteLLM worker process. If a CUDA image generation request arrives while a CUDA LLM model is loaded, the request waits for the lock, then the resource manager unloads the LLM before the image generation proceeds. A crashed worker's lock expires after `RESOURCE_LOCK_TTL_SECONDS`. If Redis is down, local-model requests fail instead of running unlocked.
 
-**Competing-group unload** — before each local request, all other groups on the same hardware are told to free resources. For example, a `local-sdcpp-cuda-flux-schnell` request will unload ollama-cuda models, every loaded talkies-cuda model, every loaded audiolla-cuda engine, every loaded flickies-cuda engine, and the resident predictalot-cuda and decidealot-cuda models before starting. Each service has its own unload mechanism: Ollama uses `keep_alive: 0`, sd.cpp uses `/sdcpp/v1/unload`, talkies / vllm-cuda / llamacpp-cuda use `DELETE /api/ps/{model}`, audiolla uses `POST /v1/unload` (bulk), flickies uses `DELETE /v1/engines/{slug}` per loaded engine, predictalot and decidealot use `POST /v1/models/unload` (skipped with a log line while they are mid-request). Audiolla, flickies, predictalot, and decidealot are not LiteLLM-routed (they expose their own HTTP APIs) but still participate as competing groups so a LatentSync or Demucs session hoarding 7+ GiB VRAM cannot OOM-kill the next LiteLLM-routed call. The reverse does not hold: a request sent straight to one of them does not evict LiteLLM-routed models.
+**Competing-group unload**: before each local request, all other groups on the same hardware are told to free resources. For example, a `local-sdcpp-cuda-flux-schnell` request will unload ollama-cuda models, every loaded talkies-cuda model, every loaded audiolla-cuda engine, every loaded flickies-cuda engine, and the resident predictalot-cuda and decidealot-cuda models before starting. Each service has its own unload mechanism: Ollama uses `keep_alive: 0`, sd.cpp uses `/sdcpp/v1/unload`, talkies / vllm-cuda / llamacpp-cuda use `DELETE /api/ps/{model}`, audiolla uses `POST /v1/unload` (bulk), flickies uses `DELETE /v1/engines/{slug}` per loaded engine, predictalot and decidealot use `POST /v1/models/unload` (skipped with a log line while they are mid-request). Audiolla, flickies, predictalot, and decidealot are not LiteLLM-routed (they expose their own HTTP APIs) but still participate as competing groups so a LatentSync or Demucs session hoarding 7+ GiB VRAM cannot OOM-kill the next LiteLLM-routed call. predictalot and decidealot MCP inference tools called through LiteLLM's `/mcp` take the lock and evict the other groups first. A request sent straight to one of these four services through its own nginx route still does not evict LiteLLM-routed models.
 
 **Operator-facing unload** — `POST /v1/unload/cuda` and `POST /v1/unload/cpu` (and `POST /v1/unload` for both classes) fan out the eviction across every service on the given hardware class, predictalot and decidealot included, for manual VRAM cleanup outside the LiteLLM path. Same bearer as the rest of aigate. See `docs/resource-management.md` for response shape.
 
-**sd.cpp pre-load (image generation only)** — sd.cpp returns 503 `another load or generation in progress` while a model is mid-load (~5-20s for typical SDXL weights). LiteLLM's image-gen path retries internally + walks the fallback chain on 5xx, every retry hits the same lock, every retry 503s, and the whole chain ends with HTTP 200 + EMPTY `data` (router-side bug — image-gen fallback exhaustion masquerades as success). The resource manager pre-empts this by issuing an explicit `POST /sdcpp/v1/load?model=<key>` while it still holds the cuda-img / cpu-img semaphore — blocking until the backend is fully warm. By the time LiteLLM dispatches the actual `/v1/images/generations` call, attempt 1 succeeds. No 503 storm, no fallback amplification, no empty-data response. No-op when the model is already loaded.
+**sd.cpp pre-load (image generation only).** sd.cpp returns 503 `another load or generation in progress` while a model is mid-load (~5-20s for typical SDXL weights). LiteLLM's image-gen path retries internally + walks the fallback chain on 5xx, every retry hits the same lock, every retry 503s, and the whole chain ends with HTTP 200 + EMPTY `data` (a router-side bug: image-gen fallback exhaustion looks like success). The resource manager pre-empts this by issuing an explicit `POST /sdcpp/v1/load?model=<key>` while it still holds the CUDA or CPU hardware lock, blocking until the backend is fully warm. By the time LiteLLM dispatches the actual `/v1/images/generations` call, attempt 1 succeeds. No 503 storm, no fallback amplification, no empty-data response. No-op when the model is already loaded.
 
 **Auto-load on demand** — models load automatically when needed. Send a request to any model and its service loads it on the fly. No pre-loading, no manual model management. The sd.cpp wrapper accepts `/v1/images/generations` requests even when no model is loaded — it starts the sd-server subprocess with the right model automatically.
 
-**Non-blocking rejection** — the sd.cpp wrapper uses `TryLock` instead of blocking. If a generation or model swap is already in progress, new requests get an immediate 503 instead of queuing indefinitely. The resource manager semaphore handles scheduling at a higher level — requests wait at the LiteLLM layer, not inside individual services.
+**Non-blocking rejection.** The sd.cpp wrapper uses `TryLock` instead of blocking. If a generation or model swap is already in progress, new requests get an immediate 503 instead of queuing indefinitely. The resource manager's hardware lock handles scheduling at a higher level. Requests wait at the LiteLLM layer, not inside individual services.
 
 The net effect: you can freely mix LLM chat, image generation, TTS, and STT requests across local services. The platform queues, unloads, loads, and routes automatically. The only constraint is throughput — one local job per hardware at a time.
 
@@ -386,7 +387,7 @@ make bootstrap
 
 This creates `.env` from `.env.example`. Any `make` target does it for you, so you can skip straight to `make run` if you prefer. `.env` is gitignored, so your keys and flags survive every update.
 
-Reach for `.env` first for anything you want to change. Profile flags, API keys, data directories, rate limits, and timeouts are all env vars already, and per-service memory/CPU limits live in `.env.limits` (see `make limits` below), so most changes need no compose edit at all.
+Reach for `.env` first for anything you want to change. Profile flags, API keys, data directories, rate limits, and timeouts are all env vars already, and every service's memory/CPU limit is an env var with a fixed default (see `make limits` below), so most changes need no compose edit at all.
 
 For the rest, **do not edit `docker-compose.yml`**. It is tracked and moves with the repository, because its 46 service definitions, nginx routes, and rate-limit zones have to stay in step with the provider configs, the Makefile profiles, and the LiteLLM config builder. An update overwrites your changes there, and a stale copy silently breaks new services.
 
@@ -452,22 +453,14 @@ If `CLOUDFLARED_CONFIG` or `CLOUDFLARED_CREDS` are set, `make run`/`make run-bg`
 make limits
 ```
 
-Reads your system's RAM, swap, and CPU core count and writes a `.env.limits` file with recommended `mem_limit`, `memswap_limit`, and `cpus` for every service. The Makefile picks this up automatically — no other steps needed.
+Every service has a fixed memory and CPU limit: the default in `docker-compose.yml` (for example `TALKIES_CUDA_MEM_LIMIT` defaults to `10g`). A model needs the same RAM on any host, so limits never scale with the machine. Override one by setting the variable in `.env`, such as `TALKIES_CUDA_MEM_LIMIT=16g`.
 
-Allocations are **proportional to your enabled services** — enabling more services means each gets a smaller slice. The script reads your `.env` flags (`CUDA`, `TALKIES`, `OLLAMA`, `BROWSER`, etc.) and only counts active services toward the RAM budget. Re-run it any time you enable or disable a service, move to a different server, or change your hardware.
+`make limits` checks the enabled services against this machine:
 
-CUDA services (`ollama-cuda`, `talkies-cuda`, `sdcpp-cuda`) are [resource-manager-aware](#resource-management) — only one has models loaded at a time, so the budget counts the largest plus small idle overhead for the others.
+- It prints each enabled service with its limit and totals the worst-case RAM. The LiteLLM [resource manager](#resource-management) runs one job per hardware class, so the CPU group (`ollama`, `talkies`, `sdcpp`, `vllm`, `llamacpp`, `audiolla`, `flickies`, `predictalot`, `decidealot`) counts at its largest member, and the CUDA group likewise. It warns when the total does not fit in RAM minus an OS reserve (2 GB or 5%, whichever is larger). It never shrinks a limit to fit, because a limit below a model's load size gets the container OOM-killed.
+- It writes `.env.limits` with CPU caps only, for services whose default `cpus` exceeds the host core count. Docker refuses a `cpus` value above the core count.
 
-Set `MAXUSE` to cap the entire stack to a percentage of your machine's resources — useful when you're sharing the server with other workloads:
-
-```bash
-make limits            # use 100% of system resources (default)
-MAXUSE=80 make limits  # cap the whole stack at 80% of RAM, swap, and CPU
-```
-
-Swap allocation is proportional: each service gets a swap budget matching its share of total RAM. If your server has abundant swap (e.g. 1TB on 16GB RAM), services can use up to 10× their RAM limit in swap — they'll crawl, but they won't get OOM-killed. Minimum is always 2×.
-
-The `.env.limits` file is gitignored. Each server maintains its own.
+Re-run it after enabling or disabling a service or moving to a different machine. `.env.limits` is gitignored. Each server maintains its own.
 
 ### 4. Start
 
@@ -689,8 +682,7 @@ make down          # stop everything
 make restart       # full restart
 make logs          # follow logs
 make build-config  # regenerate litellm/config.yaml from fragments (runs automatically on make run)
-make limits              # generate .env.limits with recommended resource limits for this machine
-MAXUSE=80 make limits    # same but cap the stack at 80% of total RAM/swap/CPU
+make limits              # check enabled services against this machine's RAM and cores, write CPU caps to .env.limits
 make test          # run test suite (stack must be running)
 ```
 
@@ -716,7 +708,7 @@ docker compose logs litellm -f      # follow one service
 docker compose logs --since 5m      # last 5 minutes
 ```
 
-LiteLLM logs every request with the model name, provider, latency, and token usage. When a fallback triggers, you'll see the failed provider and which one took over. The resource manager logs every semaphore acquire/release and every competing-group unload — search for `[resource_manager]` in the logs.
+LiteLLM logs every request with the model name, provider, latency, and token usage. When a fallback triggers, you'll see the failed provider and which one took over. The resource manager logs every hardware lock acquire/release and every competing-group unload. Search for `[resource_manager]` in the logs.
 
 Per-service debug options:
 
@@ -733,7 +725,7 @@ Ollama and talkies log to stdout by default — visible in `docker compose logs`
 
 ## Troubleshooting
 
-**GPU out of memory** — the resource manager should prevent this, but if it happens: check `docker compose logs litellm | grep resource_manager` to verify the semaphore is working. Make sure you're not bypassing LiteLLM by hitting services directly. Run `make limits` to regenerate memory limits.
+**GPU out of memory.** The resource manager should prevent this. If it happens, check `docker compose logs litellm | grep resource_manager` to verify the hardware lock is working. Make sure you're not bypassing LiteLLM by hitting services directly. Run `make limits` to regenerate memory limits.
 
 **Model download stuck** — Ollama pulls models in the background on first start. Large models (8B+) can take a while. Check progress with `docker compose logs ollama -f`. sd.cpp models download via `sdcpp-pull` — check `docker compose logs sdcpp-pull -f`. If a download fails, delete the partial file from `.data/` and restart.
 

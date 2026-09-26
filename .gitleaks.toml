@@ -39,3 +39,13 @@ paths = [
   '''(^|/)\.pytest_cache(?:/|$)''',
   '''(^|/)\.ruff_cache(?:/|$)''',
 ]
+
+[[allowlists]]
+description = "Deliberately invalid bearer tokens sent by negative auth tests"
+condition = "AND"
+paths = [
+  '''(^|/)tests/''',
+]
+regexes = [
+  '''^(wrong-key|totally-fake-garbage-token|fake-ssrf-attempt|fake-hijack-attempt)$''',
+]

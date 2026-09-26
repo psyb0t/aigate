@@ -70,6 +70,22 @@ _llamacpp_pdf_page1_png() {
 #   $2 image_url  — full data:image/...;base64,... string
 #   $3 timeout_s  — curl --max-time
 #   $4 task       — "block" or "page" (chooses the prompt)
+
+# CPU Surya generates around 1 token/s on a loaded host and the wrapper ends a
+# request after LLAMACPP_WRAP_REQUEST_TIMEOUT (300 s by default), so CPU runs
+# get a budget that covers the text the tests assert on and still finishes.
+readonly LLAMACPP_CPU_OCR_MAX_TOKENS=160
+
+# $1 model_id, $2 token budget for GPU models. Echoes the budget to request.
+_llamacpp_max_tokens() {
+    local model="$1" gpu_budget="$2"
+    if [[ "$model" == *-cuda-* ]]; then
+        echo "$gpu_budget"
+        return 0
+    fi
+    echo "$LLAMACPP_CPU_OCR_MAX_TOKENS"
+}
+
 _llamacpp_ocr_call() {
     local model="$1" image_url="$2" timeout="$3" task="$4"
     local prompt
@@ -85,7 +101,7 @@ _llamacpp_ocr_call() {
 import json, sys
 print(json.dumps({
     'model': sys.argv[1],
-    'max_tokens': 1024,
+    'max_tokens': int(sys.argv[4]),
     'temperature': 0.0,
     'messages': [
         {
@@ -97,7 +113,7 @@ print(json.dumps({
         },
     ],
 }))
-" "$model" "$image_url" "$prompt")
+" "$model" "$image_url" "$prompt" "$(_llamacpp_max_tokens "$model" 1024)")
     curl -s -m "$timeout" -X POST "$BASE_URL/v1/chat/completions" \
         -H "$AUTH_HEADER" \
         -H "Content-Type: application/json" \
@@ -220,95 +236,30 @@ test_llamacpp_cuda_pdf_ocr() {
     _llamacpp_test_pdf_ocr "local-llamacpp-cuda-surya-ocr-2" "llamacpp-cuda"
 }
 
-# ── image_url fetch via hybrids3 presigned URL ─────────────────────────────
+# ── image_url fetch ────────────────────────────────────────────────────────
 #
 # llama-server's mtmd vision pipeline only accepts data: URLs natively. The
-# wrapper rewrites http(s):// URLs to data: URLs before forwarding, so the
-# OpenAI wire spec stays honoured. These tests verify that path:
-#
-#   1. Upload captcha.png / doc.pdf-page-1 to hybrids3 (public uploads/
-#      bucket via PUT + bearer auth).
-#   2. POST to hybrids3's presign endpoint to get a URL string (the URL
-#      shape is the same whether the bucket needs signing or not; for the
-#      public uploads/ bucket the returned URL is unsigned but the test
-#      still flows through the entire upload → presign → consume → cleanup
-#      lifecycle so any regression in any step gets caught).
-#   3. Rewrite the presigned URL's host from `localhost:4000` (the value
-#      hybrids3 returns based on its external BASE_URL config) to
-#      `nginx:4000` — the in-network alias that the llamacpp container can
-#      actually reach via the aigate-internal network. This mirrors how
-#      any other in-container caller would have to translate
-#      operator-facing hostnames to in-network hostnames.
-#   4. Send a chat completion with image_url=<rewritten URL>. The wrapper
-#      fetches it, base64-encodes the body, rewrites the message in place,
-#      and forwards to llama-server.
-#   5. DELETE the uploaded blob so the bucket doesn't accumulate test debris.
+# wrapper fetches http(s):// URLs and rewrites them to data: URLs before
+# forwarding. Its SSRF guard refuses any URL whose host resolves to a
+# private, loopback, link-local, or reserved address. In aigate the llamacpp
+# containers sit on the internal network with no internet egress, so public
+# URLs cannot be fetched either and callers send data: URLs (covered by the
+# PDF and captcha data-URL tests). This test checks that an in-network URL is
+# refused with 400 instead of being fetched.
 
-_llamacpp_hybrids3_upload() {
-    # $1 local file, $2 content-type, $3 desired key
-    local file="$1" ct="$2" key="$3"
-    local code
-    code=$(curl -s -o /dev/null -w "%{http_code}" -X PUT \
-        "$BASE_URL/storage/uploads/$key" \
-        -H "Authorization: Bearer ${HYBRIDS3_UPLOADS_KEY}" \
-        -H "Content-Type: $ct" \
-        --data-binary "@$file")
-    [ "$code" = "200" ] || {
-        echo "  FAIL: hybrids3 upload $key HTTP $code"
-        return 1
-    }
-}
-
-_llamacpp_hybrids3_presign() {
-    # $1 key. Echoes the URL after rewriting host so it's reachable from
-    # inside the aigate-internal network.
-    local key="$1"
-    local raw url
-    raw=$(curl -sf -X POST \
-        "$BASE_URL/storage/presign/uploads/$key" \
-        -H "Authorization: Bearer ${HYBRIDS3_UPLOADS_KEY}")
-    url=$(echo "$raw" | python3 -c "import sys,json; print(json.load(sys.stdin).get('url',''))" 2>/dev/null)
-    # hybrids3 echoes operator-facing URLs (localhost:4000). The llamacpp
-    # container fetches over the docker network where `nginx` is the only
-    # name that resolves. Substitute the host portion in place; query
-    # string (if any) survives intact.
-    echo "${url/http:\/\/localhost:4000/http:\/\/nginx:4000}"
-}
-
-_llamacpp_hybrids3_delete() {
-    curl -s -o /dev/null -X DELETE \
-        "$BASE_URL/storage/uploads/$1" \
-        -H "Authorization: Bearer ${HYBRIDS3_UPLOADS_KEY}" \
-        >/dev/null 2>&1
-}
+# Resolves to a private address on the aigate-internal network.
+readonly LLAMACPP_PRIVATE_IMAGE_URL="http://nginx:4000/health/liveliness"
+readonly LLAMACPP_SSRF_REFUSAL="refusing to fetch URL"
 
 _llamacpp_test_url_captcha() {
     local model="$1" tag="$2"
-    local fixture="$WORKDIR/tests/.fixtures/captcha.png"
-    [ -f "$fixture" ] || { echo "  SKIP: missing $fixture"; return 0; }
-    if [ -z "${HYBRIDS3_UPLOADS_KEY:-}" ]; then
-        echo "  SKIP: HYBRIDS3_UPLOADS_KEY not set in .env"; return 0
-    fi
-    local key="llamacpp-test-captcha-$$-$(date +%s).png"
-    _llamacpp_hybrids3_upload "$fixture" "image/png" "$key" || return 1
-    local url; url=$(_llamacpp_hybrids3_presign "$key")
-    [ -n "$url" ] || { _llamacpp_hybrids3_delete "$key"; echo "  FAIL: empty presigned URL"; return 1; }
+    local raw code
 
-    local raw code content
-    raw=$(_llamacpp_ocr_call "$model" "$url" 600 "block")
-    _llamacpp_hybrids3_delete "$key"
+    raw=$(_llamacpp_ocr_call "$model" "$LLAMACPP_PRIVATE_IMAGE_URL" 120 "block")
     code=$(echo "$raw" | sed -n 's/^HTTP_CODE://p' | tail -1)
-    if [ "$code" != "200" ]; then
-        echo "  FAIL: ${tag} url captcha OCR HTTP $code"
-        echo "  body: $(echo "$raw" | sed '/^HTTP_CODE:/d' | head -c 400)"
-        return 1
-    fi
-    content=$(_llamacpp_extract_content "$raw")
-    assert_contains "$content" "AIGATE2026" "${tag} url-fetched captcha contains 'AIGATE2026'" || {
-        echo "  hint: model returned: $(echo "$content" | head -c 200)"
-        return 1
-    }
-    echo "OK: ${tag} url_captcha_ocr"
+    assert_eq "$code" "400" "${tag} internal image URL refused" || return 1
+    assert_contains "$raw" "$LLAMACPP_SSRF_REFUSAL" "${tag} refusal names the SSRF guard" || return 1
+    echo "OK: ${tag} url_ssrf_guard"
 }
 
 test_llamacpp_cpu_url_captcha() {
@@ -505,7 +456,7 @@ _llamacpp_ocr_call_with_dpi() {
 import json, sys
 payload = {
     'model': sys.argv[1],
-    'max_tokens': 2048,
+    'max_tokens': int(sys.argv[5]),
     'temperature': 0.0,
     'messages': [{
         'role': 'user',
@@ -519,7 +470,7 @@ dpi = sys.argv[4]
 if dpi:
     payload['dpi_rescale_to'] = int(dpi)
 print(json.dumps(payload))
-" "$model" "$image_url" "$prompt" "$dpi")
+" "$model" "$image_url" "$prompt" "$dpi" "$(_llamacpp_max_tokens "$model" 2048)")
     curl -s -m "$timeout" -X POST "$BASE_URL/v1/chat/completions" \
         -H "$AUTH_HEADER" \
         -H "Content-Type: application/json" \

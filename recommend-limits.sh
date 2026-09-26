@@ -1,467 +1,205 @@
 #!/usr/bin/env bash
-# Reads system RAM, swap, and CPU core count, then writes .env.limits with
-# recommended resource limits scaled to the enabled service set.
+# Checks the enabled service set against this machine and writes .env.limits.
 #
-# Proportional scaling: concurrent RAM of all enabled services is estimated and
-# scaled to fit within the effective RAM budget. Enabling more services means
-# each gets a smaller slice.
+# Every service's memory and CPU limit is a fixed number: the default in
+# docker-compose.yml (`${NAME_MEM_LIMIT:-12g}` and friends), overridable per
+# service in .env. A model needs the same RAM on a 16 GB host as on a 256 GB
+# host, so limits are never derived from a share of the host.
 #
-# Resource manager awareness: local services share model slots — only one has
-# models loaded at a time per hardware class.
-# CUDA group: ollama-cuda, talkies-cuda, sdcpp-cuda
-# CPU  group: ollama, talkies, sdcpp
-# Peak concurrent RAM per group = max(active allocations) + (N-1) × idle overhead.
+# This script does two things with those numbers:
 #
-# System overhead: 2 GB or 5% of total RAM (whichever is larger) is reserved
-# for the OS, kernel buffers, and filesystem cache before any service allocation.
-#
-# MAXUSE: percentage of total system resources the stack may use (default: 100).
-#   MAXUSE=80 make limits
-#
-# Swap: each service gets a proportional share of total swap based on its RAM
-# allocation. Hard cap: 10× mem. Minimum: 2× mem.
+#   1. Caps CPU limits at the host core count. Docker refuses a `cpus` value
+#      above the number of cores, so on a small host the compose default would
+#      stop the container from starting. Only these caps go into .env.limits.
+#   2. Estimates the worst-case RAM of the enabled services and warns when it
+#      does not fit. The LiteLLM resource manager runs one job per hardware
+#      class, so only the largest service of the CPU group and the largest of
+#      the CUDA group count toward the peak. Every other enabled service counts
+#      in full. Nothing is shrunk to fit: a limit below what a model needs to
+#      load gets the container OOM-killed on first use.
 
 set -euo pipefail
 
-OUT=".env.limits"
+readonly OUT=".env.limits"
+readonly ENV_FILE=".env"
+readonly COMPOSE_FILE_PATH="docker-compose.yml"
+readonly MB_PER_GB=1024
+readonly OS_RESERVE_MIN_MB=2048
+readonly OS_RESERVE_PERCENT=5
+readonly DEFAULT_SAB_REPLICAS=5
+readonly GROUP_ALWAYS="always"
+readonly GROUP_OPTIONAL="optional"
+readonly GROUP_CPU="cpu"
+readonly GROUP_CUDA="cuda"
 
-# ── System info ───────────────────────────────────────────────────────────────
+# Services that share the LiteLLM hardware lock. Each has a _CUDA twin.
+readonly LOCK_GROUP_SERVICES="OLLAMA TALKIES SDCPP VLLM LLAMACPP AUDIOLLA FLICKIES PREDICTALOT DECIDEALOT"
+readonly ALWAYS_ON_SERVICES="NGINX LITELLM POSTGRES REDIS PROXQ MCP"
+readonly OPTIONAL_SERVICES="CLAUDEBOX PIBOX PIBOX_ZAI HYBRIDS3 CLOUDFLARED SEARXNG TELETHON TAILSCALE MAILBOX PISTON"
 
-total_ram_mb=$(awk '/MemTotal/ { printf "%d", $2/1024 }' /proc/meminfo)
-total_swap_mb=$(awk '/SwapTotal/ { printf "%d", $2/1024 }' /proc/meminfo)
-total_cores=$(nproc)
-
-# ── Feature flags ─────────────────────────────────────────────────────────────
-
-sab_replicas=5
-litellm_workers=4
-flag_talkies=0; flag_talkies_cuda=0
-flag_ollama=0; flag_ollama_cuda=0; flag_browser=0
-flag_claudebox=0; flag_cbzai=0; flag_pibox=0; flag_hybrids3=0; flag_cloudflared=0
-flag_librechat=0; flag_mcp=0; flag_sdcpp=0; flag_sdcpp_cuda=0
-flag_vllm=0; flag_vllm_cuda=0; flag_audiolla=0; flag_audiolla_cuda=0
-flag_flickies=0; flag_flickies_cuda=0
-flag_decidealot=0; flag_decidealot_cuda=0
-
-if [ -f .env ]; then
-    _v() { grep -E "^$1=" .env | cut -d= -f2 | tr -d '[:space:]' || true; }
-    val=$(_v STEALTHY_AUTO_BROWSE_NUM_REPLICAS); [ -n "$val" ] && sab_replicas=$val
-    val=$(_v LITELLM_WORKERS); [ -n "$val" ] && litellm_workers=$val
-    [ "$(_v TALKIES)" = "1" ]       && flag_talkies=1
-    [ "$(_v TALKIES_CUDA)" = "1" ]  && flag_talkies_cuda=1
-    [ "$(_v OLLAMA)" = "1" ]        && flag_ollama=1
-    [ "$(_v OLLAMA_CUDA)" = "1" ]   && flag_ollama_cuda=1
-    [ "$(_v BROWSER)" = "1" ]       && flag_browser=1
-    [ "$(_v CLAUDEBOX)" = "1" ]     && flag_claudebox=1
-    [ "$(_v PIBOX_ZAI)" = "1" ]     && flag_cbzai=1
-    [ "$(_v PIBOX)" = "1" ]         && flag_pibox=1
-    [ "$(_v HYBRIDS3)" = "1" ]      && flag_hybrids3=1
-    [ "$(_v CLOUDFLARED)" = "1" ]   && flag_cloudflared=1
-    [ "$(_v LIBRECHAT)" = "1" ]     && flag_librechat=1
-    [ "$(_v SDCPP)" = "1" ]         && flag_sdcpp=1
-    [ "$(_v SDCPP_CUDA)" = "1" ]    && flag_sdcpp_cuda=1
-    [ "$(_v VLLM)" = "1" ]          && flag_vllm=1
-    [ "$(_v VLLM_CUDA)" = "1" ]     && flag_vllm_cuda=1
-    [ "$(_v AUDIOLLA)" = "1" ]      && flag_audiolla=1
-    [ "$(_v AUDIOLLA_CUDA)" = "1" ] && flag_audiolla_cuda=1
-    [ "$(_v FLICKIES)" = "1" ]      && flag_flickies=1
-    [ "$(_v FLICKIES_CUDA)" = "1" ] && flag_flickies_cuda=1
-    [ "$(_v DECIDEALOT)" = "1" ]      && flag_decidealot=1
-    [ "$(_v DECIDEALOT_CUDA)" = "1" ] && flag_decidealot_cuda=1
-    # mcp auto-enabled when image/STT/TTS providers active
-    [ "$(_v HUGGINGFACE)" = "1" ] || [ "$(_v OPENAI)" = "1" ] || \
-        [ "$(_v TALKIES)" = "1" ] || [ "$(_v TALKIES_CUDA)" = "1" ] || \
-        [ "$(_v SDCPP)" = "1" ] || [ "$(_v SDCPP_CUDA)" = "1" ] && flag_mcp=1
-fi
-
-# ── Resource budget ───────────────────────────────────────────────────────────
-
-maxuse=${MAXUSE:-100}
-if [ "$maxuse" -lt 10 ] || [ "$maxuse" -gt 100 ]; then
-    echo "ERROR: MAXUSE must be between 10 and 100 (got: $maxuse)" >&2
-    exit 1
-fi
-
-# Reserve RAM for OS: 2 GB or 5% of total, whichever is larger
-os_reserve_mb=$(( total_ram_mb * 5 / 100 ))
-[ "$os_reserve_mb" -lt 2048 ] && os_reserve_mb=2048
-
-effective_ram_mb=$(( total_ram_mb * maxuse / 100 - os_reserve_mb ))
-[ "$effective_ram_mb" -lt 512 ] && effective_ram_mb=512
-effective_swap_mb=$(( total_swap_mb * maxuse / 100 ))
-effective_cores=$(awk -v cores="$total_cores" -v pct="$maxuse" \
-    'BEGIN { printf "%.2f", cores * pct / 100 }')
-
-echo ""
-echo "System info:"
-echo "  RAM:   ${total_ram_mb} MB  (effective: ${effective_ram_mb} MB — ${os_reserve_mb} MB OS reserve, ${maxuse}% MAXUSE)"
-echo "  Swap:  ${total_swap_mb} MB  (effective: ${effective_swap_mb} MB at ${maxuse}%)"
-echo "  Cores: ${total_cores}  (effective: ${effective_cores} at ${maxuse}%)"
-echo "  MAXUSE: ${maxuse}%"
-echo "  Enabled: ollama=${flag_ollama} ollama_cuda=${flag_ollama_cuda} talkies=${flag_talkies} talkies_cuda=${flag_talkies_cuda} sdcpp=${flag_sdcpp} sdcpp_cuda=${flag_sdcpp_cuda} vllm=${flag_vllm} vllm_cuda=${flag_vllm_cuda} audiolla=${flag_audiolla} audiolla_cuda=${flag_audiolla_cuda} flickies=${flag_flickies} flickies_cuda=${flag_flickies_cuda} decidealot=${flag_decidealot} decidealot_cuda=${flag_decidealot_cuda} browser=${flag_browser} claudebox=${flag_claudebox} cbzai=${flag_cbzai} hybrids3=${flag_hybrids3} cloudflared=${flag_cloudflared} librechat=${flag_librechat} mcp=${flag_mcp}"
-echo ""
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-# raw_mem <pct_of_effective_ram> <floor_mb>  → MB
-raw_mem() {
-    local pct=$1 floor=$2
-    local val=$(( effective_ram_mb * pct / 100 ))
-    echo $(( val < floor ? floor : val ))
+log() {
+    local level="$1"
+    shift
+    printf '{"time":"%s","level":"%s","file":"%s","line":%d,"func":"%s","msg":"%s"}\n' \
+        "$(date -u '+%Y-%m-%dT%H:%M:%S.%3NZ')" "$level" "${BASH_SOURCE[1]##*/}" \
+        "${BASH_LINENO[0]}" "${FUNCNAME[1]:-main}" "$*" >&2
 }
 
-# swap <mem_mb>  → memswap MB (mem + proportional swap share, capped at 10×, min 2×)
-_swap() {
-    local m=$1
-    awk -v mem="$m" -v eff_ram="$effective_ram_mb" -v eff_swap="$effective_swap_mb" '
-    BEGIN {
-        swap_share = eff_swap * (mem / eff_ram)
-        memswap = mem + swap_share
-        if (memswap > mem * 10) memswap = mem * 10
-        if (memswap < mem * 2)  memswap = mem * 2
-        printf "%d\n", memswap
+# env_value <NAME> → value of NAME in .env with whitespace stripped, or empty.
+env_value() {
+    [[ -f "$ENV_FILE" ]] || return 0
+    # grep exits 1 when the variable is absent, which means "not set" here.
+    grep -E "^$1=" "$ENV_FILE" | tail -1 | cut -d= -f2 | tr -d '[:space:]' || true
+}
+
+is_enabled() {
+    [[ "$(env_value "$1")" == "1" ]]
+}
+
+# compose_default <VAR> → the default in `${VAR:-default}` from compose.
+compose_default() {
+    grep -m1 -oE "\\\$\\{$1:-[^}]+\\}" "$COMPOSE_FILE_PATH" | sed -E 's/.*:-(.*)\}/\1/'
+}
+
+# setting <VAR> → .env value if set, else the compose default.
+setting() {
+    local value
+    value=$(env_value "$1")
+    [[ -n "$value" ]] || value=$(compose_default "$1")
+    echo "$value"
+}
+
+# to_mb <size> → MB for docker sizes like 512m, 12g, 1.5g.
+to_mb() {
+    awk -v size="$1" -v per_gb="$MB_PER_GB" 'BEGIN {
+        unit = tolower(substr(size, length(size)))
+        amount = substr(size, 1, length(size) - 1) + 0
+        if (unit == "g") printf "%d", amount * per_gb
+        else if (unit == "m") printf "%d", amount
+        else if (unit == "k") printf "%d", amount / per_gb
+        else printf "%d", size / (per_gb * per_gb)
     }'
 }
 
-# cpu <pct_of_effective_cores> <floor_tenths>  → cpus (1 decimal)
-cpu() {
-    local pct=$1 floor_tenths=$2
-    awk -v cores="$effective_cores" -v p="$pct" -v f="$floor_tenths" \
-        'BEGIN { v = cores * p / 100; min = f/10; printf "%.1f\n", (v < min ? min : v) }'
-}
-
-# fmt <mb>  → "Xm" or "X.Xg"
 fmt() {
-    awk -v m="$1" 'BEGIN {
-        if (m >= 1024) { printf "%.1fg", m/1024 }
-        else           { printf "%dm", m }
+    awk -v mb="$1" -v per_gb="$MB_PER_GB" 'BEGIN {
+        if (mb >= per_gb) printf "%.1fg", mb / per_gb
+        else printf "%dm", mb
     }'
 }
 
-# scale_mem <raw_mb> <floor_mb> <scale_pct>  → scaled MB (never below floor)
-scale_mem() {
-    local raw=$1 floor=$2 sc=$3
-    local scaled=$(( raw * sc / 100 ))
-    echo $(( scaled < floor ? floor : scaled ))
+total_ram_mb=$(awk '/MemTotal/ { printf "%d", $2 / 1024 }' /proc/meminfo)
+total_cores=$(nproc)
+os_reserve_mb=$((total_ram_mb * OS_RESERVE_PERCENT / 100))
+((os_reserve_mb < OS_RESERVE_MIN_MB)) && os_reserve_mb=$OS_RESERVE_MIN_MB
+budget_mb=$((total_ram_mb - os_reserve_mb))
+
+services=()
+peak_mb=0
+cpu_group_max_mb=0
+cpu_group_max_name=""
+cuda_group_max_mb=0
+cuda_group_max_name=""
+
+# add_service <PREFIX> <group> [replicas]
+add_service() {
+    local prefix="$1" group="$2" replicas="${3:-1}"
+    local mem_mb
+    mem_mb=$(to_mb "$(setting "${prefix}_MEM_LIMIT")")
+    services+=("$prefix $mem_mb $group $replicas")
+
+    if [[ "$group" == "$GROUP_CPU" ]]; then
+        if ((mem_mb > cpu_group_max_mb)); then
+            cpu_group_max_mb=$mem_mb
+            cpu_group_max_name=$prefix
+        fi
+        return 0
+    fi
+    if [[ "$group" == "$GROUP_CUDA" ]]; then
+        if ((mem_mb > cuda_group_max_mb)); then
+            cuda_group_max_mb=$mem_mb
+            cuda_group_max_name=$prefix
+        fi
+        return 0
+    fi
+    peak_mb=$((peak_mb + mem_mb * replicas))
 }
 
-# ── Raw allocations (% of effective RAM, before scaling) ─────────────────────
-# These are proportions — they get scaled down if concurrent total exceeds budget.
-# CPU % targets can exceed 100% — they are hard caps, not guaranteed allocations.
+for service in $ALWAYS_ON_SERVICES; do
+    add_service "$service" "$GROUP_ALWAYS"
+done
 
-#                            RAM%  floor(MB)
-nginx_init_raw=$(  raw_mem  1   64 )
-nginx_raw=$(       raw_mem  1   64 )
-postgres_raw=$(    raw_mem  3  256 )
-redis_raw=$(       raw_mem  2  128 )
-claudebox_raw=$(   raw_mem  4  256 )
-cbzai_raw=$(       raw_mem  4  256 )
-pibox_raw=$(       raw_mem  4  256 )
-hybrids3_raw=$(    raw_mem  2  128 )
-sab_redis_raw=$(   raw_mem  1   64 )
-sab_raw=$(         raw_mem  3  128 )
-sab_proxy_raw=$(   raw_mem  1   64 )
-# talkies (CPU image) — whisper + canary-180m + Kokoro TTS, all CPU
-talkies_raw=$(     raw_mem 15  512 )
-ollama_raw=$(      raw_mem 24  512 )
-ollama_pull_raw=$( raw_mem  2  128 )
-cloudflared_raw=$( raw_mem  1   64 )
-proxq_raw=$(       raw_mem  2  128 )
-mcp_raw=$(         raw_mem  2  128 )
-librechat_raw=$(   raw_mem  3  256 )
-librechat_mongo_raw=$( raw_mem 3 256 )
-# sdcpp — FLUX model weights in RAM (~12GB for q4_0 + encoders)
-sdcpp_raw=$(            raw_mem 15  512 )
-sdcpp_pull_raw=$(       raw_mem  1  128 )
-# CUDA — models live in VRAM; these cover process RAM, KV cache, audio buffers
-sdcpp_cuda_raw=$(       raw_mem 15  512 )
-ollama_cuda_raw=$(      raw_mem  6  256 )
-talkies_cuda_raw=$(     raw_mem  6  512 )
+for service in $LOCK_GROUP_SERVICES; do
+    is_enabled "$service" && add_service "$service" "$GROUP_CPU"
+    is_enabled "${service}_CUDA" && add_service "${service}_CUDA" "$GROUP_CUDA"
+done
 
-# CPU allocations (not scaled — CPU is time-shared, not a hard budget)
-nginx_init_cpu=$(      cpu  2  2 )
-nginx_cpu=$(           cpu  2  2 )
-litellm_cpu=$(         cpu 25  $litellm_workers )
-claudebox_cpu=$(       cpu 15  2 )
-cbzai_cpu=$(           cpu 15  2 )
-pibox_cpu=$(           cpu 15  2 )
-hybrids3_cpu=$(        cpu  3  1 )
-redis_cpu=$(           cpu  2  1 )
-postgres_cpu=$(        cpu  8  1 )
-sab_redis_cpu=$(       cpu  1  1 )
-sab_cpu=$(             cpu 10  2 )
-sab_proxy_cpu=$(       cpu  2  1 )
-talkies_cpu=$(         cpu 25  2 )
-ollama_cpu=$(          cpu 40  2 )
-ollama_pull_cpu=$(     cpu  5  1 )
-cloudflared_cpu=$(     cpu  1  1 )
-proxq_cpu=$(           cpu  5  1 )
-mcp_cpu=$(             cpu  3  1 )
-librechat_cpu=$(       cpu  8  1 )
-librechat_mongo_cpu=$( cpu  5  1 )
-sdcpp_cpu=$(           cpu 40  2 )
-sdcpp_pull_cpu=$(      cpu  2  1 )
-sdcpp_cuda_cpu=$(      cpu 40  2 )
-ollama_cuda_cpu=$(     cpu 30  2 )
-talkies_cuda_cpu=$(    cpu 25  2 )
+for service in $OPTIONAL_SERVICES; do
+    is_enabled "$service" && add_service "$service" "$GROUP_OPTIONAL"
+done
 
-# ── Concurrent RAM estimate (resource-manager-aware) ─────────────────────────
-# Only count enabled services. CUDA group: resource manager ensures only one
-# service has models loaded at a time — count max(active) + (N-1) × idle.
-
-cuda_idle=256  # MB per idle CUDA container (models unloaded from VRAM)
-cpu_idle=128   # MB per idle CPU local container (models unloaded from RAM)
-
-concurrent=0
-concurrent=$(( concurrent + nginx_raw + postgres_raw + redis_raw + proxq_raw ))
-[ "$flag_claudebox" = "1" ]   && concurrent=$(( concurrent + claudebox_raw ))
-[ "$flag_cbzai" = "1" ]       && concurrent=$(( concurrent + cbzai_raw ))
-[ "$flag_pibox" = "1" ]       && concurrent=$(( concurrent + pibox_raw ))
-[ "$flag_hybrids3" = "1" ]    && concurrent=$(( concurrent + hybrids3_raw ))
-
-# CPU local group: resource manager ensures only one has models loaded at a time.
-cpu_local_count=0; cpu_local_max=0
-[ "$flag_talkies" = "1" ]   && cpu_local_count=$(( cpu_local_count + 1 )) && [ "$talkies_raw" -gt "$cpu_local_max" ]    && cpu_local_max=$talkies_raw
-[ "$flag_ollama" = "1" ]    && cpu_local_count=$(( cpu_local_count + 1 )) && [ "$ollama_raw" -gt "$cpu_local_max" ]     && cpu_local_max=$ollama_raw
-[ "$flag_sdcpp" = "1" ]     && cpu_local_count=$(( cpu_local_count + 1 )) && [ "$sdcpp_raw" -gt "$cpu_local_max" ]      && cpu_local_max=$sdcpp_raw
-if [ "$cpu_local_count" -gt 0 ]; then
-    cpu_local_idle_count=$(( cpu_local_count - 1 ))
-    [ "$cpu_local_idle_count" -lt 0 ] && cpu_local_idle_count=0
-    concurrent=$(( concurrent + cpu_local_max + cpu_local_idle_count * cpu_idle ))
+if is_enabled LIBRECHAT; then
+    add_service LIBRECHAT "$GROUP_OPTIONAL"
+    add_service LIBRECHAT_MONGO "$GROUP_OPTIONAL"
 fi
 
-[ "$flag_cloudflared" = "1" ]  && concurrent=$(( concurrent + cloudflared_raw ))
-[ "$flag_mcp" = "1" ]          && concurrent=$(( concurrent + mcp_raw ))
-[ "$flag_librechat" = "1" ]    && concurrent=$(( concurrent + librechat_raw + librechat_mongo_raw ))
-if [ "$flag_browser" = "1" ]; then
-    concurrent=$(( concurrent + sab_redis_raw + sab_raw * sab_replicas + sab_proxy_raw ))
+if is_enabled BROWSER; then
+    sab_replicas=$(env_value STEALTHY_AUTO_BROWSE_NUM_REPLICAS)
+    add_service SAB "$GROUP_OPTIONAL" "${sab_replicas:-$DEFAULT_SAB_REPLICAS}"
+    add_service SAB_REDIS "$GROUP_OPTIONAL"
+    add_service SAB_PROXY "$GROUP_OPTIONAL"
 fi
 
-# CUDA group: resource manager ensures only one has models loaded at a time.
-cuda_count=0; cuda_max=0
-[ "$flag_ollama_cuda" = "1" ]    && cuda_count=$(( cuda_count + 1 )) && [ "$ollama_cuda_raw" -gt "$cuda_max" ]    && cuda_max=$ollama_cuda_raw
-[ "$flag_talkies_cuda" = "1" ]   && cuda_count=$(( cuda_count + 1 )) && [ "$talkies_cuda_raw" -gt "$cuda_max" ]   && cuda_max=$talkies_cuda_raw
-[ "$flag_sdcpp_cuda" = "1" ]     && cuda_count=$(( cuda_count + 1 )) && [ "$sdcpp_cuda_raw" -gt "$cuda_max" ]     && cuda_max=$sdcpp_cuda_raw
-if [ "$cuda_count" -gt 0 ]; then
-    cuda_idle_count=$(( cuda_count - 1 ))
-    [ "$cuda_idle_count" -lt 0 ] && cuda_idle_count=0
-    concurrent=$(( concurrent + cuda_max + cuda_idle_count * cuda_idle ))
-fi
-
-# ── Scale factor ──────────────────────────────────────────────────────────────
-
-scale=100
-if [ "$concurrent" -gt "$effective_ram_mb" ] && [ "$concurrent" -gt 0 ]; then
-    scale=$(( effective_ram_mb * 100 / concurrent ))
-    echo "Note: scaling allocations by ${scale}% to fit within ${effective_ram_mb} MB"
-    echo "  (concurrent peak ${concurrent} MB > budget ${effective_ram_mb} MB)"
-    echo ""
-fi
-
-# ── Final allocations (scaled) ────────────────────────────────────────────────
-
-nginx_init_mem=$(  scale_mem $nginx_init_raw    64 $scale ); nginx_init_swap=$(  _swap $nginx_init_mem )
-nginx_mem=$(       scale_mem $nginx_raw         64 $scale ); nginx_swap=$(       _swap $nginx_mem )
-postgres_mem=$(    scale_mem $postgres_raw     256 $scale ); postgres_swap=$(    _swap $postgres_mem )
-redis_mem=$(       scale_mem $redis_raw        128 $scale ); redis_swap=$(       _swap $redis_mem )
-claudebox_mem=$(   scale_mem $claudebox_raw    256 $scale ); claudebox_swap=$(   _swap $claudebox_mem )
-cbzai_mem=$(       scale_mem $cbzai_raw        256 $scale ); cbzai_swap=$(       _swap $cbzai_mem )
-pibox_mem=$(       scale_mem $pibox_raw        256 $scale ); pibox_swap=$(       _swap $pibox_mem )
-hybrids3_mem=$(    scale_mem $hybrids3_raw     128 $scale ); hybrids3_swap=$(    _swap $hybrids3_mem )
-sab_redis_mem=$(   scale_mem $sab_redis_raw     64 $scale ); sab_redis_swap=$(   _swap $sab_redis_mem )
-sab_mem=$(         scale_mem $sab_raw          128 $scale ); sab_swap=$(         _swap $sab_mem )
-sab_proxy_mem=$(   scale_mem $sab_proxy_raw     64 $scale ); sab_proxy_swap=$(   _swap $sab_proxy_mem )
-talkies_mem=$(     scale_mem $talkies_raw      512 $scale ); talkies_swap=$(     _swap $talkies_mem )
-ollama_mem=$(      scale_mem $ollama_raw       512 $scale ); ollama_swap=$(      _swap $ollama_mem )
-ollama_pull_mem=$( scale_mem $ollama_pull_raw  128 $scale ); ollama_pull_swap=$( _swap $ollama_pull_mem )
-cloudflared_mem=$( scale_mem $cloudflared_raw   64 $scale ); cloudflared_swap=$( _swap $cloudflared_mem )
-proxq_mem=$(       scale_mem $proxq_raw        128 $scale ); proxq_swap=$(       _swap $proxq_mem )
-mcp_mem=$(         scale_mem $mcp_raw          128 $scale ); mcp_swap=$(         _swap $mcp_mem )
-librechat_mem=$(   scale_mem $librechat_raw    256 $scale ); librechat_swap=$(   _swap $librechat_mem )
-librechat_mongo_mem=$( scale_mem $librechat_mongo_raw 256 $scale ); librechat_mongo_swap=$( _swap $librechat_mongo_mem )
-sdcpp_mem=$(            scale_mem $sdcpp_raw            512 $scale ); sdcpp_swap=$(            _swap $sdcpp_mem )
-sdcpp_pull_mem=$(       scale_mem $sdcpp_pull_raw       128 $scale ); sdcpp_pull_swap=$(       _swap $sdcpp_pull_mem )
-# CUDA: each gets its full scaled allocation (must handle being the active service)
-sdcpp_cuda_mem=$(       scale_mem $sdcpp_cuda_raw       512 $scale ); sdcpp_cuda_swap=$(       _swap $sdcpp_cuda_mem )
-ollama_cuda_mem=$(      scale_mem $ollama_cuda_raw      256 $scale ); ollama_cuda_swap=$(      _swap $ollama_cuda_mem )
-talkies_cuda_mem=$(     scale_mem $talkies_cuda_raw     512 $scale ); talkies_cuda_swap=$(     _swap $talkies_cuda_mem )
-
-# ── Print allocation table ────────────────────────────────────────────────────
-
-printf "%-35s %8s %10s %6s\n" "Service" "mem_limit" "memswap" "cpus"
-printf "%-35s %8s %10s %6s\n" "-------" "---------" "-------" "----"
-
-row() { printf "%-35s %8s %10s %6s\n" "$1" "$(fmt $2)" "$(fmt $3)" "$4"; }
-
-row "nginx-auth-init (one-shot)"    $nginx_init_mem  $nginx_init_swap  $nginx_init_cpu
-row "nginx"                         $nginx_mem        $nginx_swap        $nginx_cpu
-printf "%-35s %8s %10s %6s\n" "litellm" "none" "none" "$litellm_cpu"
-row "postgres"                      $postgres_mem     $postgres_swap     $postgres_cpu
-row "redis"                         $redis_mem        $redis_swap        $redis_cpu
-row "proxq"                         $proxq_mem        $proxq_swap        $proxq_cpu
-[ "$flag_claudebox" = "1" ] && row "claudebox"              $claudebox_mem  $claudebox_swap  $claudebox_cpu
-[ "$flag_cbzai" = "1" ]     && row "pibox-zai"              $cbzai_mem      $cbzai_swap      $cbzai_cpu
-[ "$flag_pibox" = "1" ]     && row "pibox"                  $pibox_mem      $pibox_swap      $pibox_cpu
-[ "$flag_hybrids3" = "1" ]  && row "hybrids3"               $hybrids3_mem   $hybrids3_swap   $hybrids3_cpu
-if [ "$flag_browser" = "1" ]; then
-    row "stealthy-auto-browse-redis"    $sab_redis_mem  $sab_redis_swap  $sab_redis_cpu
-    row "stealthy-auto-browse (×${sab_replicas})" $sab_mem $sab_swap $sab_cpu
-    row "stealthy-auto-browse-proxy"    $sab_proxy_mem  $sab_proxy_swap  $sab_proxy_cpu
-fi
-if [ "$flag_talkies" = "1" ] || [ "$flag_ollama" = "1" ] || [ "$flag_sdcpp" = "1" ]; then
-    echo ""
-    echo "CPU local services (one model slot shared via resource manager):"
-fi
-[ "$flag_talkies" = "1" ]     && row "talkies"               $talkies_mem    $talkies_swap    $talkies_cpu
-[ "$flag_ollama" = "1" ]      && row "ollama"                $ollama_mem     $ollama_swap     $ollama_cpu
-if [ "$flag_ollama" = "1" ] || [ "$flag_ollama_cuda" = "1" ]; then
-    row "ollama-pull (one-shot)" $ollama_pull_mem $ollama_pull_swap $ollama_pull_cpu
-fi
-[ "$flag_sdcpp" = "1" ]       && row "sdcpp"                 $sdcpp_mem        $sdcpp_swap        $sdcpp_cpu
-if [ "$flag_sdcpp" = "1" ] || [ "$flag_sdcpp_cuda" = "1" ]; then
-    row "sdcpp-pull (one-shot)"        $sdcpp_pull_mem   $sdcpp_pull_swap   $sdcpp_pull_cpu
-fi
-[ "$flag_cloudflared" = "1" ] && row "cloudflared"           $cloudflared_mem $cloudflared_swap $cloudflared_cpu
-[ "$flag_mcp" = "1" ]        && row "mcp"                   $mcp_mem        $mcp_swap        $mcp_cpu
-if [ "$flag_librechat" = "1" ]; then
-    row "librechat"                     $librechat_mem       $librechat_swap       $librechat_cpu
-    row "librechat-mongodb"             $librechat_mongo_mem $librechat_mongo_swap  $librechat_mongo_cpu
-fi
-if [ "$flag_ollama_cuda" = "1" ] || [ "$flag_talkies_cuda" = "1" ] || [ "$flag_sdcpp_cuda" = "1" ]; then
-    echo ""
-    echo "CUDA services (one model slot shared via resource manager):"
-    [ "$flag_sdcpp_cuda" = "1" ]     && row "sdcpp-cuda"      $sdcpp_cuda_mem     $sdcpp_cuda_swap     $sdcpp_cuda_cpu
-    [ "$flag_ollama_cuda" = "1" ]    && row "ollama-cuda"     $ollama_cuda_mem    $ollama_cuda_swap    $ollama_cuda_cpu
-    [ "$flag_talkies_cuda" = "1" ]   && row "talkies-cuda"    $talkies_cuda_mem   $talkies_cuda_swap   $talkies_cuda_cpu
-fi
-
-total_mem=$(( nginx_mem + postgres_mem + redis_mem + proxq_mem ))
-[ "$flag_claudebox" = "1" ]   && total_mem=$(( total_mem + claudebox_mem ))
-[ "$flag_cbzai" = "1" ]       && total_mem=$(( total_mem + cbzai_mem ))
-[ "$flag_pibox" = "1" ]       && total_mem=$(( total_mem + pibox_mem ))
-[ "$flag_hybrids3" = "1" ]    && total_mem=$(( total_mem + hybrids3_mem ))
-[ "$flag_talkies" = "1" ]     && total_mem=$(( total_mem + talkies_mem ))
-[ "$flag_ollama" = "1" ]      && total_mem=$(( total_mem + ollama_mem ))
-[ "$flag_sdcpp" = "1" ]          && total_mem=$(( total_mem + sdcpp_mem ))
-[ "$flag_cloudflared" = "1" ]    && total_mem=$(( total_mem + cloudflared_mem ))
-[ "$flag_mcp" = "1" ]            && total_mem=$(( total_mem + mcp_mem ))
-[ "$flag_librechat" = "1" ]      && total_mem=$(( total_mem + librechat_mem + librechat_mongo_mem ))
-[ "$flag_browser" = "1" ]        && total_mem=$(( total_mem + sab_redis_mem + sab_mem * sab_replicas + sab_proxy_mem ))
-[ "$flag_ollama_cuda" = "1" ]    && total_mem=$(( total_mem + ollama_cuda_mem ))
-[ "$flag_talkies_cuda" = "1" ]   && total_mem=$(( total_mem + talkies_cuda_mem ))
+peak_mb=$((peak_mb + cpu_group_max_mb + cuda_group_max_mb))
 
 echo ""
-echo "Total max RAM (all enabled persistent services): $(fmt $total_mem)"
-echo "  ($(( total_mem * 100 / total_ram_mb ))% of total RAM, MAXUSE=${maxuse}%)"
+echo "System: ${total_ram_mb} MB RAM, ${total_cores} cores"
+echo "Budget: ${budget_mb} MB after a ${os_reserve_mb} MB OS reserve"
+echo ""
+printf "%-22s %9s %6s  %s\n" "Service" "mem_limit" "cpus" "Group"
+printf "%-22s %9s %6s  %s\n" "-------" "---------" "----" "-----"
 
-# ── Write .env.limits ─────────────────────────────────────────────────────────
+cpu_caps=()
+for entry in "${services[@]}"; do
+    read -r prefix mem_mb group replicas <<<"$entry"
+    cpus=$(setting "${prefix}_CPUS")
+    if awk -v cpus="$cpus" -v cores="$total_cores" 'BEGIN { exit !(cpus > cores) }'; then
+        cpus="${total_cores}.0"
+        cpu_caps+=("${prefix}_CPUS=${cpus}")
+    fi
 
-cat > "$OUT" << ENVEOF
-# Auto-generated by: make limits
-# System: ${total_ram_mb}MB RAM, ${total_swap_mb}MB swap, ${total_cores} cores (MAXUSE=${maxuse}%)
-# Enabled: ollama=${flag_ollama} ollama_cuda=${flag_ollama_cuda} talkies=${flag_talkies} talkies_cuda=${flag_talkies_cuda} sdcpp=${flag_sdcpp} sdcpp_cuda=${flag_sdcpp_cuda} browser=${flag_browser} claudebox=${flag_claudebox} cbzai=${flag_cbzai} hybrids3=${flag_hybrids3} cloudflared=${flag_cloudflared} librechat=${flag_librechat} mcp=${flag_mcp}
-# Scale: ${scale}% — re-run make limits after enabling/disabling services
-# Regenerate: make limits  or  MAXUSE=80 make limits
-
-NGINX_AUTH_INIT_MEM_LIMIT=$(fmt $nginx_init_mem)
-NGINX_AUTH_INIT_MEMSWAP_LIMIT=$(fmt $nginx_init_swap)
-NGINX_AUTH_INIT_CPUS=${nginx_init_cpu}
-
-NGINX_MEM_LIMIT=$(fmt $nginx_mem)
-NGINX_MEMSWAP_LIMIT=$(fmt $nginx_swap)
-NGINX_CPUS=${nginx_cpu}
-
-LITELLM_CPUS=${litellm_cpu}
-
-CLAUDEBOX_MEM_LIMIT=$(fmt $claudebox_mem)
-CLAUDEBOX_MEMSWAP_LIMIT=$(fmt $claudebox_swap)
-CLAUDEBOX_CPUS=${claudebox_cpu}
-
-PIBOX_ZAI_MEM_LIMIT=$(fmt $cbzai_mem)
-PIBOX_ZAI_MEMSWAP_LIMIT=$(fmt $cbzai_swap)
-PIBOX_ZAI_CPUS=${cbzai_cpu}
-PIBOX_MEM_LIMIT=$(fmt $pibox_mem)
-PIBOX_MEMSWAP_LIMIT=$(fmt $pibox_swap)
-PIBOX_CPUS=${pibox_cpu}
-
-HYBRIDS3_MEM_LIMIT=$(fmt $hybrids3_mem)
-HYBRIDS3_MEMSWAP_LIMIT=$(fmt $hybrids3_swap)
-HYBRIDS3_CPUS=${hybrids3_cpu}
-
-REDIS_MEM_LIMIT=$(fmt $redis_mem)
-REDIS_MEMSWAP_LIMIT=$(fmt $redis_swap)
-REDIS_CPUS=${redis_cpu}
-
-POSTGRES_MEM_LIMIT=$(fmt $postgres_mem)
-POSTGRES_MEMSWAP_LIMIT=$(fmt $postgres_swap)
-POSTGRES_CPUS=${postgres_cpu}
-
-SAB_REDIS_MEM_LIMIT=$(fmt $sab_redis_mem)
-SAB_REDIS_MEMSWAP_LIMIT=$(fmt $sab_redis_swap)
-SAB_REDIS_CPUS=${sab_redis_cpu}
-
-SAB_MEM_LIMIT=$(fmt $sab_mem)
-SAB_MEMSWAP_LIMIT=$(fmt $sab_swap)
-SAB_CPUS=${sab_cpu}
-
-SAB_PROXY_MEM_LIMIT=$(fmt $sab_proxy_mem)
-SAB_PROXY_MEMSWAP_LIMIT=$(fmt $sab_proxy_swap)
-SAB_PROXY_CPUS=${sab_proxy_cpu}
-
-TALKIES_MEM_LIMIT=$(fmt $talkies_mem)
-TALKIES_MEMSWAP_LIMIT=$(fmt $talkies_swap)
-TALKIES_CPUS=${talkies_cpu}
-
-OLLAMA_MEM_LIMIT=$(fmt $ollama_mem)
-OLLAMA_MEMSWAP_LIMIT=$(fmt $ollama_swap)
-OLLAMA_CPUS=${ollama_cpu}
-
-OLLAMA_PULL_MEM_LIMIT=$(fmt $ollama_pull_mem)
-OLLAMA_PULL_MEMSWAP_LIMIT=$(fmt $ollama_pull_swap)
-OLLAMA_PULL_CPUS=${ollama_pull_cpu}
-
-CLOUDFLARED_MEM_LIMIT=$(fmt $cloudflared_mem)
-CLOUDFLARED_MEMSWAP_LIMIT=$(fmt $cloudflared_swap)
-CLOUDFLARED_CPUS=${cloudflared_cpu}
-
-PROXQ_MEM_LIMIT=$(fmt $proxq_mem)
-PROXQ_MEMSWAP_LIMIT=$(fmt $proxq_swap)
-PROXQ_CPUS=${proxq_cpu}
-
-MCP_MEM_LIMIT=$(fmt $mcp_mem)
-MCP_MEMSWAP_LIMIT=$(fmt $mcp_swap)
-MCP_CPUS=${mcp_cpu}
-
-LIBRECHAT_MEM_LIMIT=$(fmt $librechat_mem)
-LIBRECHAT_MEMSWAP_LIMIT=$(fmt $librechat_swap)
-LIBRECHAT_CPUS=${librechat_cpu}
-
-LIBRECHAT_MONGO_MEM_LIMIT=$(fmt $librechat_mongo_mem)
-LIBRECHAT_MONGO_MEMSWAP_LIMIT=$(fmt $librechat_mongo_swap)
-LIBRECHAT_MONGO_CPUS=${librechat_mongo_cpu}
-
-SDCPP_MEM_LIMIT=$(fmt $sdcpp_mem)
-SDCPP_MEMSWAP_LIMIT=$(fmt $sdcpp_swap)
-SDCPP_CPUS=${sdcpp_cpu}
-
-SDCPP_PULL_MEM_LIMIT=$(fmt $sdcpp_pull_mem)
-SDCPP_PULL_MEMSWAP_LIMIT=$(fmt $sdcpp_pull_swap)
-SDCPP_PULL_CPUS=${sdcpp_pull_cpu}
-
-SDCPP_CUDA_MEM_LIMIT=$(fmt $sdcpp_cuda_mem)
-SDCPP_CUDA_MEMSWAP_LIMIT=$(fmt $sdcpp_cuda_swap)
-SDCPP_CUDA_CPUS=${sdcpp_cuda_cpu}
-
-OLLAMA_CUDA_MEM_LIMIT=$(fmt $ollama_cuda_mem)
-OLLAMA_CUDA_MEMSWAP_LIMIT=$(fmt $ollama_cuda_swap)
-OLLAMA_CUDA_CPUS=${ollama_cuda_cpu}
-
-TALKIES_CUDA_MEM_LIMIT=$(fmt $talkies_cuda_mem)
-TALKIES_CUDA_MEMSWAP_LIMIT=$(fmt $talkies_cuda_swap)
-TALKIES_CUDA_CPUS=${talkies_cuda_cpu}
-ENVEOF
+    name=$prefix
+    ((replicas > 1)) && name="${prefix} (x${replicas})"
+    label=$group
+    [[ "$group" == "$GROUP_CPU" ]] && label="CPU lock, one at a time"
+    [[ "$group" == "$GROUP_CUDA" ]] && label="CUDA lock, one at a time"
+    printf "%-22s %9s %6s  %s\n" "$name" "$(fmt "$mem_mb")" "$cpus" "$label"
+done
 
 echo ""
-echo "Written to: $OUT"
-echo "Review it, then restart: make restart"
+echo "Worst-case RAM: $(fmt "$peak_mb") of $(fmt "$budget_mb")"
+if [[ -n "$cpu_group_max_name" ]]; then
+    echo "  CPU lock group counted at its largest member: ${cpu_group_max_name} $(fmt "$cpu_group_max_mb")"
+fi
+if [[ -n "$cuda_group_max_name" ]]; then
+    echo "  CUDA lock group counted at its largest member: ${cuda_group_max_name} $(fmt "$cuda_group_max_mb")"
+fi
+
+if ((peak_mb > budget_mb)); then
+    log WARN "enabled services can use more RAM than this host has: peak_mb=${peak_mb} budget_mb=${budget_mb}. Disable services in .env, or lower a limit only when that service's models still fit, since a limit below a model's load size gets the container OOM-killed"
+fi
+
+{
+    echo "# Auto-generated by: make limits"
+    echo "# System: ${total_ram_mb}MB RAM, ${total_cores} cores"
+    echo "# Memory limits come from the docker-compose.yml defaults. This file only"
+    echo "# caps CPU limits that exceed the host core count."
+    for cap in "${cpu_caps[@]}"; do
+        echo "$cap"
+    done
+} >"$OUT"
+
+echo ""
+echo "Written to: $OUT (${#cpu_caps[@]} CPU caps)"
+echo "Restart to apply: make restart"
 echo ""

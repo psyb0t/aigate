@@ -21,12 +21,16 @@ Each entry maps a slug to `{repo, vllm_args, endpoints}`. Endpoints must be a su
 
 Default models:
 
-- `nomic-embed-v2` — `nomic-ai/nomic-embed-text-v2-moe` (MoE, 305M active, 8192 ctx, embeddings only)
-- `qwen3-0.6b` — `Qwen/Qwen3-0.6B` (chat + completions, 16384 ctx)
+- `bge-m3` (CPU): `BAAI/bge-m3` (multilingual, 8192-token context, embeddings only)
+- `nomic-embed-v1.5` (CPU): `nomic-ai/nomic-embed-text-v1.5` (English, 2048-token context, embeddings only)
+- `nomic-embed-v2` (CUDA): `nomic-ai/nomic-embed-text-v2-moe` (MoE, 305M active, 512-token context, embeddings only)
+- `qwen3-0.6b` (both): `Qwen/Qwen3-0.6B` (chat + completions; 8192 ctx on CPU, 16384 on CUDA)
+
+The vLLM CPU build has no Mixture-of-Experts kernels, so Nomic Embed v2 (a MoE model) is CUDA-only and the CPU variant serves the dense BGE-M3 and Nomic Embed v1.5 instead.
 
 LiteLLM aliases register per enabled variant:
 
-- `VLLM=1` → `local-vllm-nomic-embed-v2`, `local-vllm-qwen3-0.6b`
+- `VLLM=1` → `local-vllm-bge-m3`, `local-vllm-nomic-embed-v1.5`, `local-vllm-qwen3-0.6b`
 - `VLLM_CUDA=1` → `local-vllm-cuda-nomic-embed-v2`, `local-vllm-cuda-qwen3-0.6b`
 
 Every tunable below has a CPU (`VLLM_*`) and CUDA (`VLLM_CUDA_*`) counterpart with the same meaning and default:

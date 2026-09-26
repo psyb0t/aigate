@@ -52,6 +52,11 @@ class Supervisor:
     def last_used_secs_ago(self) -> float | None:
         if self._last_used is None:
             return None
+        # A running request counts as use. Without this the idle sweeper
+        # measures from the request's start and kills the subprocess under a
+        # request that runs longer than the idle TTL.
+        if self._inflight > 0:
+            return 0.0
         return time.monotonic() - self._last_used
 
     async def ensure(self, model_id: str) -> None:

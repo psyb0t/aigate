@@ -1,0 +1,8 @@
+# Packages added on top of the upstream LiteLLM image, installed with
+# --require-hashes. Only the wheel for this image (CPython 3.13, glibc x86_64)
+# is listed.
+#
+# pillow: LiteLLM's Ollama provider converts image inputs with PIL, and the
+# upstream image does not ship it, so every Ollama vision request failed.
+pillow==12.3.0 \
+    --hash=sha256:0847a763afefb695bc912d7c131e7e0632d4edc1d8698f58ddabec8e46b8b6d3

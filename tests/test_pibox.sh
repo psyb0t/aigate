@@ -106,7 +106,8 @@ test_pibox_zai_openai_models() {
         -H "Authorization: Bearer $PIBOX_ZAI_API_TOKEN" 2>/dev/null)
     assert_contains "$out" '"object":"list"' "pibox-zai openai models returns list" || return 1
     assert_contains "$out" '"owned_by":"aicodebox"' "pibox-zai openai models entries tagged owned_by=aicodebox" || return 1
-    assert_contains "$out" '"glm-4.7"' "pibox-zai openai models lists glm-4.7" || return 1
+    assert_contains "$out" '"glm-5.3"' "pibox-zai openai models lists glm-5.3" || return 1
+    assert_contains "$out" '"glm-5.3-flash"' "pibox-zai openai models lists glm-5.3-flash" || return 1
     echo "OK: pibox_zai_openai_models"
 }
 

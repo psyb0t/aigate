@@ -350,7 +350,7 @@ Local CPU image generation via [stable-diffusion.cpp](https://github.com/leejet/
 
 ## sd.cpp CUDA (local NVIDIA — `SDCPP_CUDA=1`)
 
-CUDA-accelerated image generation. Same Go wrapper with CUDA backend. Non-blocking — rejects concurrent requests with 503 (resource manager handles scheduling via semaphore).
+CUDA-accelerated image generation. Same Go wrapper with CUDA backend. Non-blocking: it rejects concurrent requests with 503 (the resource manager's hardware lock handles scheduling).
 
 | Alias | Model | Notes |
 | ----- | ----- | ----- |
@@ -362,11 +362,12 @@ CUDA-accelerated image generation. Same Go wrapper with CUDA backend. Non-blocki
 
 ## vLLM CPU (local — `VLLM=1`)
 
-Supervised single-model wrapper around `vllm serve` on top of the `vllm/vllm-openai-cpu` base image. Same surface as the CUDA variant — only one model resident at a time, idle-unloads after `VLLM_MODEL_TTL` (default 10m). Edit `vllm/models.cpu.json` to add models.
+Supervised single-model wrapper around `vllm serve` on top of the `vllm/vllm-openai-cpu` base image. Same surface as the CUDA variant. Only one model resident at a time, idle-unloads after `VLLM_MODEL_TTL` (default 10m). Edit `vllm/models.cpu.json` to add models. The vLLM CPU build has no Mixture-of-Experts kernels, so MoE models such as Nomic Embed v2 run only on the CUDA variant.
 
 | Alias | Model | Notes |
 | ----- | ----- | ----- |
-| `local-vllm-nomic-embed-v2` | nomic-ai/nomic-embed-text-v2-moe | embeddings, MoE 305M active, 8192 ctx |
+| `local-vllm-bge-m3` | BAAI/bge-m3 | embeddings, multilingual, 8192-token context, 1024 dims |
+| `local-vllm-nomic-embed-v1.5` | nomic-ai/nomic-embed-text-v1.5 | embeddings, English, 2048-token context, 768 dims |
 | `local-vllm-qwen3-0.6b` | Qwen/Qwen3-0.6B | chat / completions, 8192 ctx |
 
 ## vLLM CUDA (local NVIDIA — `VLLM_CUDA=1`)
@@ -375,7 +376,7 @@ Supervised single-model wrapper around `vllm serve` for chat/completions/embeddi
 
 | Alias | Model | Notes |
 | ----- | ----- | ----- |
-| `local-vllm-cuda-nomic-embed-v2` | nomic-ai/nomic-embed-text-v2-moe | embeddings, MoE 305M active, 8192 ctx |
+| `local-vllm-cuda-nomic-embed-v2` | nomic-ai/nomic-embed-text-v2-moe | embeddings, MoE 305M active, 512-token context |
 | `local-vllm-cuda-qwen3-0.6b` | Qwen/Qwen3-0.6B | chat / completions, 16384 ctx |
 
 ## llama.cpp CPU (local — `LLAMACPP=1`)

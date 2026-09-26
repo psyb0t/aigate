@@ -4,11 +4,23 @@
 # evicts vllm whenever a competing CPU job (ollama / sdcpp / talkies-cpu)
 # arrives.
 
-# ── Nomic Embed v2 (MoE, 305M active) ─────────────────────────────────────
+# ── BGE-M3 (multilingual embeddings, 8192 ctx) ───────────────────────────
 
-- model_name: local-vllm-nomic-embed-v2
+- model_name: local-vllm-bge-m3
   litellm_params:
-    model: openai/nomic-embed-v2
+    model: openai/bge-m3
+    api_base: http://vllm:8000/v1
+    api_key: none
+  model_info:
+    mode: embedding
+
+# ── Nomic Embed v1.5 (English embeddings, 2048 ctx) ──────────────────────
+# Nomic Embed v2 is a MoE model and the vllm CPU build has no MoE kernels,
+# so the CPU variant serves the dense v1.5 model instead.
+
+- model_name: local-vllm-nomic-embed-v1.5
+  litellm_params:
+    model: openai/nomic-embed-v1.5
     api_base: http://vllm:8000/v1
     api_key: none
   model_info:

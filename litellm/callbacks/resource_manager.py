@@ -2,9 +2,10 @@
 CUDA/CPU resource manager for LiteLLM proxy.
 
 Enforces two things:
-1. Mutual exclusion — only one CUDA job (and one CPU job) at a time via
-   asyncio.Semaphore(1).  A chat completion on ollama-cuda blocks until
-   an in-flight sdcpp-cuda image generation finishes, and vice-versa.
+1. Mutual exclusion. Only one CUDA job (and one CPU job) at a time across
+   every LiteLLM worker, via a Redis lock (see hardware_lock.py). A chat
+   completion on ollama-cuda blocks until an in-flight sdcpp-cuda image
+   generation finishes, and vice-versa.
 2. Competing-group unload — before the request proceeds, all other groups
    on the same hardware are told to free VRAM/RAM.
 
@@ -235,7 +236,7 @@ async def _preload_sdcpp(base_url: str, model_key: str) -> None:
     the upstream error.
 
     Pre-loading inside the resource_manager's pre_call hook (while we still
-    hold the cuda-img/cpu-img semaphore) means by the time LiteLLM
+    hold the CUDA or CPU hardware lock) means by the time LiteLLM
     dispatches the actual image-gen call the backend is already warm and
     the call succeeds on attempt 1. No 503, no fallback storm, no empty-
     data response. Behaves as a no-op (~ms) when the requested model is
@@ -388,6 +389,8 @@ async def _unload_cpu_stt_talkies():
 _VLLM_CUDA_URL = "http://vllm-cuda:8000"
 _VLLM_CPU_URL = "http://vllm:8000"
 _VLLM_MODELS = [
+    "bge-m3",
+    "nomic-embed-v1.5",
     "nomic-embed-v2",
     "qwen3-0.6b",
 ]
@@ -698,33 +701,102 @@ _UNLOAD_FNS = {
 }
 
 # ---------------------------------------------------------------------------
-# Hardware semaphores — one CUDA job, one CPU job at a time
+# Hardware locks: one CUDA job and one CPU job at a time across every LiteLLM
+# worker process. See hardware_lock.py.
 # ---------------------------------------------------------------------------
 
-_cuda_sem = asyncio.Semaphore(1)
-_cpu_sem = asyncio.Semaphore(1)
+_HW_CUDA = "CUDA"
+_HW_CPU = "CPU"
 
-_METADATA_KEY = "_resource_manager_holds_sem"
+_METADATA_KEY = "_resource_manager_holds_lock"
+_METADATA_SEPARATOR = ":"
 
-# Contextvar tracks the held-semaphore for the current request task. Survives
-# the trip from pre_call_hook → handler → log_success_event, including paths
-# where LiteLLM's standard-logging chain dies mid-flight (e.g. trying to
-# pydantic-serialize a Response subclass) and never invokes the release hook.
-# Both the raw-text response patch AND the standard log_success_event read
-# this and use sentinel-clearing so we never double-release.
+# Contextvar tracks the held lock (hardware, token) for the current request
+# task. Survives the trip from pre_call_hook → handler → log_success_event,
+# including paths where LiteLLM's standard-logging chain dies mid-flight (e.g.
+# trying to pydantic-serialize a Response subclass) and never invokes the
+# release hook. Every release path clears it before releasing, so a lock is
+# never released twice.
 import contextvars  # noqa: E402
 
-_held_hw: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
-    "resource_manager_held_hw", default=None
+from hardware_lock import HardwareLockUnavailable, get_locks  # noqa: E402
+
+_held_lock: contextvars.ContextVar[Optional[tuple[str, str]]] = contextvars.ContextVar(
+    "resource_manager_held_lock", default=None
 )
 
 
-def _get_sem(group: str) -> Optional[asyncio.Semaphore]:
+def _get_hw(group: str) -> Optional[str]:
     if group in _ALL_CUDA_GROUPS:
-        return _cuda_sem
+        return _HW_CUDA
     if group in _ALL_CPU_GROUPS:
-        return _cpu_sem
+        return _HW_CPU
     return None
+
+
+async def _acquire_hw(hw: str, data: dict) -> None:
+    token = await get_locks().acquire(hw)
+    _held_lock.set((hw, token))
+    data.setdefault("metadata", {})[_METADATA_KEY] = f"{hw}{_METADATA_SEPARATOR}{token}"
+
+
+async def _release_held_lock(kwargs: dict) -> None:
+    """Release the lock this request holds, if any.
+
+    Prefers the contextvar (set in pre_call_hook on the same async task) over
+    kwargs.litellm_params.metadata, which LiteLLM does not always propagate.
+    """
+    held = _held_lock.get()
+    if held is None:
+        marker = (kwargs.get("litellm_params") or {}).get("metadata", {}).get(_METADATA_KEY)
+        if marker:
+            hw, _, token = marker.partition(_METADATA_SEPARATOR)
+            held = (hw, token)
+    if held is None:
+        return
+    # Clear before releasing so a concurrent release path sees nothing held.
+    _held_lock.set(None)
+    hw, token = held
+    if await get_locks().release(hw, token):
+        logger.warning("[resource_manager] released %s lock", hw)
+
+
+# ---------------------------------------------------------------------------
+# MCP tool calls. predictalot and decidealot are reached through LiteLLM's
+# aggregated MCP server. Their inference tools take the hardware lock and
+# evict competing groups like LiteLLM-routed models do. LiteLLM's MCP pre-call
+# hook data drops the server name, so a wrapper around MCPServerManager.call_tool
+# records it in a contextvar and releases the lock when the call ends.
+# ---------------------------------------------------------------------------
+
+_MCP_CALL_TYPE = "call_mcp_tool"
+_MCP_TOOL_NAME_KEY = "mcp_tool_name"
+
+_MCP_SERVER_GROUPS = {
+    "predictalot_cuda": "cuda-predictalot",
+    "predictalot": "cpu-predictalot",
+    "decidealot_cuda": "cuda-decidealot",
+    "decidealot": "cpu-decidealot",
+}
+
+# Tools that list or free models. They never load one, so they skip the lock.
+_MCP_ADMIN_TOOL_PREFIXES = ("list_", "get_")
+_MCP_ADMIN_TOOLS = frozenset({"unload_models"})
+
+_mcp_server_name: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+    "resource_manager_mcp_server", default=None
+)
+
+
+def _mcp_group(server_name: Optional[str], tool_name: str) -> Optional[str]:
+    if not server_name:
+        return None
+    group = _MCP_SERVER_GROUPS.get(server_name.lower().replace("-", "_"))
+    if group is None:
+        return None
+    if tool_name in _MCP_ADMIN_TOOLS or tool_name.startswith(_MCP_ADMIN_TOOL_PREFIXES):
+        return None
+    return group
 
 
 # ---------------------------------------------------------------------------
@@ -734,15 +806,19 @@ def _get_sem(group: str) -> Optional[asyncio.Semaphore]:
 
 class ResourceManager(CustomLogger):
     """
-    Enforces single-job-per-hardware via semaphore, then unloads competing
-    resource groups before routing. Failures are logged but never block.
+    Enforces single-job-per-hardware via a Redis lock shared by every worker,
+    then unloads competing resource groups before routing. Unload failures are
+    logged and never block. A lock that cannot be taken fails the request.
     """
 
     async def async_pre_call_hook(
         self, user_api_key_dict, cache, data, call_type
     ):  # noqa: ARG002
         model: str = data.get("model", "")
-        group = _get_group(model)
+        if call_type == _MCP_CALL_TYPE:
+            group = _mcp_group(_mcp_server_name.get(), data.get(_MCP_TOOL_NAME_KEY, ""))
+        else:
+            group = _get_group(model)
 
         logger.warning(
             "[resource_manager] pre_call: model=%s call_type=%s group=%s",
@@ -761,24 +837,23 @@ class ResourceManager(CustomLogger):
         if group is None:
             return data
 
-        sem = _get_sem(group)
-        if sem is not None:
-            hw = "CUDA" if group in _ALL_CUDA_GROUPS else "CPU"
-            logger.warning(
-                "[resource_manager] acquiring %s semaphore for group=%s", hw, group
-            )
-            await sem.acquire()
-            logger.warning(
-                "[resource_manager] acquired %s semaphore for group=%s", hw, group
-            )
-            data.setdefault("metadata", {})[_METADATA_KEY] = hw
-            _held_hw.set(hw)
+        hw = _get_hw(group)
+        if hw is not None:
+            logger.warning("[resource_manager] acquiring %s lock for group=%s", hw, group)
+            try:
+                await _acquire_hw(hw, data)
+            except HardwareLockUnavailable:
+                logger.error(
+                    "[resource_manager] hardware lock unavailable, rejecting request",
+                    extra={"group": group, "hardware": hw, "reason": "lock_unavailable"},
+                )
+                raise
+            logger.warning("[resource_manager] acquired %s lock for group=%s", hw, group)
 
-        # From here on the semaphore is HELD. Any exception (including
-        # CancelledError on a client disconnect) must release it — LiteLLM's
+        # From here on the lock is HELD. Any exception (including
+        # CancelledError on a client disconnect) must release it. LiteLLM's
         # async_log_failure_event is not guaranteed to fire on every cancel
-        # path. The contextvar is already set so _release_sem() does the
-        # right thing.
+        # path. The contextvar is already set, so _release_held_lock() finds it.
         try:
             if group in _ALL_CUDA_GROUPS:
                 competing = _ALL_CUDA_GROUPS - {group}
@@ -821,44 +896,27 @@ class ResourceManager(CustomLogger):
             logger.warning("[resource_manager] done for model=%s", model)
             return data
         except BaseException:
-            # BaseException — covers asyncio.CancelledError on Python 3.8+
-            # where it is no longer an Exception subclass. Release the
-            # semaphore via the contextvar path so a cancelled-mid-pre-call
-            # request doesn't deadlock the hardware group permanently.
-            self._release_sem({})
+            # BaseException covers asyncio.CancelledError, which is not an
+            # Exception subclass. Release the lock so a request cancelled
+            # mid-pre-call does not hold the hardware until the lock expires.
+            await _release_held_lock({})
             raise
 
     async def async_log_success_event(
         self, kwargs, response_obj, start_time, end_time
     ):  # noqa: ARG002
-        self._release_sem(kwargs)
+        await _release_held_lock(kwargs)
 
     async def async_log_failure_event(
         self, kwargs, response_obj, start_time, end_time
     ):  # noqa: ARG002
-        self._release_sem(kwargs)
+        await _release_held_lock(kwargs)
 
-    @staticmethod
-    def _release_sem(kwargs):
-        # Prefer the contextvar (set in pre_call_hook on the same async task)
-        # over kwargs.litellm_params.metadata — LiteLLM doesn't always
-        # propagate user-set data.metadata into kwargs.litellm_params.metadata,
-        # but the contextvar follows the task naturally.
-        hw = _held_hw.get()
-        if hw is None:
-            hw = (kwargs.get("litellm_params") or {}).get("metadata", {}).get(_METADATA_KEY)
-        if hw is None:
-            return
-        sem = _cuda_sem if hw == "CUDA" else _cpu_sem
-        # Clear contextvar BEFORE release so a concurrent path can't see the
-        # same hw and double-release.
-        _held_hw.set(None)
-        try:
-            sem.release()
-            logger.warning("[resource_manager] released %s semaphore", hw)
-        except ValueError:
-            # Already released (e.g. raw-text path beat us to it). No-op.
-            pass
+    async def async_post_call_failure_hook(
+        self, request_data, original_exception, user_api_key_dict, traceback_str=None
+    ):  # noqa: ARG002
+        await _release_held_lock({"litellm_params": {"metadata": request_data.get("metadata") or {}}})
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -966,7 +1024,7 @@ class _RawTextTranscription:
                     # (__pydantic_extra__, __pydantic_fields_set__, etc.)
                     # when constructing the standard_logging_payload. Without
                     # these, the success-call hook chain blows up with an
-                    # AttributeError and never releases the semaphore.
+                    # AttributeError and never releases the hardware lock.
                     object.__setattr__(self, "text", raw_text)
                     object.__setattr__(self, "usage", None)
                     object.__setattr__(self, "_hidden_params", {})
@@ -1020,20 +1078,9 @@ def _patch_handler_for_raw_text_response() -> None:
         # FastAPI returns Response subclasses straight through without
         # invoking LiteLLM's post-call logging hooks reliably (the standard
         # logging payload chokes on non-pydantic responses anyway). Release
-        # the semaphore manually via the contextvar; clearing the var first
-        # prevents the standard hook from double-releasing if it does fire.
-        hw = _held_hw.get()
-        if hw is not None:
-            _held_hw.set(None)
-            sem = _cuda_sem if hw == "CUDA" else _cpu_sem
-            try:
-                sem.release()
-                logger.warning(
-                    "[resource_manager] released %s semaphore (raw-text path)", hw
-                )
-            except ValueError:
-                pass
-        # Also drop the metadata marker for belt-and-suspenders.
+        # the lock here; the contextvar is cleared first, so the standard hook
+        # finds nothing to release if it does fire.
+        await _release_held_lock({})
         meta = data.get("metadata") or {}
         meta.pop(_METADATA_KEY, None)
 
@@ -1046,8 +1093,45 @@ def _patch_handler_for_raw_text_response() -> None:
     )
 
 
+def _patch_mcp_call_tool() -> None:
+    """Expose the MCP server name to the pre-call hook and release on exit.
+
+    LiteLLM runs the pre-call hook inside MCPServerManager.call_tool, on the
+    same task, so a lock taken there is visible here and released in the
+    finally block on success, error, and cancellation. The standard success
+    and failure hooks do not cover every MCP exit path.
+    """
+    try:
+        from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+            MCPServerManager,
+        )
+    except ImportError as e:
+        logger.error(
+            "[resource_manager] MCP call_tool patch skipped, MCP calls run unlocked",
+            extra={"error": str(e), "reason": "import_failed"},
+        )
+        return
+
+    _orig_call_tool = MCPServerManager.call_tool
+
+    async def _patched_call_tool(self, server_name, name, *args, **kwargs):
+        server_token = _mcp_server_name.set(server_name)
+        try:
+            return await _orig_call_tool(self, server_name, name, *args, **kwargs)
+        finally:
+            _mcp_server_name.reset(server_token)
+            await _release_held_lock({})
+
+    MCPServerManager.call_tool = _patched_call_tool
+    logger.warning(
+        "[resource_manager] patched MCPServerManager.call_tool: "
+        "predictalot/decidealot inference tools take the hardware lock"
+    )
+
+
 _patch_whisper_transformation_request()
 _patch_handler_for_raw_text_response()
+_patch_mcp_call_tool()
 
 
 # LiteLLM proxy loads this when config references the module

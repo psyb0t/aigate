@@ -71,7 +71,7 @@ EXPECTED_MCP_TOOLS=(
     "hybrids3-upload_object"
     "hybrids3-download_object"
     "hybrids3-list_objects"
-    "claudebox-claude_run"
+    "claudebox-run_prompt"
     "claudebox-read_file"
     "claudebox-write_file"
     "claudebox-list_files"

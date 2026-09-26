@@ -8,7 +8,7 @@
       "llama_server_args": [
         "--ctx-size", "auto",
         "--parallel", "4",
-        "--threads", "-1",
+        "--threads", "auto",
         "--n-gpu-layers", "0"
       ],
       "endpoints": ["chat"],

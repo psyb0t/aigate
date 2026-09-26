@@ -12,7 +12,7 @@
 #
 # Models served are declared in models.json (mounted or baked).
 
-FROM vllm/vllm-openai:v0.21.0 AS runtime
+FROM vllm/vllm-openai:v0.21.0@sha256:a230095847e93bd4df9888b33dab956fa9504537b828a23657d2b26fed57b5c9 AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

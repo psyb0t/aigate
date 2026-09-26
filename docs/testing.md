@@ -2,6 +2,8 @@
 
 The test suite validates every service end-to-end against the running stack. The stack must be up before running tests.
 
+`make test-unit` is separate and needs no running stack. It starts a throwaway Redis with the ACL from `docker-compose.yml` and runs the LiteLLM callback tests in `tests/unit/` inside the `aigate-litellm` image: the Redis hardware lock across processes, lock expiry after a crash, the ACL users' key limits, and the predictalot and decidealot MCP lock path.
+
 ```bash
 # Run all tests
 make test

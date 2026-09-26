@@ -202,7 +202,7 @@ The stream is intentionally distinct from multipart transcription: it accepts on
 | `TALKIES_STREAM_MAX_DURATION` / `TALKIES_CUDA_STREAM_MAX_DURATION` | `4h` | Maximum accepted PCM duration; keep it within the matching nginx timeout. |
 | `TALKIES_CUDA_QWEN3_STREAM_CHUNK_SIZE` | `8` | Qwen3-TTS PCM streaming chunk size (codec steps per chunk). `TALKIES_QWEN3_STREAM_CHUNK_SIZE` remains a backward-compatible fallback. |
 | `TIMEOUT_TALKIES` / `TIMEOUT_TALKIES_CUDA` | `4h` | nginx direct-route read/send timeout for HTTP and WebSocket streams. |
-| `TALKIES_MEM_LIMIT` / `TALKIES_CUDA_MEM_LIMIT` | `8g` / `12g` | Container memory limit |
+| `TALKIES_MEM_LIMIT` / `TALKIES_CUDA_MEM_LIMIT` | `8g` / `10g` | Container memory limit. On CUDA the NeMo models still load through host RAM: `canary-1b-flash` peaks at about 7.4g, `canary-qwen-2.5b` 7.3g, `parakeet-tdt-0.6b-v3` 5.5g. Below about 8g the larger NeMo models get OOM-killed while loading. |
 | `TALKIES_CPUS` / `TALKIES_CUDA_CPUS` | `4.0` | Container CPU limit |
 | `DATA_DIR_TALKIES` | `${DATA_DIR}/talkies` | Bind-mount root for talkies' `/data` dir. Contains `hf/hub/models--*/` (HF cache, shared by CPU + CUDA) and — for CUDA — `custom-voices/<name>.wav` (Qwen3-TTS reference voices). |
 

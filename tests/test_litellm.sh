@@ -21,88 +21,90 @@ test_litellm_endpoints() {
 
 # ── models registered ──────────────────────────────────────────────────────
 
-# format: model_name
+# format: provider_flag|model_name. A model is expected only when its
+# provider flag is 1 in .env, matching how litellm/build-config.py registers
+# providers.
 EXPECTED_MODELS=(
     # claudebox (OAuth)
-    "claudebox-opus"
-    "claudebox-sonnet"
-    "claudebox-haiku"
+    "CLAUDEBOX|claudebox-opus"
+    "CLAUDEBOX|claudebox-sonnet"
+    "CLAUDEBOX|claudebox-haiku"
     # pibox-zai (GLM via z.ai)
-    "pibox-zai-glm-5.3"
-    "pibox-zai-glm-5.3-flash"
+    "PIBOX_ZAI|pibox-zai-glm-5.3"
+    "PIBOX_ZAI|pibox-zai-glm-5.3-flash"
     # Groq
-    "groq-gpt-oss-20b"
-    "groq-gpt-oss-120b"
-    "groq-gpt-oss-safeguard-20b"
-    "groq-qwen3.8-27b"
-    "groq-qwen3.6-27b"
-    "groq-compound"
-    "groq-compound-mini"
-    "groq-allam-2-7b"
-    "groq-prompt-guard-22m"
-    "groq-prompt-guard-86m"
-    "groq-whisper-large-v3"
-    "groq-whisper-large-v3-turbo"
+    "GROQ|groq-gpt-oss-20b"
+    "GROQ|groq-gpt-oss-120b"
+    "GROQ|groq-gpt-oss-safeguard-20b"
+    "GROQ|groq-qwen3.8-27b"
+    "GROQ|groq-qwen3.6-27b"
+    "GROQ|groq-compound"
+    "GROQ|groq-compound-mini"
+    "GROQ|groq-allam-2-7b"
+    "GROQ|groq-prompt-guard-22m"
+    "GROQ|groq-prompt-guard-86m"
+    "GROQ|groq-whisper-large-v3"
+    "GROQ|groq-whisper-large-v3-turbo"
     # Cerebras (paid plan required; these fail on a free account)
-    "cerebras-gpt-oss-120b"
-    "cerebras-qwen3.8-27b"
-    "cerebras-gemma-4-31b"
+    "CEREBRAS|cerebras-gpt-oss-120b"
+    "CEREBRAS|cerebras-qwen3.8-27b"
+    "CEREBRAS|cerebras-gemma-4-31b"
     # OpenRouter
-    "or-nemotron-lightning"
-    "or-nemotron-120b"
-    "or-nemotron-ultra"
-    "or-qwen3.8-27b"
-    "or-dots-3-note"
-    "or-ling-3-vl"
-    "or-gemma-4-31b"
-    "or-inkling"
-    "or-nemotron-omni-30b"
-    "or-north-mini-code"
-    "or-lfm-2.5-2.6b"
-    "or-ling-3-sante"
-    "or-ling-3-fin"
-    "or-nemotron-content-safety"
+    "OPENROUTER|or-nemotron-lightning"
+    "OPENROUTER|or-nemotron-120b"
+    "OPENROUTER|or-nemotron-ultra"
+    "OPENROUTER|or-qwen3.8-27b"
+    "OPENROUTER|or-dots-3-note"
+    "OPENROUTER|or-ling-3-vl"
+    "OPENROUTER|or-gemma-4-31b"
+    "OPENROUTER|or-inkling"
+    "OPENROUTER|or-nemotron-omni-30b"
+    "OPENROUTER|or-north-mini-code"
+    "OPENROUTER|or-lfm-2.5-2.6b"
+    "OPENROUTER|or-ling-3-sante"
+    "OPENROUTER|or-ling-3-fin"
+    "OPENROUTER|or-nemotron-content-safety"
     # HuggingFace
-    "hf-llama-3.1-8b"
-    "hf-llama-3.3-70b"
-    "hf-llama-4-scout"
-    "hf-qwen3-8b"
-    "hf-qwen3-32b"
-    "hf-qwen3-235b"
-    "hf-deepseek-r1"
-    "hf-qwen-vl-72b"
-    "hf-gemma-3-27b"
-    "hf-gemma-3-12b"
-    "hf-flux-schnell"
+    "HUGGINGFACE|hf-llama-3.1-8b"
+    "HUGGINGFACE|hf-llama-3.3-70b"
+    "HUGGINGFACE|hf-llama-4-scout"
+    "HUGGINGFACE|hf-qwen3-8b"
+    "HUGGINGFACE|hf-qwen3-32b"
+    "HUGGINGFACE|hf-qwen3-235b"
+    "HUGGINGFACE|hf-deepseek-r1"
+    "HUGGINGFACE|hf-qwen-vl-72b"
+    "HUGGINGFACE|hf-gemma-3-27b"
+    "HUGGINGFACE|hf-gemma-3-12b"
+    "HUGGINGFACE|hf-flux-schnell"
     # Mistral
-    "mistral-large"
-    "mistral-small"
-    "ministral-8b"
-    "magistral-medium"
-    "magistral-small"
-    "devstral"
-    "codestral"
-    "mistral-embed"
-    "voxtral-small"
+    "MISTRAL|mistral-large"
+    "MISTRAL|mistral-small"
+    "MISTRAL|ministral-8b"
+    "MISTRAL|magistral-medium"
+    "MISTRAL|magistral-small"
+    "MISTRAL|devstral"
+    "MISTRAL|codestral"
+    "MISTRAL|mistral-embed"
+    "MISTRAL|voxtral-small"
     # Cohere
-    "cohere-command-a-plus"
-    "cohere-command-a"
-    "cohere-command-a-reasoning"
-    "cohere-command-a-vision"
-    "cohere-command-a-translate"
-    "cohere-north-mini-code"
-    "cohere-command-r-plus"
-    "cohere-command-r"
-    "cohere-command-r7b"
-    "cohere-command-r7b-arabic"
-    "cohere-aya-32b"
-    "cohere-aya-vision-32b"
-    "cohere-tiny-aya-global"
-    "cohere-tiny-aya-earth"
-    "cohere-tiny-aya-fire"
-    "cohere-tiny-aya-water"
-    "cohere-embed"
-    "cohere-rerank"
+    "COHERE|cohere-command-a-plus"
+    "COHERE|cohere-command-a"
+    "COHERE|cohere-command-a-reasoning"
+    "COHERE|cohere-command-a-vision"
+    "COHERE|cohere-command-a-translate"
+    "COHERE|cohere-north-mini-code"
+    "COHERE|cohere-command-r-plus"
+    "COHERE|cohere-command-r"
+    "COHERE|cohere-command-r7b"
+    "COHERE|cohere-command-r7b-arabic"
+    "COHERE|cohere-aya-32b"
+    "COHERE|cohere-aya-vision-32b"
+    "COHERE|cohere-tiny-aya-global"
+    "COHERE|cohere-tiny-aya-earth"
+    "COHERE|cohere-tiny-aya-fire"
+    "COHERE|cohere-tiny-aya-water"
+    "COHERE|cohere-embed"
+    "COHERE|cohere-rerank"
 )
 
 # ollama models — only expected when OLLAMA=1
@@ -174,7 +176,8 @@ fi
 # vllm CPU — text LLM + embedding wrapper (supervised vllm serve).
 if [ "${VLLM:-}" = "1" ]; then
     EXPECTED_MODELS+=(
-        "local-vllm-nomic-embed-v2"
+        "local-vllm-bge-m3"
+        "local-vllm-nomic-embed-v1.5"
         "local-vllm-qwen3-0.6b"
     )
 fi
@@ -191,11 +194,21 @@ test_litellm_models_registered() {
     local models
     models=$(get "$BASE_URL/models")
 
-    local m
-    for m in "${EXPECTED_MODELS[@]}"; do
+    local entry flag m checked=0 skipped=0
+    for entry in "${EXPECTED_MODELS[@]}"; do
+        # Entries appended inside a flag check below carry no FLAG| prefix.
+        flag="" m="$entry"
+        if [[ "$entry" == *"|"* ]]; then
+            IFS='|' read -r flag m <<< "$entry"
+        fi
+        if [ -n "$flag" ] && [ "${!flag:-0}" != "1" ]; then
+            skipped=$((skipped + 1))
+            continue
+        fi
         assert_contains "$models" "\"$m\"" "model $m registered" || return 1
+        checked=$((checked + 1))
     done
-    echo "OK: models_registered (${#EXPECTED_MODELS[@]} models)"
+    echo "OK: models_registered (${checked} models, ${skipped} skipped for disabled providers)"
 }
 
 # ── auth: reject bad key ───────────────────────────────────────────────────
@@ -366,8 +379,18 @@ test_litellm_tts_stt_roundtrip() {
         -F "file=@$tts_file")
     rm -f "$tts_file"
     assert_contains_icase "$out" "testing" "round-trip transcript contains 'testing'" || return 1
-    assert_contains_icase "$out" "one" "round-trip transcript contains 'one'" || return 1
-    assert_contains_icase "$out" "three" "round-trip transcript contains 'three'" || return 1
+    # Whisper writes spoken numbers as words or digits depending on context.
+    local pair word digit
+    for pair in "one 1" "three 3"; do
+        read -r word digit <<< "$pair"
+        if [[ "${out,,}" == *"$word"* || "$out" == *"$digit"* ]]; then
+            echo "  OK: round-trip transcript contains '$word' or '$digit'"
+            continue
+        fi
+        echo "  FAIL: round-trip transcript contains '$word' or '$digit'"
+        echo "  actual: ${out:0:500}"
+        return 1
+    done
     echo "OK: litellm_tts_stt_roundtrip"
 }
 
@@ -411,22 +434,29 @@ test_litellm_cuda_resource_manager() {
         return 0
     fi
 
-    # CUDA TTS request via talkies' Qwen3-TTS — competing CUDA groups include
-    # cuda-llm and cuda-img. Resource manager should log the group + at least
-    # one competing-unload attempt.
-    local tts_file
-    tts_file=$(mktemp /tmp/litellm_cuda_rm_XXXXXX.mp3)
-    curl -s -o "$tts_file" --max-time 120 \
+    # CUDA STT request through LiteLLM. /v1/audio/speech is served by the mcp
+    # service, not LiteLLM, so TTS only produces the input audio here. The
+    # transcription runs the resource manager: it takes the CUDA lock and
+    # unloads competing CUDA groups such as cuda-llm.
+    local stt_file
+    stt_file=$(mktemp /tmp/litellm_cuda_rm_XXXXXX.mp3)
+    curl -s -o "$stt_file" --max-time 60 \
         -X POST "$BASE_URL/v1/audio/speech" \
         -H "Content-Type: application/json" \
         -H "$AUTH_HEADER" \
-        -d '{"model":"local-talkies-cuda-qwen3-tts","input":"cuda resource manager test","voice":"alloy"}' > /dev/null
-    rm -f "$tts_file"
-    local tts_logs
-    tts_logs=$(docker compose -f "$WORKDIR/docker-compose.yml" logs --since 20s litellm 2>/dev/null)
-    assert_contains "$tts_logs" "group=cuda-stt-talkies" "cuda tts: resource manager identified cuda-stt-talkies group" || return 1
-    assert_contains "$tts_logs" "unloading competing" "cuda tts: resource manager logged competing unload" || return 1
-    assert_contains "$tts_logs" "cuda-llm" "cuda tts: resource manager logged cuda-llm handling" || return 1
+        -d '{"model":"local-talkies-kokoro-tts","input":"hello","voice":"af_heart"}' > /dev/null
+    curl -sf --max-time 120 \
+        -X POST "$BASE_URL/v1/audio/transcriptions" \
+        -H "$AUTH_HEADER" \
+        -F "model=local-talkies-cuda-whisper-large-v3-turbo" \
+        -F "file=@$stt_file" > /dev/null
+    rm -f "$stt_file"
+    local stt_logs
+    stt_logs=$(docker compose -f "$WORKDIR/docker-compose.yml" logs --since 150s litellm 2>/dev/null)
+    assert_contains "$stt_logs" "group=cuda-stt-talkies" "cuda stt: resource manager identified cuda-stt-talkies group" || return 1
+    assert_contains "$stt_logs" "acquired CUDA lock" "cuda stt: resource manager took the CUDA lock" || return 1
+    assert_contains "$stt_logs" "unloading competing" "cuda stt: resource manager logged competing unload" || return 1
+    assert_contains "$stt_logs" "cuda-llm" "cuda stt: resource manager logged cuda-llm handling" || return 1
 
     echo "OK: litellm_cuda_resource_manager"
 }

@@ -25,7 +25,7 @@ Local image generation via [stable-diffusion.cpp](https://github.com/leejet/stab
 - **Auto-load**: sending a generation request loads the model automatically if not loaded
 - **Model hot-swap**: requesting a different model stops the current sd-server, starts a new one
 - **Idle timeout**: unloads model after 5 minutes of inactivity (configurable)
-- **Non-blocking**: concurrent requests get 503 immediately instead of queuing. The LiteLLM resource manager semaphore handles scheduling.
+- **Non-blocking**: concurrent requests get 503 immediately instead of queuing. The LiteLLM resource manager's hardware lock handles scheduling.
 - **CUDA resource manager**: only one CUDA job (LLM, image gen, TTS, STT) runs at a time. Competing services are unloaded before the request proceeds.
 
 ### Environment variables

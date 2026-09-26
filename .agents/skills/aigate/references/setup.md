@@ -11,7 +11,7 @@ make bootstrap   # creates .env from .env.example (any target does this)
 # edit .env — see "Required env" below, then flip service flags to 1
 # .env is gitignored. docker-compose.yml is tracked, so put compose changes in
 # docker-compose.override.yml, which is gitignored and merges last
-make limits      # writes .env.limits sized to this machine's RAM/swap/CPU
+make limits      # checks enabled services fit this machine, writes CPU caps to .env.limits
 make run-bg      # start detached
 # or: make run   # start in foreground with logs
 ```
@@ -40,7 +40,8 @@ Core, always needed regardless of which optional services you enable:
 | `AIGATE_TOKEN` | Master bearer token. Every per-service token below defaults to this value when left unset — one token authenticates against LiteLLM, claudebox, pibox-zai, predictalot, decidealot, mcp_tools, stealthy-auto-browse, hybrids3, telethon, audiolla, flickies, talkies, talkies-cuda. Override a specific `*_AUTH_TOKEN` / `*_API_TOKEN` var to scope that service separately. |
 | `LITELLM_MASTER_KEY` | Optional override; defaults to `AIGATE_TOKEN` when unset. |
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` / `DATABASE_URL` | LiteLLM's key/usage/budget store. |
-| `REDIS_PASSWORD` | LiteLLM response cache + rate limiting + proxq job queue (DB 1). |
+| `REDIS_PASSWORD` | Password of the `proxq` Redis ACL user (job queue in DB 1). The `default` user is disabled. No whitespace. |
+| `LITELLM_REDIS_PASSWORD` | Password of the `litellm` Redis ACL user, which only holds the resource manager's hardware locks. Falls back to `REDIS_PASSWORD`. |
 | `LITELLM_UI_BASIC_AUTH` | `user:pass` for nginx basic auth in front of `/ui/`. Leave empty to disable (LiteLLM's own login still applies). |
 | `LITELLM_USERNAME` / `LITELLM_PASSWORD` | LiteLLM's own admin UI login. |
 

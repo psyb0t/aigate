@@ -219,6 +219,41 @@ def _resolve_auto_ctx_size(
     return new_args
 
 
+# ── auto thread count ─────────────────────────────────────────────────────
+#
+# `--threads auto` resolves to the CPUs this container may actually use: the
+# cgroup v2 quota in /sys/fs/cgroup/cpu.max, capped by the scheduler affinity.
+# llama.cpp's own `-1` counts host cores and ignores the quota. With more
+# threads than quota, CFS throttles the workers at every sync point and
+# decoding slows by an order of magnitude.
+
+_CGROUP_CPU_MAX = "/sys/fs/cgroup/cpu.max"
+
+
+def _available_cpus() -> int:
+    count = len(os.sched_getaffinity(0))
+    try:
+        with open(_CGROUP_CPU_MAX, encoding="ascii") as f:
+            quota, period = f.read().split()[:2]
+    except (OSError, ValueError):
+        return count
+    if quota == "max":
+        return count
+    return max(1, min(count, int(quota) // int(period)))
+
+
+def _resolve_auto_threads(extra_args: list[str]) -> list[str]:
+    """Substitute every `--threads auto` in `extra_args` with the usable CPU
+    count. Returns a new list (does NOT mutate the input)."""
+    new_args: list[str] = list(extra_args)
+    for i in range(len(new_args) - 1):
+        if new_args[i] == "--threads" and new_args[i + 1].lower() == "auto":
+            chosen = _available_cpus()
+            log.info("threads auto → %d", chosen)
+            new_args[i + 1] = str(chosen)
+    return new_args
+
+
 def _compute_ctx_size(*, entry: dict, repo_dir: Any, device: str) -> int:
     """Compute the largest sane `--ctx-size` for this model + this hardware.
 
@@ -323,6 +358,11 @@ class Supervisor:
     def last_used_secs_ago(self) -> float | None:
         if self._last_used is None:
             return None
+        # A running request counts as use. Without this the idle sweeper
+        # measures from the request's start and kills the subprocess under a
+        # request that runs longer than the idle TTL.
+        if self._inflight > 0:
+            return 0.0
         return time.monotonic() - self._last_used
 
     async def ensure(self, model_id: str) -> None:
@@ -398,6 +438,7 @@ class Supervisor:
             repo_dir=repo_dir,
             device=config.DEVICE or "cpu",
         )
+        extra_args = _resolve_auto_threads(extra_args)
 
         cmd = [
             str(config.SERVER_BIN),

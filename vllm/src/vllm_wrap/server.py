@@ -196,6 +196,14 @@ async def _handle_json_request(
         payload = json.loads(body)
     except (ValueError, TypeError) as exc:
         raise HTTPException(status_code=400, detail=f"invalid JSON: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="JSON body must be an object")
+
+    # OpenAI clients send unset optional fields as null (LiteLLM sends
+    # "encoding_format": null). vLLM validates those fields as literals and
+    # rejects null, so unset fields are dropped before forwarding.
+    payload = {key: value for key, value in payload.items() if value is not None}
+    body = json.dumps(payload).encode()
 
     model_id = payload.get("model")
     if not isinstance(model_id, str) or not model_id:

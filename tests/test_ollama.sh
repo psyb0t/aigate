@@ -206,7 +206,8 @@ test_ollama_cuda_chat_completion() {
 
 test_ollama_cuda_uncensored() {
     local out
-    out=$(curl -s --max-time 120 -X POST "$BASE_URL/chat/completions" \
+    # qwen3 reasons before answering; a cold load plus reasoning runs past 2 min.
+    out=$(curl -s --max-time 300 -X POST "$BASE_URL/chat/completions" \
         -H "Content-Type: application/json" \
         -H "$AUTH_HEADER" \
         -d '{"model":"local-ollama-cuda-qwen3-abliterated-16b","messages":[{"role":"user","content":"respond with exactly the word ABLITPONG and nothing else"}]}')

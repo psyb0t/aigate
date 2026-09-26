@@ -2,6 +2,44 @@
 
 All notable changes to this project are documented here.
 
+## [v6.0.0] (2026-09-26)
+
+**Moves the hardware lock to Redis so it holds across every LiteLLM worker, turns on LiteLLM's response cache, splits Redis into per-service ACL users, replaces the CPU vLLM embedding model that could not run, and makes every memory limit a fixed number instead of a share of the host's RAM.**
+
+### Breaking
+
+- **The Redis `default` user is disabled.** Redis now loads an ACL file. proxq connects as the `proxq` user with `REDIS_PASSWORD`, and LiteLLM connects as the `litellm` user, which can only touch the hardware lock and response cache keys. Anything else that connected to aigate's Redis with only `REDIS_PASSWORD` must now also send the username `proxq`. Redis ACL passwords cannot contain whitespace, so check `REDIS_PASSWORD` before upgrading. Existing Redis data is kept.
+- **`local-vllm-nomic-embed-v2` is removed.** Nomic Embed v2 is a Mixture-of-Experts model, and the vLLM CPU build has no MoE kernels, so every request to this alias failed. The CPU variant now serves `local-vllm-bge-m3` (multilingual, 8192-token context, 1024 dimensions) and `local-vllm-nomic-embed-v1.5` (English, 2048-token context, 768 dimensions). Vectors from different models are not comparable, so anything indexed with the old alias needs to be embedded again. `local-vllm-cuda-nomic-embed-v2` is unchanged.
+- **`make limits` no longer sizes services from a share of the host's RAM, and `MAXUSE` is gone.** Every service's memory and CPU limit is now the fixed default in `docker-compose.yml`, overridable per service in `.env`. `make limits` prints the enabled services with their limits, warns when the worst case does not fit in RAM, and writes only CPU caps into `.env.limits` for services whose default exceeds the host's core count. **Run `make limits` after upgrading.** An `.env.limits` written by an earlier version still holds percentage-based memory limits that override the new defaults. On a 96 GB host the old script gave talkies-cuda 5.4g, below what its NeMo models need to load, so they were OOM-killed on first use.
+
+### Added
+
+- The resource manager's hardware lock is a Redis lock shared by every LiteLLM worker process (`litellm/callbacks/hardware_lock.py`). It replaces the per-process `asyncio.Semaphore`, which only serialized requests inside one worker, so with `LITELLM_WORKERS=4` up to four CUDA jobs could run at once. The holder stores a random token, refreshes the expiry while it holds the lock, and deletes the key only while the token is still its own. A crashed worker's lock expires after `RESOURCE_LOCK_TTL_SECONDS` (default `60`), and a lock whose release was missed stops being refreshed after `RESOURCE_LOCK_MAX_HOLD_SECONDS` (default `86400`). When Redis cannot be reached the request fails instead of running unlocked.
+- MCP inference tools on predictalot and decidealot take the hardware lock and evict competing groups, the same as LiteLLM-routed models. Listing tools and `unload_models` skip the lock.
+- LiteLLM's response cache is on. An identical request within 10 minutes returns the stored response from Redis without calling the model. The cache settings were in `general_settings`, where LiteLLM ignores them, so no earlier version cached anything. They now sit in `litellm_settings`, and the cache keys live under `aigate:cache:`.
+- `LITELLM_REDIS_PASSWORD` sets the `litellm` Redis user's password, used by the hardware lock and the response cache. It falls back to `REDIS_PASSWORD`.
+- `make test-unit` runs the lock and resource manager unit tests in the LiteLLM image against a throwaway Redis that uses the ACL from `docker-compose.yml`. It needs no running stack.
+- llama.cpp model entries accept `"--threads", "auto"`, which resolves to the container's CPU quota. The CPU Surya entry uses it.
+
+### Changed
+
+- proxq `v0.9.1` to `v0.11.1`, which adds the Redis username setting and takes dependency security fixes.
+- talkies-cuda's memory limit defaults to `10g` (was `12g`). Measured peaks while loading: canary-1b-flash 7.4 GB, canary-qwen-2.5b 7.3 GB, parakeet-tdt-0.6b-v3 5.5 GB.
+- The CPU llama.cpp request timeout defaults to `1800` seconds (was `300`), because OCR of one page on CPU can take several minutes. The CUDA variant keeps `300`.
+- Every Dockerfile base image is pinned by digest. The vLLM CPU image moves from the floating `latest-x86_64` tag to `v0.21.0`, the same release as the CUDA image.
+- vLLM embedding models use `--runner pooling`, which replaced `--task embed` in current vLLM. Nomic Embed v2's context is set to 512 tokens, its trained maximum.
+- The MCP `generate_image` tool tries local models first. Hugging Face no longer serves `hf-flux-schnell`, so every call without an explicit model failed.
+- The MCP `generate_tts` tool picks a default voice per model, `af_heart` for Kokoro and `alloy` for the others. Kokoro rejects OpenAI's bare voice names.
+
+### Fixed
+
+- The llama.cpp CPU image ran `llama-server` with one thread per host core, ignoring the container's CPU limit. The kernel throttled the extra threads at every sync point and Surya decoded at about 0.06 tokens per second. With `--threads auto` it decodes at about 3.5.
+- The llama.cpp and vLLM idle sweepers measured idle time from the start of the last request, so a request running longer than the idle TTL had its model killed under it. A running request now counts as use.
+- The vLLM wrapper forwarded `null` for unset optional fields, which vLLM rejects. LiteLLM sends `"encoding_format": null` on every embedding request. The wrapper drops null fields before forwarding and rejects a JSON body that is not an object with `400`.
+- Ollama vision requests failed because the LiteLLM image does not ship Pillow. The image now installs `pillow==12.3.0`, pinned by hash.
+- `vllm-pull` downloads the `nomic-ai/nomic-bert-2048` model code that the Nomic models load at startup. The vLLM containers run offline and could not load them without it. ONNX exports are skipped.
+- The test suite sends the same token fallbacks as `docker-compose.yml`, expects a registered model only when its provider is enabled, checks claudebox at `/healthz`, and uses timeouts and model names that match the current services.
+
 ## [v5.7.0] (2026-09-25)
 
 **Brings predictalot and decidealot under the resource manager and moves predictalot to `v1.2.1`, which adds a model unload endpoint.**

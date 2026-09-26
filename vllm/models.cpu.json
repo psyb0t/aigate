@@ -1,11 +1,21 @@
 {
   "models": {
-    "nomic-embed-v2": {
-      "repo": "nomic-ai/nomic-embed-text-v2-moe",
+    "bge-m3": {
+      "repo": "BAAI/bge-m3",
       "vllm_args": [
-        "--task", "embed",
-        "--trust-remote-code",
+        "--runner", "pooling",
+        "--enforce-eager",
         "--max-model-len", "8192"
+      ],
+      "endpoints": ["embeddings"]
+    },
+    "nomic-embed-v1.5": {
+      "repo": "nomic-ai/nomic-embed-text-v1.5",
+      "vllm_args": [
+        "--runner", "pooling",
+        "--trust-remote-code",
+        "--enforce-eager",
+        "--max-model-len", "2048"
       ],
       "endpoints": ["embeddings"]
     },

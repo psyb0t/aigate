@@ -11,7 +11,10 @@
 # environments where running the same wrapper interface on both classes of
 # hardware is the simpler operational choice.
 
-FROM vllm/vllm-openai-cpu:latest-x86_64 AS runtime
+# Pinned by digest to the same vLLM release as Dockerfile.cuda, so both
+# variants run the same CLI. The floating latest-x86_64 tag drifted across
+# releases between builds.
+FROM vllm/vllm-openai-cpu:v0.21.0-x86_64@sha256:eb680690f111f2b26316265716218f31ce0a0f83efdcac1821fc6caeed41baea AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -21,7 +24,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     VLLM_WRAP_SUBPROCESS_PORT=18000 \
     VLLM_WRAP_MODELS_FILE=/app/models.json \
     VLLM_WRAP_DATA_DIR=/data \
-    VLLM_WRAP_DEVICE=cpu \
     HF_HOME=/data/hf \
     HF_HUB_OFFLINE=1 \
     VLLM_CPU_KVCACHE_SPACE=4 \

@@ -5,7 +5,7 @@
 # format: label|url|expected_in_body
 HEALTH_CASES=(
     "litellm liveliness|$BASE_URL/health/liveliness|alive"
-    "claudebox health|$BASE_URL/claudebox/health|ok"
+    "claudebox health|$BASE_URL/claudebox/healthz|ok"
     "pibox-zai health|$BASE_URL/pibox-zai/healthz|true"
     "stealthy-auto-browse health|$BASE_URL/stealthy-auto-browse/__queue/health|ok"
     "hybrids3 health|$BASE_URL/storage/health|ok"

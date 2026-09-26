@@ -99,6 +99,15 @@ services:
       LITELLM_MCP_TOOL_LISTING_TIMEOUT: ${LITELLM_MCP_TOOL_LISTING_TIMEOUT:-120}
       LITELLM_MCP_CLIENT_TIMEOUT: ${LITELLM_MCP_CLIENT_TIMEOUT:-120}
       LITELLM_MCP_METADATA_TIMEOUT: ${LITELLM_MCP_METADATA_TIMEOUT:-30}
+      # Password of the `litellm` Redis ACL user, read by the response cache
+      # in litellm/config/base.yaml.
+      LITELLM_REDIS_PASSWORD: ${LITELLM_REDIS_PASSWORD:-${REDIS_PASSWORD}}
+      # Hardware lock store for the resource manager, shared by every worker.
+      RESOURCE_LOCK_REDIS_HOST: redis
+      RESOURCE_LOCK_REDIS_USERNAME: litellm
+      RESOURCE_LOCK_REDIS_PASSWORD: ${LITELLM_REDIS_PASSWORD:-${REDIS_PASSWORD}}
+      RESOURCE_LOCK_TTL_SECONDS: ${RESOURCE_LOCK_TTL_SECONDS:-60}
+      RESOURCE_LOCK_MAX_HOLD_SECONDS: ${RESOURCE_LOCK_MAX_HOLD_SECONDS:-86400}
       MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
       COHERE_API_KEY: ${COHERE_API_KEY:-}
       # MCP bearer tokens for downstream aigate-owned services. LiteLLM's MCP
@@ -713,11 +722,19 @@ services:
     mem_limit: ${REDIS_MEM_LIMIT:-256m}
     memswap_limit: ${REDIS_MEMSWAP_LIMIT:-512m}
     cpus: ${REDIS_CPUS:-0.3}
-    command: redis-server --save 60 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
+    # ACL users instead of one shared password: the default user is off, and
+    # proxq and LiteLLM each get their own user limited to their own keys.
+    command: redis-server --save 60 1 --loglevel warning --aclfile /etc/redis/users.acl
+    configs:
+      - source: redis_acl
+        target: /etc/redis/users.acl
+    environment:
+      # redis-cli reads the password from here, keeping it out of `ps` output.
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
     volumes:
       - ${DATA_DIR_REDIS:-${DATA_DIR:-.data}/redis}:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "--user", "proxq", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -903,8 +920,10 @@ services:
     profiles: ["talkies-cuda"]
     image: psyb0t/talkies:v0.17.0-cuda
     restart: unless-stopped
-    mem_limit: ${TALKIES_CUDA_MEM_LIMIT:-12g}
-    memswap_limit: ${TALKIES_CUDA_MEMSWAP_LIMIT:-24g}
+    # NeMo models load through host RAM before moving to the GPU. Measured
+    # peak (anon): canary-1b-flash 7.4g, canary-qwen-2.5b 7.3g, parakeet 5.5g.
+    mem_limit: ${TALKIES_CUDA_MEM_LIMIT:-10g}
+    memswap_limit: ${TALKIES_CUDA_MEMSWAP_LIMIT:-20g}
     cpus: ${TALKIES_CUDA_CPUS:-4.0}
     environment:
       TALKIES_DEVICE: cuda
@@ -1317,13 +1336,21 @@ services:
         # Flat HF-repo layout under /data/models/<repo> (no blobs/snapshots
         # dedup) so other containers can mount the same dir and load weights
         # directly. --local-dir copies real files, not symlinks.
-        for repo in nomic-ai/nomic-embed-text-v2-moe Qwen/Qwen3-0.6B; do
+        # ONNX exports are skipped; vllm loads the PyTorch weights only.
+        for repo in nomic-ai/nomic-embed-text-v2-moe nomic-ai/nomic-embed-text-v1.5 BAAI/bge-m3 Qwen/Qwen3-0.6B; do
             dest="/data/models/$$repo"
             mkdir -p "$$dest"
             echo "[pull] $$repo -> $$dest"
             huggingface-cli download --max-workers 1 \
+                --exclude "onnx/*" \
                 --local-dir "$$dest" "$$repo"
         done
+        # The nomic-embed-text models load their model code from
+        # nomic-ai/nomic-bert-2048 (config.json auto_map). The vllm containers
+        # run with HF_HUB_OFFLINE=1, so that code has to be in the HF cache.
+        echo "[pull] nomic-ai/nomic-bert-2048 remote code -> HF cache"
+        huggingface-cli download --max-workers 1 nomic-ai/nomic-bert-2048 \
+            --include "*.py" "*.json"
     volumes:
       - ${DATA_DIR_VLLM:-${DATA_DIR:-.data}/vllm}:/data
     networks:
@@ -1356,7 +1383,8 @@ services:
       LLAMACPP_WRAP_MODEL_TTL: ${LLAMACPP_MODEL_TTL:-600}
       LLAMACPP_WRAP_SWEEPER_INTERVAL: ${LLAMACPP_SWEEPER_INTERVAL:-60}
       LLAMACPP_WRAP_LOAD_TIMEOUT: ${LLAMACPP_LOAD_TIMEOUT:-600}
-      LLAMACPP_WRAP_REQUEST_TIMEOUT: ${LLAMACPP_REQUEST_TIMEOUT:-300}
+      # CPU OCR of one page can take several minutes; the CUDA variant keeps 300.
+      LLAMACPP_WRAP_REQUEST_TIMEOUT: ${LLAMACPP_REQUEST_TIMEOUT:-1800}
       LLAMACPP_WRAP_LOG_LEVEL: ${LLAMACPP_LOG_LEVEL:-INFO}
       LLAMACPP_WRAP_PRELOAD: ${LLAMACPP_PRELOAD:-}
       # Auto-ctx-size resolver knobs — see .env.example for the rationale.
@@ -1709,7 +1737,7 @@ services:
 
   proxq:
     logging: *docker-logging
-    image: psyb0t/proxq:v0.9.1
+    image: psyb0t/proxq:v0.11.1
     restart: unless-stopped
     mem_limit: ${PROXQ_MEM_LIMIT:-256m}
     memswap_limit: ${PROXQ_MEMSWAP_LIMIT:-512m}
@@ -2516,11 +2544,22 @@ configs:
           engine: wikipedia
           disabled: false
 
+  # Redis ACL. proxq gets asynq's keys and channels plus its cache prefix.
+  # LiteLLM gets the hardware lock keys and its response cache keys, and only
+  # the commands the lock and the cache use. Admin and flush commands are
+  # denied to both. Passwords must not contain whitespace.
+  redis_acl:
+    content: |
+      user default off
+      user proxq on >${REDIS_PASSWORD} ~asynq:* ~proxq:* &asynq:* +@all -@admin -flushall -flushdb -swapdb
+      user litellm on >${LITELLM_REDIS_PASSWORD:-${REDIS_PASSWORD}} ~aigate:hwlock:* ~aigate:cache:* resetchannels -@all +ping +hello +select +client|setinfo +client|setname +get +set +del +mget +pexpire +expire +ttl +incr +incrbyfloat +multi +exec +discard +evalsha +script|load
+
   proxq_config:
     content: |
       listenAddress: "0.0.0.0:8080"
       redis:
         addr: "redis:6379"
+        username: "proxq"
         password: "${REDIS_PASSWORD}"
         db: 1
       queue: "default"
