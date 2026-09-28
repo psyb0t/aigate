@@ -358,7 +358,7 @@ services:
       - aigate-internal
       - aigate-public
 
-  # decidealot: local typed-decision models (Laya + Von) behind the TypeSafe
+  # decidealot: local typed-decision models (Laya, Von, and optional CLM) behind the TypeSafe
   # System One API. CPU + CUDA variants live side-by-side: CPU under
   # `decidealot` at /decidealot/*, CUDA under `decidealot-cuda` at
   # /decidealot-cuda/*. Both serve REST (/v1/systemone, /v1/models,
@@ -366,7 +366,7 @@ services:
   # LiteLLM model (no chat surface); its MCP tools join the aggregated /mcp/.
   #
   # Both variants share ${DATA_DIR_DECIDEALOT}/models. Startup downloads and
-  # verifies both pinned bundles (~5.3 GB) before /health turns green, so the
+  # verifies every enabled pinned bundle before /health turns green, so the
   # first boot can take several minutes; start_period covers that. Only one
   # model is resident per container, released after the idle timeout.
   #
@@ -376,7 +376,7 @@ services:
   decidealot:
     logging: *docker-logging
     profiles: ["decidealot"]
-    image: psyb0t/decidealot:v0.4.1
+    image: psyb0t/decidealot:v0.5.0
     restart: unless-stopped
     user: "${DECIDEALOT_UID:-1000}:${DECIDEALOT_GID:-1000}"
     init: true
@@ -392,6 +392,15 @@ services:
       DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS: ${DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS:-600}
       DECIDEALOT_REQUEST_TIMEOUT_SECONDS: ${DECIDEALOT_REQUEST_TIMEOUT_SECONDS:-120}
       DECIDEALOT_PROVIDER_START_TIMEOUT_SECONDS: ${DECIDEALOT_PROVIDER_START_TIMEOUT_SECONDS:-180}
+      DECIDEALOT_LAYA_ENABLED: ${DECIDEALOT_LAYA_ENABLED:-true}
+      DECIDEALOT_VON_ENABLED: ${DECIDEALOT_VON_ENABLED:-true}
+      # CLM is opt-in because it needs the Qwen3-8B CUDA embedding route.
+      # The default endpoint and token stay inside AIGate on aigate-internal.
+      DECIDEALOT_CLM_ENABLED: ${DECIDEALOT_CLM_ENABLED:-false}
+      DECIDEALOT_CLM_EMBEDDINGS_URL: ${DECIDEALOT_CLM_EMBEDDINGS_URL:-http://litellm:4000/v1/embeddings}
+      DECIDEALOT_CLM_EMBEDDINGS_MODEL: ${DECIDEALOT_CLM_EMBEDDINGS_MODEL:-local-llamacpp-cuda-qwen3-8b}
+      DECIDEALOT_CLM_EMBEDDINGS_API_KEY: ${DECIDEALOT_CLM_EMBEDDINGS_API_KEY:-${LITELLM_MASTER_KEY:-${AIGATE_TOKEN}}}
+      DECIDEALOT_CLM_EMBEDDINGS_TIMEOUT_SECONDS: ${DECIDEALOT_CLM_EMBEDDINGS_TIMEOUT_SECONDS:-120}
       # MCP keeps DNS-rebinding protection on and only accepts these Host
       # values. Loopback covers the nginx route, which pins Host to
       # 127.0.0.1:8080; the service name covers LiteLLM's MCP client.
@@ -422,7 +431,7 @@ services:
   decidealot-cuda:
     logging: *docker-logging
     profiles: ["decidealot-cuda"]
-    image: psyb0t/decidealot:v0.4.1-cuda
+    image: psyb0t/decidealot:v0.5.0-cuda
     restart: unless-stopped
     user: "${DECIDEALOT_UID:-1000}:${DECIDEALOT_GID:-1000}"
     init: true
@@ -438,6 +447,14 @@ services:
       DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS: ${DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS:-600}
       DECIDEALOT_REQUEST_TIMEOUT_SECONDS: ${DECIDEALOT_REQUEST_TIMEOUT_SECONDS:-120}
       DECIDEALOT_PROVIDER_START_TIMEOUT_SECONDS: ${DECIDEALOT_PROVIDER_START_TIMEOUT_SECONDS:-180}
+      DECIDEALOT_LAYA_ENABLED: ${DECIDEALOT_LAYA_ENABLED:-true}
+      DECIDEALOT_VON_ENABLED: ${DECIDEALOT_VON_ENABLED:-true}
+      # See the CPU service. CLM uses the same internal LiteLLM route.
+      DECIDEALOT_CLM_ENABLED: ${DECIDEALOT_CLM_ENABLED:-false}
+      DECIDEALOT_CLM_EMBEDDINGS_URL: ${DECIDEALOT_CLM_EMBEDDINGS_URL:-http://litellm:4000/v1/embeddings}
+      DECIDEALOT_CLM_EMBEDDINGS_MODEL: ${DECIDEALOT_CLM_EMBEDDINGS_MODEL:-local-llamacpp-cuda-qwen3-8b}
+      DECIDEALOT_CLM_EMBEDDINGS_API_KEY: ${DECIDEALOT_CLM_EMBEDDINGS_API_KEY:-${LITELLM_MASTER_KEY:-${AIGATE_TOKEN}}}
+      DECIDEALOT_CLM_EMBEDDINGS_TIMEOUT_SECONDS: ${DECIDEALOT_CLM_EMBEDDINGS_TIMEOUT_SECONDS:-120}
       # Same as the CPU service, with this container's own service name.
       # Upstream's default list only names `decidealot`.
       DECIDEALOT_MCP_ALLOWED_HOSTS: ${DECIDEALOT_CUDA_MCP_ALLOWED_HOSTS:-127.0.0.1,127.0.0.1:*,localhost,localhost:*,[::1],[::1]:*,decidealot-cuda,decidealot-cuda:*}

@@ -67,7 +67,7 @@ Each service has its own unload API:
 | audiolla | `POST /v1/unload` (bulk evict every loaded engine) |
 | flickies | `GET /v1/engines` + `DELETE /v1/engines/{slug}` (per loaded engine) |
 | predictalot | `POST /v1/models/unload` (every resident foundation model, plus Torch and CUDA caches). `409` while a forecast runs |
-| decidealot | `POST /v1/models/unload` (the resident Laya or Von model, plus Torch memory). `409` while a decision runs |
+| decidealot | `POST /v1/models/unload` (the resident Laya, Von, or CLM provider, plus Torch memory). `409` while a decision runs |
 
 ### Direct-HTTP services in the competing-group unload
 

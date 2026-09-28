@@ -12,7 +12,7 @@ Every service has its own page under [`services/`](services/) — deep reference
 
 The big ones at a glance:
 
-- [llamacpp / llamacpp-cuda](services/llamacpp.md) — Surya OCR 2 (OCR / layout / table-rec) and any other GGUF VLM
+- [llamacpp / llamacpp-cuda](services/llamacpp.md): Surya OCR 2 plus Qwen3-8B embeddings for Decidealot CLM
 - [vllm / vllm-cuda](services/vllm.md) — text LLMs + embeddings via `vllm serve`
 - [talkies / talkies-cuda](services/talkies.md) — Whisper / Canary / Parakeet / Nemotron + Kokoro + Qwen3-TTS
 - [audiolla / audiolla-cuda](services/audiolla.md) — audio production REST + MCP (stem sep / mastering / MIR / MIDI / text-to-audio)
@@ -27,4 +27,3 @@ The big ones at a glance:
 - [Providers + model aliases](providers.md) — every LLM / embedding / ASR / TTS model registered through LiteLLM, with its slug and provider.
 - [Testing](testing.md) — what the test suite covers per service + how to run it.
 - [Resource management](resource-management.md): cross-cutting LiteLLM resource_manager, single-job-per-hardware Redis locks, competing-group eviction, who unloads whom.
-

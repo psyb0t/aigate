@@ -1,6 +1,6 @@
 # decidealot (optional, `DECIDEALOT=1` / `DECIDEALOT_CUDA=1`)
 
-Local typed decisions with the Laya and Von models, served by [decidealot](https://github.com/psyb0t/decidealot) behind the TypeSafe System One API. You send the `state` to judge and one or more named questions. Each question is typed `choice`, `score`, or `noul`, and each answer comes back with model probabilities. Neither model writes prose or runs an action. The caller picks the threshold and decides what happens next.
+Local typed decisions with Laya, Von, and optional CLM, served by [decidealot](https://github.com/psyb0t/decidealot) behind the TypeSafe System One API. You send the `state` to judge and one or more named questions. Each question is typed `choice`, `score`, or `noul`, and each answer comes back with model probabilities. The models do not write prose or run an action. The caller picks the threshold and decides what happens next.
 
 Direct nginx route, not via LiteLLM. The MCP tools join the aggregated `/mcp/`.
 
@@ -26,14 +26,27 @@ Auth: `Authorization: Bearer $DECIDEALOT_AUTH_TOKEN`, which defaults to `AIGATE_
 | `laya-multilingual` | Laya's multilingual checkpoint | Known non-English input, including short Latin-script text auto-routing can misread |
 | `laya-typed-decisions` | Laya's checkpoint tuned for structured decisions | Repeated policy, routing, triage, or approval decisions. Validate on your own cases first. |
 | `von`, `von-latest`, `von-1.1`, `von-1.1.0` | Von 1.1, English only | Short questions with clear criteria, or a second opinion next to Laya |
+| `clm`, `clm-latest`, `clm-0.1`, `clm-0.1-8b` | CLM v0.1 projection head over local Qwen3-8B embeddings | Repeated typed decisions where you want the CLM model. Requires the CLM setup below. |
 
-One model is resident per container. Moving between Laya selectors stays on Laya. Moving between Laya and Von waits for active work, releases the old model and its Torch memory, then starts the other one. An idle model is released after `DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS` (600 by default). aigate's resource manager also calls `POST /v1/models/unload` before any LiteLLM-routed local model runs on the same hardware, and `POST /v1/unload/{cuda,cpu}` includes decidealot. A decision in flight answers `409`, so the unload is skipped and the model stays until its idle timer (see [resource management](../resource-management.md)). A request sent straight to decidealot does not evict LiteLLM-routed models.
+One provider is resident per container. Moving between Laya selectors stays on Laya. Moving to Von or CLM waits for active work, releases the old model and its Torch memory, then starts the selected provider. An idle provider is released after `DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS` (600 by default). AIGate's resource manager also calls `POST /v1/models/unload` before LiteLLM-routed local model work starts, and `POST /v1/unload/{cuda,cpu}` includes Decidealot. A decision in flight returns `409`, so the unload is skipped and the provider stays until its idle timer. See [resource management](../resource-management.md). A request sent straight to Decidealot does not evict LiteLLM-routed models.
 
 Measured on this stack, CPU with the bundles on a network share: a cold Laya start plus the first decision took about 75 seconds, a warm Laya decision about 1 second, and a swap to Von about 80 seconds. On CUDA the cold starts ran 2 to 2.5 minutes because of first-run kernel compilation, then warm decisions returned in under a second.
 
 ## First start and storage
 
-The first start downloads and verifies both pinned bundles from Hugging Face, Laya (~2.2 GB) and Von (~3.0 GB), before `/health` passes. The health check allows 15 minutes for this. Later starts reuse `${DATA_DIR_DECIDEALOT}/models/{laya,von}` and come up in seconds. Set `HF_TOKEN` to raise the Hugging Face rate limit. The repos are public, so it is optional.
+The first start downloads and verifies the enabled pinned bundles from Hugging Face before `/health` passes. Laya and Von are enabled by default. CLM is disabled by default. The health check allows 15 minutes for preparation. Later starts reuse `${DATA_DIR_DECIDEALOT}/models/{laya,von,clm}` and come up in seconds. Set `HF_TOKEN` to raise the Hugging Face rate limit. The repos are public, so it is optional.
+
+## Enable CLM with the local encoder
+
+Set these flags in `.env`, then run `make run-bg`. The Makefile starts the `decidealot` and `llamacpp-cuda` profiles together. The Decidealot container calls LiteLLM on AIGate's internal network. LiteLLM routes the request to `local-llamacpp-cuda-qwen3-8b`. The Qwen model is embeddings-only and receives the rendered decision state and criteria. It does not become an external service or need another key.
+
+```dotenv
+DECIDEALOT=1
+DECIDEALOT_CLM_ENABLED=true
+LLAMACPP_CUDA=1
+```
+
+Keep `DECIDEALOT_CLM_EMBEDDINGS_URL`, `DECIDEALOT_CLM_EMBEDDINGS_MODEL`, and `DECIDEALOT_CLM_EMBEDDINGS_API_KEY` at their defaults unless you intentionally operate a different trusted Qwen3-8B embeddings service. The defaults use `http://litellm:4000/v1/embeddings`, `local-llamacpp-cuda-qwen3-8b`, and AIGate's LiteLLM credential.
 
 The containers run as `DECIDEALOT_UID:DECIDEALOT_GID` (default `1000:1000`) with a read-only root filesystem, no capabilities, and `no-new-privileges`. The models directory must be writable by that user. The repo ships `.data/decidealot/models/` so a fresh clone gets it owned by the cloning user. If you point `DATA_DIR_DECIDEALOT` elsewhere, create `models/` there with the right owner first.
 
@@ -114,6 +127,6 @@ decidealot keeps the MCP SDK's DNS-rebinding protection on. Its MCP endpoint ans
 
 ## Configuration
 
-Env vars: `DECIDEALOT_AUTH_TOKEN`, `DECIDEALOT_UID`, `DECIDEALOT_GID`, `DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS`, `DECIDEALOT_REQUEST_TIMEOUT_SECONDS`, `DECIDEALOT_PROVIDER_START_TIMEOUT_SECONDS`, `DECIDEALOT_MAX_REQUEST_BYTES`, `DECIDEALOT_LOG_LEVEL`, `DECIDEALOT_MCP_ALLOWED_HOSTS`, `DECIDEALOT_CUDA_MCP_ALLOWED_HOSTS`, `DECIDEALOT_MCP_ALLOWED_ORIGINS`, `DATA_DIR_DECIDEALOT`, resource limits `DECIDEALOT[_CUDA]_{MEM_LIMIT,MEMSWAP_LIMIT,CPUS,PIDS_LIMIT}`, per-route `RATELIMIT_DECIDEALOT[_BURST]` and `RATELIMIT_DECIDEALOT_CUDA[_BURST]`, and shared `TIMEOUT_DECIDEALOT`. Full reference in [`.env.example`](../../.env.example).
+Env vars: `DECIDEALOT_AUTH_TOKEN`, `DECIDEALOT_UID`, `DECIDEALOT_GID`, `DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS`, `DECIDEALOT_REQUEST_TIMEOUT_SECONDS`, `DECIDEALOT_PROVIDER_START_TIMEOUT_SECONDS`, `DECIDEALOT_{LAYA,VON,CLM}_ENABLED`, `DECIDEALOT_CLM_EMBEDDINGS_{URL,MODEL,API_KEY,TIMEOUT_SECONDS}`, `DECIDEALOT_MAX_REQUEST_BYTES`, `DECIDEALOT_LOG_LEVEL`, `DECIDEALOT_MCP_ALLOWED_HOSTS`, `DECIDEALOT_CUDA_MCP_ALLOWED_HOSTS`, `DECIDEALOT_MCP_ALLOWED_ORIGINS`, `DATA_DIR_DECIDEALOT`, resource limits `DECIDEALOT[_CUDA]_{MEM_LIMIT,MEMSWAP_LIMIT,CPUS,PIDS_LIMIT}`, per-route `RATELIMIT_DECIDEALOT[_BURST]` and `RATELIMIT_DECIDEALOT_CUDA[_BURST]`, and shared `TIMEOUT_DECIDEALOT`. Full reference in [`.env.example`](../../.env.example).
 
 Upstream docs: [API](https://github.com/psyb0t/decidealot/blob/main/docs/api.md) for request rules, validation errors, and response shapes, and [deployment](https://github.com/psyb0t/decidealot/blob/main/docs/deployment.md).

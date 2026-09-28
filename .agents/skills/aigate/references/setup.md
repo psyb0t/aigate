@@ -60,6 +60,7 @@ Per-service keys/tokens only matter once you flip that service's flag to `1`. Ev
 - `CLAUDEBOX=1` needs Claude OAuth token or Anthropic API key; token defaults to `AIGATE_TOKEN` via `CLAUDEBOX_API_TOKEN`.
 - `PIBOX_ZAI=1` needs a z.ai key; token defaults via `PIBOX_ZAI_API_TOKEN`.
 - `PIBOX=1` needs no outside account; it runs pi on this stack's own models. Set `PIBOX_MODELS` to enabled models that can call tools, and keep agent models (`claudebox-*`, `pibox-*`) out of that list to avoid recursion.
+- `DECIDEALOT=1` starts CPU typed decisions. `DECIDEALOT_CUDA=1` starts its GPU sibling. Laya and Von are on by default. To add CLM, set `DECIDEALOT_CLM_ENABLED=true` and `LLAMACPP_CUDA=1`; AIGate then routes CLM embeddings to its internal `local-llamacpp-cuda-qwen3-8b` model.
 - `MAILBOX=1` needs `MAILBOX_CONFIG` pointing at an existing host YAML file (copy `mailbox/config.example.yaml`, fill IMAP/SMTP creds, put a token under `auth.tokens:`) and `MAILBOX_AUTH_TOKEN` mirroring that token.
 - `TELETHON=1` needs `TELETHON_API_ID`, `TELETHON_API_HASH`, `TELETHON_SESSION` (generate the string session once via the telethon-plus `login` command — see `docs/services/telethon.md` upstream).
 - `CLOUDFLARED=1` / `TAILSCALE=1` are the two supported ways to expose the gateway beyond localhost without opening host ports — prefer these over publishing `4000` directly.

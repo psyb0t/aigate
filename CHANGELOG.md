@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here.
 
+## [v6.2.0] (2026-09-28)
+
+**Adds the optional Decidealot CLM provider to the AIGate stack.**
+
+### Added
+
+- `DECIDEALOT_CLM_ENABLED=true` enables Decidealot CLM. With `DECIDEALOT=1` or `DECIDEALOT_CUDA=1` and `LLAMACPP_CUDA=1`, AIGate starts the CUDA llama.cpp profile and routes CLM embeddings through `local-llamacpp-cuda-qwen3-8b` on its internal LiteLLM network.
+- The Decidealot CPU and CUDA services use `psyb0t/decidealot:v0.5.0`, which includes Laya, Von, and the optional CLM provider. Laya and Von remain enabled by default. CLM stays opt-in.
+
+### Fixed
+
+- The source-controlled Codex plugin metadata now reports the current AIGate release version.
+
 ## [v6.1.0] (2026-09-28)
 
 **Adds a CUDA Qwen3 8B embeddings endpoint for Contrastive-LM CLM and makes llama.cpp model downloads artifact-pinned.**

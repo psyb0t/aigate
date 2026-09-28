@@ -125,6 +125,12 @@ ifeq ($(strip $(DECIDEALOT_CUDA)),1)
   _PROFILES += decidealot-cuda
 endif
 
+# CLM uses the local Qwen3-8B embeddings route, which lives in the llama.cpp
+# CUDA profile. Starting a Decidealot CLM deployment always starts that route.
+ifeq ($(strip $(DECIDEALOT_CLM_ENABLED)),true)
+  _PROFILES += llamacpp-cuda
+endif
+
 # audiolla: opt-in with AUDIOLLA=1
 ifeq ($(strip $(AUDIOLLA)),1)
   _PROFILES += audiolla
@@ -343,8 +349,9 @@ help:
 	@echo "  tailscale     set TAILSCALE=1 (tailnet-only HTTP proxy to nginx; claudebox/pibox get outbound tailnet reach)"
 	@echo "  predictalot   set PREDICTALOT=1 (CPU time-series forecasting + MCP)"
 	@echo "  predictalot-cuda set PREDICTALOT_CUDA=1 (NVIDIA GPU time-series forecasting + MCP)"
-	@echo "  decidealot    set DECIDEALOT=1 (CPU typed decisions, Laya + Von + MCP)"
-	@echo "  decidealot-cuda set DECIDEALOT_CUDA=1 (NVIDIA GPU typed decisions + MCP)"
+	@echo "  decidealot    set DECIDEALOT=1 (CPU typed decisions, Laya + Von, optional CLM, MCP)"
+	@echo "  decidealot-cuda set DECIDEALOT_CUDA=1 (NVIDIA GPU typed decisions, optional CLM, MCP)"
+	@echo "  decidealot CLM set DECIDEALOT_CLM_ENABLED=true (also starts llamacpp-cuda Qwen3-8B embeddings)"
 	@echo "  mailbox       set MAILBOX=1 (IMAP+SMTP gateway REST API + MCP — needs MAILBOX_CONFIG)"
 
 	@echo "  mcp           (auto: any image/TTS/search provider enabled)"

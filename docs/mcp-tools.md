@@ -287,7 +287,7 @@ Via LiteLLM's `/mcp/` aggregator each tool is prefixed `predictalot-` (e.g. `pre
 
 ## decidealot: typed decisions (`DECIDEALOT=1` or `DECIDEALOT_CUDA=1`)
 
-MCP server backed by [decidealot](https://github.com/psyb0t/decidealot). It runs the local Laya and Von models against a `state` and returns typed answers with model probabilities. The tools share the request contract, model supervisor, body limit, and bearer auth with the REST API, and return the same bodies as structured output.
+MCP server backed by [decidealot](https://github.com/psyb0t/decidealot). It runs local Laya and Von models, plus optional CLM, against a `state` and returns typed answers with model probabilities. The tools share the request contract, model supervisor, body limit, and bearer auth with the REST API, and return the same bodies as structured output.
 
 | Tool            | Arguments                     | Description |
 | --------------- | ----------------------------- | ----------- |
@@ -295,7 +295,7 @@ MCP server backed by [decidealot](https://github.com/psyb0t/decidealot). It runs
 | `list_models`   | none                          | The accepted `model` selectors, same catalog as `GET /v1/models`. |
 | `unload_models` | none                          | Release the resident model and its Torch memory. |
 
-Model selectors: `laya` / `laya-auto` / `laya-latest` pick the English or multilingual checkpoint from the input script, `laya-english` and `laya-multilingual` pin one, `laya-typed-decisions` targets repeated structured decisions, and `von` / `von-latest` / `von-1.1` run the English-only Von model for short, well-posed questions. One model is resident at a time, so switching between Laya and Von waits for active work and swaps them.
+Model selectors: `laya` / `laya-auto` / `laya-latest` pick the English or multilingual checkpoint from the input script, `laya-english` and `laya-multilingual` pin one, `laya-typed-decisions` targets repeated structured decisions, and `von` / `von-latest` / `von-1.1` run the English-only Von model for short, well-posed questions. `clm` / `clm-latest` / `clm-0.1` use the optional Contrastive-LM provider, which needs `DECIDEALOT_CLM_ENABLED=true` and `LLAMACPP_CUDA=1`. One provider is resident at a time, so switching waits for active work and swaps it.
 
 Via LiteLLM's `/mcp/` aggregator the tools are prefixed `decidealot-` (CPU) and `decidealot_cuda-` (CUDA), for example `decidealot-system_one`. Direct calls to `/decidealot/mcp` see the raw names. See [the decidealot service page](services/decidealot.md) for request and response examples.
 
