@@ -1364,10 +1364,10 @@ services:
   # on CPU does vision (mmproj) just fine and is the only practical way to run
   # Qwen3-VL-class document models (Surya OCR 2, etc.) without a GPU.
   #
-  # Both variants are HF_HUB_OFFLINE=1. The llamacpp-pull sidecar populates
-  # /data/models/<repo>/ with the FULL HF repo (flat layout, real files, no
-  # blobs/snapshots dedup) BEFORE the wrapper container starts, so the
-  # wrapper never touches the network at runtime.
+  # Both variants are HF_HUB_OFFLINE=1. Their profile-specific pull sidecars
+  # populate /data/models/<repo>/ with only the declared, checksum-pinned
+  # artifacts before the wrapper starts, so the wrapper never touches the
+  # network at runtime.
 
   llamacpp:
     logging: *docker-logging
@@ -1432,7 +1432,7 @@ services:
     volumes:
       - ${DATA_DIR_LLAMACPP:-${DATA_DIR:-.data}/llamacpp}:/data
     depends_on:
-      llamacpp-pull:
+      llamacpp-cuda-pull:
         condition: service_completed_successfully
     deploy:
       resources:
@@ -1452,24 +1452,18 @@ services:
     networks:
       - aigate-internal
 
-  # Sidecar — downloads the HF repos referenced by llamacpp/models.{cpu,cuda}
-  # .json into the flat on-disk layout the wrapper expects (`/data/models/
-  # <org>/<repo>/<files>`). Runs once, exits 0, then the llamacpp /
-  # llamacpp-cuda containers boot in HF_HUB_OFFLINE=1 mode against the
-  # populated cache.
+  # Sidecars download only the immutable GGUF artifacts declared by their
+  # active variant. They share a lock and model store, so CPU and CUDA can run
+  # together without duplicate downloads or concurrent writes.
   #
   # Why a separate sidecar (vs prefetching from the wrapper entrypoint): the
   # wrapper is supposed to be airgap-able at runtime; baking the downloader
-  # into it would force every restart to also re-validate the HF cache. Sidecar
-  # lifecycle = "pull once on first up, idempotent on subsequent ups (HF
-  # client skips files whose ETag matches the local copy)".
-  #
-  # Repo list is the union of every `repo` value in llamacpp/models.cpu.json
-  # and llamacpp/models.cuda.json — bind-mounted read-only so adding a new
-  # model to either registry auto-extends the pull on next `up`.
+  # into it would force every restart to also re-validate the model store.
+  # Existing files are SHA-256 checked before reuse. The wrapper has no network
+  # access to Hugging Face after this one-shot job succeeds.
   llamacpp-pull:
     logging: *docker-logging
-    profiles: ["llamacpp", "llamacpp-cuda"]
+    profiles: ["llamacpp"]
     image: python:3.12-slim-bookworm@sha256:d193c6f51a7dbd10395d6328de3a7edb0516fb0608ca138036576f574c3e07d2
     restart: "no"
     mem_limit: ${LLAMACPP_PULL_MEM_LIMIT:-4g}
@@ -1484,36 +1478,36 @@ services:
       - |
         set -eu
         pip install --quiet --no-cache-dir "huggingface-hub==0.35.3"
-        # Union the repo lists from both model registries (CPU + CUDA can
-        # diverge in the future; today they share the same surya entry).
-        # Flat HF-repo layout under /data/models/<repo> — real files, no
-        # blobs/snapshots dedup — so the wrapper containers load weights
-        # directly without HF cache lookups.
-        REPOS=$$(python3 -c "
-        import json, sys
-        from pathlib import Path
-        seen = set()
-        for p in (Path('/registry/models.cpu.json'), Path('/registry/models.cuda.json')):
-            if not p.exists():
-                continue
-            data = json.loads(p.read_text())
-            for entry in data.get('models', {}).values():
-                repo = entry.get('repo')
-                if repo:
-                    seen.add(repo)
-        print(' '.join(sorted(seen)))
-        ")
-        for repo in $$REPOS; do
-            dest="/data/models/$$repo"
-            mkdir -p "$$dest"
-            echo "[pull] $$repo -> $$dest"
-            huggingface-cli download --max-workers 1 \
-                --local-dir "$$dest" "$$repo"
-        done
+        exec python3 /pull/pull_models.py --registry /registry/models.cpu.json
     volumes:
       - ${DATA_DIR_LLAMACPP:-${DATA_DIR:-.data}/llamacpp}:/data
       - ./llamacpp/models.cpu.json:/registry/models.cpu.json:ro
+      - ./llamacpp/pull_models.py:/pull/pull_models.py:ro
+    networks:
+      - aigate-public
+
+  llamacpp-cuda-pull:
+    logging: *docker-logging
+    profiles: ["llamacpp-cuda"]
+    image: python:3.12-slim-bookworm@sha256:d193c6f51a7dbd10395d6328de3a7edb0516fb0608ca138036576f574c3e07d2
+    restart: "no"
+    mem_limit: ${LLAMACPP_PULL_MEM_LIMIT:-4g}
+    memswap_limit: ${LLAMACPP_PULL_MEMSWAP_LIMIT:-8g}
+    cpus: ${LLAMACPP_PULL_CPUS:-2.0}
+    environment:
+      HF_HOME: /data/hf
+      HF_TOKEN: ${HF_TOKEN:-}
+    entrypoint:
+      - sh
+      - -c
+      - |
+        set -eu
+        pip install --quiet --no-cache-dir "huggingface-hub==0.35.3"
+        exec python3 /pull/pull_models.py --registry /registry/models.cuda.json
+    volumes:
+      - ${DATA_DIR_LLAMACPP:-${DATA_DIR:-.data}/llamacpp}:/data
       - ./llamacpp/models.cuda.json:/registry/models.cuda.json:ro
+      - ./llamacpp/pull_models.py:/pull/pull_models.py:ro
     networks:
       - aigate-public
 

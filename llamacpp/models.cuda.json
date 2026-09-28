@@ -4,7 +4,9 @@
       "repo": "datalab-to/surya-ocr-2-gguf",
       "revision": "6a3a4c30e5e74446d4f8b6afd05b2f2da970f470",
       "gguf_file": "surya-2.gguf",
+      "gguf_sha256": "1f18abe17b1ed8b4e47ee9b1ad0e274c93daf5efbb6b29a04ff1712e37051e05",
       "mmproj_file": "surya-2-mmproj.gguf",
+      "mmproj_sha256": "98c0563673b1657ff6d021d1e5f04af06cbf61bb40c63ac613e8bb71b42fb2c0",
       "llama_server_args": [
         "--ctx-size", "auto",
         "--parallel", "4",
@@ -15,6 +17,22 @@
       "max_ctx_size": 262144,
       "kv_bytes_per_token": 12288,
       "weights_estimate_bytes": 2147483648
+    },
+    "qwen3-8b": {
+      "repo": "ggml-org/Qwen3-8B-GGUF",
+      "revision": "bbd9eb5efae3fd6d45dd620650916346d7cecc67",
+      "gguf_file": "Qwen3-8B-Q8_0.gguf",
+      "gguf_sha256": "2f98cff159bcdf01431829406d43363ccacb76ed6b76d18bd9d6ab20976792c0",
+      "llama_server_args": [
+        "--ctx-size", "2048",
+        "--parallel", "32",
+        "--n-gpu-layers", "999",
+        "--pooling", "last",
+        "--embd-normalize", "2"
+      ],
+      "endpoints": ["embeddings"],
+      "max_ctx_size": 2048,
+      "weights_estimate_bytes": 8709518656
     }
   }
 }

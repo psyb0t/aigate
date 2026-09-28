@@ -394,6 +394,7 @@ Same wrapper as the CPU variant but with `--n-gpu-layers 999` and the CUDA base 
 | Alias | Model | Notes |
 | ----- | ----- | ----- |
 | `local-llamacpp-cuda-surya-ocr-2` | datalab-to/surya-ocr-2-gguf | Same model + same 4 prompt modes + same server-side PDF handling + `dpi_rescale_to` knob + auto `--ctx-size` as the CPU slug — see the row above. The resolver picks the **full 262144 trained max** on any RTX-class GPU with ~3+ GB free for KV cache (verified live on the aigate stack). |
+| `local-llamacpp-cuda-qwen3-8b` | ggml-org/Qwen3-8B-GGUF, Q8_0 | 8.71 GB CUDA embedding model with `--pooling last`, 4096 dimensions, and L2 normalization. This is the encoder locked to Contrastive-LM CLM v0.1. Not a chat model. |
 
 ---
 

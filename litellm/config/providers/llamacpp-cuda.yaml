@@ -11,3 +11,11 @@
     api_key: none
   model_info:
     mode: chat
+
+- model_name: local-llamacpp-cuda-qwen3-8b
+  litellm_params:
+    model: openai/qwen3-8b
+    api_base: http://llamacpp-cuda:8000/v1
+    api_key: none
+  model_info:
+    mode: embedding

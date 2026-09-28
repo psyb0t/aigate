@@ -418,7 +418,11 @@ async def _unload_cpu_vllm():
 # models.{cpu,cuda}.json slugs.
 _LLAMACPP_CUDA_URL = "http://llamacpp-cuda:8000"
 _LLAMACPP_CPU_URL = "http://llamacpp:8000"
-_LLAMACPP_MODELS = [
+_LLAMACPP_CUDA_MODELS = [
+    "surya-ocr-2",
+    "qwen3-8b",
+]
+_LLAMACPP_CPU_MODELS = [
     "surya-ocr-2",
 ]
 
@@ -427,7 +431,7 @@ async def _unload_cuda_llamacpp():
     """Unload CUDA llamacpp models to free VRAM."""
     logger.warning("[resource_manager] unloading cuda-llamacpp models")
     await _unload_via_api_ps(
-        _LLAMACPP_CUDA_URL, "cuda-llamacpp", _LLAMACPP_MODELS
+        _LLAMACPP_CUDA_URL, "cuda-llamacpp", _LLAMACPP_CUDA_MODELS
     )
 
 
@@ -435,7 +439,7 @@ async def _unload_cpu_llamacpp():
     """Unload CPU llamacpp models to free RAM."""
     logger.warning("[resource_manager] unloading cpu-llamacpp models")
     await _unload_via_api_ps(
-        _LLAMACPP_CPU_URL, "cpu-llamacpp", _LLAMACPP_MODELS
+        _LLAMACPP_CPU_URL, "cpu-llamacpp", _LLAMACPP_CPU_MODELS
     )
 
 

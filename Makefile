@@ -7,7 +7,7 @@ $(shell [ -f .env ] || cp .env.example .env)
 -include .env.limits
 export
 
-.PHONY: run run-bg down restart test test-unit logs limits build-config bootstrap help
+.PHONY: run run-bg down restart test test-unit test-llamacpp-pull test-llamacpp-server logs limits build-config bootstrap help
 
 # ── Profile detection ─────────────────────────────────────────────────────────
 
@@ -282,6 +282,23 @@ test:
 test-unit:
 	bash tests/unit/run.sh
 
+test-llamacpp-pull:
+	docker run --rm \
+		-v "$(CURDIR):/workspace:ro" \
+		-w /workspace \
+		python:3.12-slim-bookworm \
+		python3 llamacpp/tests/test_pull_models.py -v
+
+test-llamacpp-server:
+	docker run --rm \
+		-v "$(CURDIR):/workspace:ro" \
+		-w /workspace \
+		-e PYTHONPATH=/workspace/llamacpp/src \
+		-e LLAMACPP_WRAP_MODELS_FILE=/workspace/llamacpp/models.cuda.json \
+		--entrypoint python3 \
+		aigate-llamacpp-cuda:latest \
+		-m unittest llamacpp/tests/test_server.py -v
+
 logs:
 	docker compose logs -f
 
@@ -302,6 +319,8 @@ help:
 	@echo "  limits        Check enabled services fit this machine, write CPU caps to .env.limits"
 	@echo "  test          Run test suite (stack must be running)"
 	@echo "  test-unit     Run LiteLLM callback unit tests against a throwaway Redis (no running stack)"
+	@echo "  test-llamacpp-pull Test llama.cpp model artifact selection and checksum verification"
+	@echo "  test-llamacpp-server Test llama.cpp's public HTTP wrapper contract"
 	@echo "  logs          Follow logs"
 	@echo "  help          Show this help"
 	@echo ""

@@ -58,10 +58,11 @@ WORKDIR /app
 
 COPY --chown=llamauser:llamauser src ./src
 COPY --chown=llamauser:llamauser pyproject.toml ./
+RUN pip install --break-system-packages -e /app
+
 COPY --chown=llamauser:llamauser models.cuda.json /app/models.json
 COPY --chown=llamauser:llamauser entrypoint.sh /usr/local/bin/llamacpp-entrypoint
-RUN chmod +x /usr/local/bin/llamacpp-entrypoint \
-    && pip install --break-system-packages -e /app
+RUN chmod +x /usr/local/bin/llamacpp-entrypoint
 
 USER llamauser
 

@@ -4,7 +4,9 @@
       "repo": "datalab-to/surya-ocr-2-gguf",
       "revision": "6a3a4c30e5e74446d4f8b6afd05b2f2da970f470",
       "gguf_file": "surya-2.gguf",
+      "gguf_sha256": "1f18abe17b1ed8b4e47ee9b1ad0e274c93daf5efbb6b29a04ff1712e37051e05",
       "mmproj_file": "surya-2-mmproj.gguf",
+      "mmproj_sha256": "98c0563673b1657ff6d021d1e5f04af06cbf61bb40c63ac613e8bb71b42fb2c0",
       "llama_server_args": [
         "--ctx-size", "auto",
         "--parallel", "4",

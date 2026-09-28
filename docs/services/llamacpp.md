@@ -17,6 +17,22 @@ Base images pinned by digest: `ghcr.io/ggml-org/llama.cpp:server@sha256:7d02b045
 
 - `LLAMACPP=1` → `local-llamacpp-surya-ocr-2` (CPU)
 - `LLAMACPP_CUDA=1` → `local-llamacpp-cuda-surya-ocr-2` (CUDA — strongly preferred for interactive workloads)
+- `LLAMACPP_CUDA=1` → `local-llamacpp-cuda-qwen3-8b` (CUDA embeddings for Contrastive-LM CLM)
+
+### Qwen3 8B CLM encoder
+
+`local-llamacpp-cuda-qwen3-8b` is the Q8_0 GGUF of plain Qwen3 8B, pinned to an immutable Hugging Face revision and SHA-256. It uses llama.cpp last-token pooling and L2 normalization to produce the 4096-dimension vectors required by Contrastive-LM CLM v0.1. It is embeddings-only. Do not send it chat requests.
+
+Enable `LLAMACPP_CUDA=1`, then send OpenAI-compatible embeddings through LiteLLM:
+
+```bash
+curl http://localhost:4000/v1/embeddings \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"local-llamacpp-cuda-qwen3-8b","input":"classify this bounded decision"}'
+```
+
+The CUDA pull sidecar downloads only `Qwen3-8B-Q8_0.gguf`, about 8.71 GB, not every quantization in the Hugging Face repository. The first request loads it into VRAM. The wrapper unloads it after `LLAMACPP_CUDA_MODEL_TTL` seconds of inactivity, 600 by default, or when AIGate evicts it for another CUDA workload.
 
 ### The 4 prompt modes
 
@@ -427,12 +443,12 @@ Every tunable has a CPU (`LLAMACPP_*`) and CUDA (`LLAMACPP_CUDA_*`) counterpart 
 | `LLAMACPP_MODEL_TTL` / `LLAMACPP_CUDA_MODEL_TTL` | `600` | Seconds idle before `llama-server` is killed (`-1` disables) |
 | `LLAMACPP_SWEEPER_INTERVAL` / `LLAMACPP_CUDA_SWEEPER_INTERVAL` | `60` | How often the idle sweeper checks (seconds) |
 | `LLAMACPP_LOAD_TIMEOUT` / `LLAMACPP_CUDA_LOAD_TIMEOUT` | `600` | Max time to wait for `/health` after spawning `llama-server` |
-| `LLAMACPP_REQUEST_TIMEOUT` / `LLAMACPP_CUDA_REQUEST_TIMEOUT` | `300` | Per-request proxy timeout |
+| `LLAMACPP_REQUEST_TIMEOUT` / `LLAMACPP_CUDA_REQUEST_TIMEOUT` | `1800` / `300` | Per-request proxy timeout in seconds. CPU OCR of one page can take several minutes. |
 | `LLAMACPP_LOG_LEVEL` / `LLAMACPP_CUDA_LOG_LEVEL` | `INFO` | Wrapper log level |
 | `LLAMACPP_PRELOAD` / `LLAMACPP_CUDA_PRELOAD` | _empty_ | Pre-spawn this model_id at boot |
 | `LLAMACPP_MEM_LIMIT` / `LLAMACPP_CUDA_MEM_LIMIT` | `12g` | Container memory limit |
 | `LLAMACPP_CPUS` / `LLAMACPP_CUDA_CPUS` | `4.0` | Container CPU limit |
-| `DATA_DIR_LLAMACPP` | `${DATA_DIR}/llamacpp` | Bind-mount root for the wrapper's `/data` dir. Holds the flat HF-repo layout under `models/<org>/<repo>/<files>` (no blobs/snapshots dedup) — the `llamacpp-pull` sidecar populates this via `huggingface-cli download <repo> --local-dir <path>` reading from BOTH `llamacpp/models.cpu.json` and `models.cuda.json` (union of `repo` fields). Both CPU and CUDA wrappers share the same files. |
+| `DATA_DIR_LLAMACPP` | `${DATA_DIR}/llamacpp` | Bind-mount root for the wrapper's `/data` dir. Holds a flat artifact layout under `models/<org>/<repo>/<files>`. CPU and CUDA pull sidecars read only their active registry, download only its declared files at their pinned revision, verify SHA-256, and serialize shared-store writes. |
 
 ## Auto-sizing `--ctx-size` to available memory
 
@@ -498,10 +514,10 @@ CPU models pass `"--threads", "auto"`. At spawn time the supervisor replaces it 
 
 Per-model GGUF + mmproj filenames + `llama-server` extra args are declared in `llamacpp/models.{cpu,cuda}.json`.
 
-1. Append a new entry to both JSONs (or one if it's only relevant for one hardware). Required fields: `repo`, `gguf_file`, `endpoints`. Optional: `revision`, `mmproj_file` (vision models), `llama_server_args` (e.g. `--ctx-size`, `--n-gpu-layers`, `--parallel`).
-2. Bring the stack down and back up — the `llamacpp-pull` sidecar will fetch the new repo on next boot.
+1. Append a new entry to the CPU or CUDA registry. Required fields: `repo`, an immutable 40-character `revision`, `gguf_file`, `gguf_sha256`, and `endpoints`. Vision models also require `mmproj_file` and `mmproj_sha256`. Optional `llama_server_args` tune llama.cpp.
+2. Bring the selected profile down and back up. Its pull sidecar fetches only the declared files, then checks each SHA-256 before the wrapper boots.
 3. Add a corresponding LiteLLM provider entry to `litellm/config/providers/llamacpp{,-cuda}.yaml` and regenerate `config.yaml` via `make build-config`.
-4. If the new model is heavy enough to need its own resource_manager group, add a `_LLAMACPP_MODELS` entry in `litellm/callbacks/resource_manager.py` so the `DELETE /api/ps/{model_id}` eviction fires on it.
+4. Add the model ID to the matching CPU or CUDA llama.cpp unload list in `litellm/callbacks/resource_manager.py` so the `DELETE /api/ps/{model_id}` eviction fires on it.
 
 ## Upstream Python lib drop-in
 

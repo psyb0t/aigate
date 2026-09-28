@@ -61,6 +61,43 @@ class MCPGroupTest(unittest.TestCase):
             with self.subTest(server=server, tool=tool):
                 self.assertIsNone(rm._mcp_group(server, tool))
 
+    def test_qwen3_encoder_maps_to_the_cuda_llamacpp_group(self) -> None:
+        self.assertEqual(
+            rm._get_group("local-llamacpp-cuda-qwen3-8b"),
+            "cuda-llamacpp",
+        )
+
+
+class LlamacppUnloadTest(unittest.IsolatedAsyncioTestCase):
+    async def test_cuda_unload_requests_qwen3_encoder_eviction(self) -> None:
+        calls: list[tuple[str, str, list[str]]] = []
+        saved_unload = rm._unload_via_api_ps
+
+        async def fake_unload(
+            base_url: str,
+            group: str,
+            model_ids: list[str],
+            auth_token: str = "",
+        ) -> None:
+            self.assertEqual(auth_token, "")
+            calls.append((base_url, group, model_ids))
+
+        self.addCleanup(setattr, rm, "_unload_via_api_ps", saved_unload)
+        rm._unload_via_api_ps = fake_unload
+
+        await rm._unload_cuda_llamacpp()
+
+        self.assertEqual(
+            calls,
+            [
+                (
+                    "http://llamacpp-cuda:8000",
+                    "cuda-llamacpp",
+                    ["surya-ocr-2", "qwen3-8b"],
+                )
+            ],
+        )
+
 
 class MCPLockLifetimeTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:

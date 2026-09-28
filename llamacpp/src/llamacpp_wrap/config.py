@@ -58,9 +58,8 @@ DATA_DIR: Path = Path(
     os.environ.get("LLAMACPP_WRAP_DATA_DIR", "/data")
 ).resolve()
 
-# Models live under MODELS_DIR/<repo>, mirroring the HF repo path. The pull
-# container populates this via `huggingface_hub.snapshot_download` (allow-
-# patterns restricted to the gguf + mmproj + small tokenizer/config files).
+# Models live under MODELS_DIR/<repo>, mirroring the Hugging Face repository
+# path. The pull sidecar fetches only declared, checksum-pinned GGUF artifacts.
 # Other services that bind-mount the same path can load the weights directly.
 MODELS_DIR: Path = Path(
     os.environ.get("LLAMACPP_WRAP_MODELS_DIR", str(DATA_DIR / "models"))

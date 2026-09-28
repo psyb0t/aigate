@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here.
 
+## [v6.1.0] (2026-09-28)
+
+**Adds a CUDA Qwen3 8B embeddings endpoint for Contrastive-LM CLM and makes llama.cpp model downloads artifact-pinned.**
+
+### Added
+
+- `local-llamacpp-cuda-qwen3-8b` serves Qwen3 8B Q8_0 at `/v1/embeddings` with last-token pooling, L2 normalization, and 4096 dimensions. It is the Qwen encoder used by Decidealot CLM.
+- CPU and CUDA llama.cpp profiles now use separate pull sidecars. Each downloads only the immutable, checksum-pinned artifacts in its own registry and serializes access to the shared model directory.
+
+### Fixed
+
+- The llama.cpp wrapper drops unset OpenAI request fields before forwarding an embeddings request. LiteLLM sends `encoding_format: null`, which llama.cpp rejects.
+
 ## [v6.0.0] (2026-09-26)
 
 **Moves the hardware lock to Redis so it holds across every LiteLLM worker, turns on LiteLLM's response cache, splits Redis into per-service ACL users, replaces the CPU vLLM embedding model that could not run, and makes every memory limit a fixed number instead of a share of the host's RAM.**

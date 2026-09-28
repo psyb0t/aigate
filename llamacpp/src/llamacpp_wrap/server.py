@@ -217,6 +217,8 @@ async def _handle_json_request(
             detail=f"model {model_id!r} does not support /v1/{path.split('/')[-1]}",
         )
 
+    payload = _drop_null_top_level_fields(payload)
+
     try:
         await SUPERVISOR.ensure(model_id)
     except SupervisorError as exc:
@@ -245,9 +247,8 @@ async def _handle_json_request(
     # transparently fetch any http(s)://... URL here and rewrite it to
     # a data: URL before forwarding. Anything else (data:..., empty,
     # malformed) is left untouched.
-    rewrote, payload = await _rewrite_image_urls_to_data(payload)
-    if rewrote:
-        body = json.dumps(payload).encode("utf-8")
+    _, payload = await _rewrite_image_urls_to_data(payload)
+    body = json.dumps(payload).encode("utf-8")
 
     is_stream = bool(payload.get("stream"))
     return await _do_proxy(
@@ -273,6 +274,7 @@ async def _proxy_one_payload(
     parse it.
     """
     _, payload = await _rewrite_image_urls_to_data(payload)
+    payload = _drop_null_top_level_fields(payload)
     body = json.dumps(payload).encode("utf-8")
     return await _do_proxy(
         request,
@@ -281,6 +283,11 @@ async def _proxy_one_payload(
         content_type="application/json",
         is_stream=False,
     )
+
+
+def _drop_null_top_level_fields(payload: dict[str, Any]) -> dict[str, Any]:
+    """Remove optional JSON nulls that current llama-server rejects."""
+    return {key: value for key, value in payload.items() if value is not None}
 
 
 # Upper bound on the size of any single fetched image. Keeps a hostile or
