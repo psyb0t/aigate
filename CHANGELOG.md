@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here.
 
+## [v6.3.0] (2026-10-02)
+
+**Updates Decidealot to v0.6.0 for hosted Jev decisions and independent batch requests.**
+
+### Added
+
+- Set `DECIDEALOT_TYPESAFE_API_KEY` in the gitignored `.env` to include the account's live Jev selectors in Decidealot's model catalog. The key is passed to both CPU and CUDA variants. Jev requests leave the stack for TypeSafe's API; local Laya, Von, and CLM remain available without that key.
+- `POST /decidealot/v1/systemone/batch` and its CUDA counterpart accept a list of complete decision requests. The `system_one_batch` MCP tool joins both the direct servers and LiteLLM's aggregated `/mcp/`, bringing each variant to four tools.
+- `DECIDEALOT_MAX_BATCH_REQUESTS`, `DECIDEALOT_MAX_BATCH_CONCURRENCY`, `DECIDEALOT_MAX_RESIDENT_LOCAL_PROVIDERS`, and `DECIDEALOT_CLM_PARALLEL_WITH_LOCAL_MODELS` expose Decidealot's batch and residency controls. Existing single-request behavior and the one-local-provider default remain unchanged.
+
+### Changed
+
+- Both Decidealot images now use v0.6.0. The service docs, MCP descriptions, agent guidance, and smoke-test tool list match the new API.
+
 ## [v6.2.0] (2026-09-28)
 
 **Adds the optional Decidealot CLM provider to the AIGate stack.**

@@ -1,6 +1,6 @@
 # decidealot (optional, `DECIDEALOT=1` / `DECIDEALOT_CUDA=1`)
 
-Local typed decisions with Laya, Von, and optional CLM, served by [decidealot](https://github.com/psyb0t/decidealot) behind the TypeSafe System One API. You send the `state` to judge and one or more named questions. Each question is typed `choice`, `score`, or `noul`, and each answer comes back with model probabilities. The models do not write prose or run an action. The caller picks the threshold and decides what happens next.
+Typed decisions with local Laya, Von, and optional CLM, or hosted TypeSafe Jev, served by [decidealot](https://github.com/psyb0t/decidealot) behind the TypeSafe System One API. You send the `state` to judge and one or more named questions. Each question is typed `choice`, `score`, or `noul`, and each answer comes back with model probabilities. The models do not write prose or run an action. The caller picks the threshold and decides what happens next.
 
 Direct nginx route, not via LiteLLM. The MCP tools join the aggregated `/mcp/`.
 
@@ -9,6 +9,7 @@ CPU and CUDA variants run side-by-side on distinct routes and aliases: `/decidea
 | Endpoint         | CPU (`DECIDEALOT=1`)                        | CUDA (`DECIDEALOT_CUDA=1`)                       |
 | ---------------- | ------------------------------------------- | ------------------------------------------------ |
 | Decision         | `POST http://localhost:4000/decidealot/v1/systemone` | `POST http://localhost:4000/decidealot-cuda/v1/systemone` |
+| Batch decisions  | `POST http://localhost:4000/decidealot/v1/systemone/batch` | `POST http://localhost:4000/decidealot-cuda/v1/systemone/batch` |
 | Models           | `GET http://localhost:4000/decidealot/v1/models` | `GET http://localhost:4000/decidealot-cuda/v1/models` |
 | Unload           | `POST http://localhost:4000/decidealot/v1/models/unload` | `POST http://localhost:4000/decidealot-cuda/v1/models/unload` |
 | MCP (direct)     | `http://localhost:4000/decidealot/mcp`      | `http://localhost:4000/decidealot-cuda/mcp`      |
@@ -28,7 +29,9 @@ Auth: `Authorization: Bearer $DECIDEALOT_AUTH_TOKEN`, which defaults to `AIGATE_
 | `von`, `von-latest`, `von-1.1`, `von-1.1.0` | Von 1.1, English only | Short questions with clear criteria, or a second opinion next to Laya |
 | `clm`, `clm-latest`, `clm-0.1`, `clm-0.1-8b` | CLM v0.1 projection head over local Qwen3-8B embeddings | Repeated typed decisions where you want the CLM model. Requires the CLM setup below. |
 
-One provider is resident per container. Moving between Laya selectors stays on Laya. Moving to Von or CLM waits for active work, releases the old model and its Torch memory, then starts the selected provider. An idle provider is released after `DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS` (600 by default). AIGate's resource manager also calls `POST /v1/models/unload` before LiteLLM-routed local model work starts, and `POST /v1/unload/{cuda,cpu}` includes Decidealot. A decision in flight returns `409`, so the unload is skipped and the provider stays until its idle timer. See [resource management](../resource-management.md). A request sent straight to Decidealot does not evict LiteLLM-routed models.
+Hosted Jev is optional. Set `DECIDEALOT_TYPESAFE_API_KEY` in the gitignored `.env`, then `GET /v1/models` lists the exact Jev names available to that account. Decidealot refreshes TypeSafe's catalog every 60 seconds and accepts those names without hardcoded aliases. Jev receives the complete decision state and questions over HTTPS. `DECIDEALOT_JEV_ENABLED=false` disables it even when a key is present.
+
+One local provider is resident per container by default. `DECIDEALOT_MAX_RESIDENT_LOCAL_PROVIDERS` can raise that limit to three if memory permits. Moving between Laya selectors stays on Laya. With one slot, moving to Von or CLM waits for active work, releases the old model and its Torch memory, then starts the selected provider. An idle provider is released after `DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS` (600 by default). AIGate's resource manager also calls `POST /v1/models/unload` before LiteLLM-routed local model work starts, and `POST /v1/unload/{cuda,cpu}` includes Decidealot. A decision in flight returns `409`, so the unload is skipped and the provider stays until its idle timer. See [resource management](../resource-management.md). A request sent straight to Decidealot does not evict LiteLLM-routed models.
 
 Measured on this stack, CPU with the bundles on a network share: a cold Laya start plus the first decision took about 75 seconds, a warm Laya decision about 1 second, and a swap to Von about 80 seconds. On CUDA the cold starts ran 2 to 2.5 minutes because of first-run kernel compilation, then warm decisions returned in under a second.
 
@@ -121,12 +124,12 @@ curl -X POST http://localhost:4000/decidealot/v1/models/unload \
 
 ### MCP
 
-Three tools: `system_one` (same `model`, `state`, `questions` fields as the REST call), `list_models`, and `unload_models`. Through the aggregator they appear as `decidealot-system_one` and `decidealot_cuda-system_one` and so on. See [the MCP tools page](../mcp-tools.md#decidealot-typed-decisions-decidealot1-or-decidealot_cuda1).
+Four tools: `system_one` (same `model`, `state`, `questions` fields as the REST call), `system_one_batch` (a list of independent requests), `list_models`, and `unload_models`. Through the aggregator they appear as `decidealot-system_one` and `decidealot_cuda-system_one` and so on. See [the MCP tools page](../mcp-tools.md#decidealot-typed-decisions-decidealot1-or-decidealot_cuda1).
 
 decidealot keeps the MCP SDK's DNS-rebinding protection on. Its MCP endpoint answers `421` to a `Host` outside `DECIDEALOT_MCP_ALLOWED_HOSTS` and `403` to a browser `Origin` outside `DECIDEALOT_MCP_ALLOWED_ORIGINS`. aigate sets each container's host list to loopback plus its own service name (`decidealot` or `decidealot-cuda`), which is what LiteLLM's MCP client sends. The nginx routes send `Host: 127.0.0.1:8080` upstream because aigate cannot know your tailnet or tunnel hostname, so direct MCP through nginx works from any of them without extra config. A browser-based MCP client on a public domain also needs that origin in `DECIDEALOT_MCP_ALLOWED_ORIGINS`. Non-browser clients do not send `Origin`.
 
 ## Configuration
 
-Env vars: `DECIDEALOT_AUTH_TOKEN`, `DECIDEALOT_UID`, `DECIDEALOT_GID`, `DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS`, `DECIDEALOT_REQUEST_TIMEOUT_SECONDS`, `DECIDEALOT_PROVIDER_START_TIMEOUT_SECONDS`, `DECIDEALOT_{LAYA,VON,CLM}_ENABLED`, `DECIDEALOT_CLM_EMBEDDINGS_{URL,MODEL,API_KEY,TIMEOUT_SECONDS}`, `DECIDEALOT_MAX_REQUEST_BYTES`, `DECIDEALOT_LOG_LEVEL`, `DECIDEALOT_MCP_ALLOWED_HOSTS`, `DECIDEALOT_CUDA_MCP_ALLOWED_HOSTS`, `DECIDEALOT_MCP_ALLOWED_ORIGINS`, `DATA_DIR_DECIDEALOT`, resource limits `DECIDEALOT[_CUDA]_{MEM_LIMIT,MEMSWAP_LIMIT,CPUS,PIDS_LIMIT}`, per-route `RATELIMIT_DECIDEALOT[_BURST]` and `RATELIMIT_DECIDEALOT_CUDA[_BURST]`, and shared `TIMEOUT_DECIDEALOT`. Full reference in [`.env.example`](../../.env.example).
+Env vars: `DECIDEALOT_AUTH_TOKEN`, `DECIDEALOT_UID`, `DECIDEALOT_GID`, `DECIDEALOT_PROVIDER_IDLE_UNLOAD_SECONDS`, `DECIDEALOT_MAX_RESIDENT_LOCAL_PROVIDERS`, `DECIDEALOT_MAX_BATCH_REQUESTS`, `DECIDEALOT_MAX_BATCH_CONCURRENCY`, `DECIDEALOT_REQUEST_TIMEOUT_SECONDS`, `DECIDEALOT_PROVIDER_START_TIMEOUT_SECONDS`, `DECIDEALOT_{LAYA,VON,CLM}_ENABLED`, `DECIDEALOT_CLM_EMBEDDINGS_{URL,MODEL,API_KEY,TIMEOUT_SECONDS}`, `DECIDEALOT_CLM_PARALLEL_WITH_LOCAL_MODELS`, `DECIDEALOT_TYPESAFE_API_KEY`, `DECIDEALOT_JEV_ENABLED`, `DECIDEALOT_MAX_REQUEST_BYTES`, `DECIDEALOT_LOG_LEVEL`, `DECIDEALOT_MCP_ALLOWED_HOSTS`, `DECIDEALOT_CUDA_MCP_ALLOWED_HOSTS`, `DECIDEALOT_MCP_ALLOWED_ORIGINS`, `DATA_DIR_DECIDEALOT`, resource limits `DECIDEALOT[_CUDA]_{MEM_LIMIT,MEMSWAP_LIMIT,CPUS,PIDS_LIMIT}`, per-route `RATELIMIT_DECIDEALOT[_BURST]` and `RATELIMIT_DECIDEALOT_CUDA[_BURST]`, and shared `TIMEOUT_DECIDEALOT`. Full reference in [`.env.example`](../../.env.example).
 
 Upstream docs: [API](https://github.com/psyb0t/decidealot/blob/main/docs/api.md) for request rules, validation errors, and response shapes, and [deployment](https://github.com/psyb0t/decidealot/blob/main/docs/deployment.md).

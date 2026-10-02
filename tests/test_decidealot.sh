@@ -225,7 +225,7 @@ _decidealot_test_mcp_tools_present() {
         | grep "^data:" | head -1 | sed 's/^data: //')
     assert_not_empty "$tools_json" "${tag} mcp tools response" || return 1
     local tool
-    for tool in system_one list_models unload_models; do
+    for tool in system_one system_one_batch list_models unload_models; do
         assert_contains "$tools_json" "\"${namespace}-${tool}\"" "${tag} aggregated MCP has ${namespace}-${tool}" || return 1
     done
     echo "OK: ${tag} mcp_tools_present"

@@ -3,4 +3,4 @@ decidealot_cuda:
   transport: "http"
   auth_type: "bearer_token"
   auth_value: os.environ/DECIDEALOT_AUTH_TOKEN
-  description: "Local typed decisions (NVIDIA GPU variant of decidealot). Same models and the same 3 tools as the CPU `decidealot` MCP (system_one, list_models, unload_models); see that fragment's description for the request shape and model selectors. Use this for faster inference; use `decidealot` when CPU is enough. Both share ${DATA_DIR_DECIDEALOT}/models. Tools are namespaced as `decidealot_cuda-<tool>` in the aggregated /mcp/."
+  description: "NVIDIA GPU variant of decidealot. It exposes system_one, system_one_batch, list_models, and unload_models. Local models use CUDA; optional hosted Jev uses TypeSafe's API and does not load a local model. Both variants share ${DATA_DIR_DECIDEALOT}/models. Tools are namespaced as `decidealot_cuda-<tool>` in the aggregated /mcp/."
