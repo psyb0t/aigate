@@ -376,7 +376,12 @@ services:
   decidealot:
     logging: *docker-logging
     profiles: ["decidealot"]
-    image: psyb0t/decidealot:v0.6.0
+    image: aigate-decidealot:latest
+    build:
+      context: .
+      dockerfile: decidealot/Dockerfile
+      args:
+        DECIDEALOT_IMAGE: psyb0t/decidealot:v0.6.0
     restart: unless-stopped
     user: "${DECIDEALOT_UID:-1000}:${DECIDEALOT_GID:-1000}"
     init: true
@@ -387,6 +392,14 @@ services:
     pids_limit: ${DECIDEALOT_PIDS_LIMIT:-512}
     environment:
       DECIDEALOT_API_KEY: ${DECIDEALOT_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-decidealot}}
+      RESOURCE_LOCK_REDIS_HOST: redis
+      RESOURCE_LOCK_REDIS_USERNAME: litellm
+      RESOURCE_LOCK_REDIS_PASSWORD: ${LITELLM_REDIS_PASSWORD:-${REDIS_PASSWORD}}
+      AIGATE_DECIDEALOT_ENCODER_ENABLED: ${LLAMACPP_CUDA:-0}
+      RESOURCE_LOCK_TTL_SECONDS: ${RESOURCE_LOCK_TTL_SECONDS:-60}
+      RESOURCE_LOCK_MAX_HOLD_SECONDS: ${RESOURCE_LOCK_MAX_HOLD_SECONDS:-86400}
+      AIGATE_DECIDEALOT_ENCODER_URL: ${AIGATE_DECIDEALOT_ENCODER_URL:-http://llamacpp-cuda:8000}
+      AIGATE_DECIDEALOT_UNLOAD_TIMEOUT_SECONDS: ${AIGATE_DECIDEALOT_UNLOAD_TIMEOUT_SECONDS:-30}
       DECIDEALOT_LOG_LEVEL: ${DECIDEALOT_LOG_LEVEL:-INFO}
       DECIDEALOT_MAX_REQUEST_BYTES: ${DECIDEALOT_MAX_REQUEST_BYTES:-1048576}
       DECIDEALOT_MAX_BATCH_REQUESTS: ${DECIDEALOT_MAX_BATCH_REQUESTS:-0}
@@ -397,9 +410,9 @@ services:
       DECIDEALOT_PROVIDER_START_TIMEOUT_SECONDS: ${DECIDEALOT_PROVIDER_START_TIMEOUT_SECONDS:-180}
       DECIDEALOT_LAYA_ENABLED: ${DECIDEALOT_LAYA_ENABLED:-true}
       DECIDEALOT_VON_ENABLED: ${DECIDEALOT_VON_ENABLED:-true}
-      # CLM is opt-in because it needs the Qwen3-8B CUDA embedding route.
+      # CLM uses the Qwen3-8B CUDA embedding route by default.
       # The default endpoint and token stay inside AIGate on aigate-internal.
-      DECIDEALOT_CLM_ENABLED: ${DECIDEALOT_CLM_ENABLED:-false}
+      DECIDEALOT_CLM_ENABLED: ${DECIDEALOT_CLM_ENABLED:-true}
       DECIDEALOT_CLM_EMBEDDINGS_URL: ${DECIDEALOT_CLM_EMBEDDINGS_URL:-http://litellm:4000/v1/embeddings}
       DECIDEALOT_CLM_EMBEDDINGS_MODEL: ${DECIDEALOT_CLM_EMBEDDINGS_MODEL:-local-llamacpp-cuda-qwen3-8b}
       DECIDEALOT_CLM_EMBEDDINGS_API_KEY: ${DECIDEALOT_CLM_EMBEDDINGS_API_KEY:-${LITELLM_MASTER_KEY:-${AIGATE_TOKEN}}}
@@ -437,7 +450,12 @@ services:
   decidealot-cuda:
     logging: *docker-logging
     profiles: ["decidealot-cuda"]
-    image: psyb0t/decidealot:v0.6.0-cuda
+    image: aigate-decidealot-cuda:latest
+    build:
+      context: .
+      dockerfile: decidealot/Dockerfile
+      args:
+        DECIDEALOT_IMAGE: psyb0t/decidealot:v0.6.0-cuda
     restart: unless-stopped
     user: "${DECIDEALOT_UID:-1000}:${DECIDEALOT_GID:-1000}"
     init: true
@@ -448,6 +466,14 @@ services:
     pids_limit: ${DECIDEALOT_CUDA_PIDS_LIMIT:-512}
     environment:
       DECIDEALOT_API_KEY: ${DECIDEALOT_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security-decidealot}}
+      RESOURCE_LOCK_REDIS_HOST: redis
+      RESOURCE_LOCK_REDIS_USERNAME: litellm
+      RESOURCE_LOCK_REDIS_PASSWORD: ${LITELLM_REDIS_PASSWORD:-${REDIS_PASSWORD}}
+      AIGATE_DECIDEALOT_ENCODER_ENABLED: ${LLAMACPP_CUDA:-0}
+      RESOURCE_LOCK_TTL_SECONDS: ${RESOURCE_LOCK_TTL_SECONDS:-60}
+      RESOURCE_LOCK_MAX_HOLD_SECONDS: ${RESOURCE_LOCK_MAX_HOLD_SECONDS:-86400}
+      AIGATE_DECIDEALOT_ENCODER_URL: ${AIGATE_DECIDEALOT_ENCODER_URL:-http://llamacpp-cuda:8000}
+      AIGATE_DECIDEALOT_UNLOAD_TIMEOUT_SECONDS: ${AIGATE_DECIDEALOT_UNLOAD_TIMEOUT_SECONDS:-30}
       DECIDEALOT_LOG_LEVEL: ${DECIDEALOT_LOG_LEVEL:-INFO}
       DECIDEALOT_MAX_REQUEST_BYTES: ${DECIDEALOT_MAX_REQUEST_BYTES:-1048576}
       DECIDEALOT_MAX_BATCH_REQUESTS: ${DECIDEALOT_MAX_BATCH_REQUESTS:-0}
@@ -459,7 +485,7 @@ services:
       DECIDEALOT_LAYA_ENABLED: ${DECIDEALOT_LAYA_ENABLED:-true}
       DECIDEALOT_VON_ENABLED: ${DECIDEALOT_VON_ENABLED:-true}
       # See the CPU service. CLM uses the same internal LiteLLM route.
-      DECIDEALOT_CLM_ENABLED: ${DECIDEALOT_CLM_ENABLED:-false}
+      DECIDEALOT_CLM_ENABLED: ${DECIDEALOT_CLM_ENABLED:-true}
       DECIDEALOT_CLM_EMBEDDINGS_URL: ${DECIDEALOT_CLM_EMBEDDINGS_URL:-http://litellm:4000/v1/embeddings}
       DECIDEALOT_CLM_EMBEDDINGS_MODEL: ${DECIDEALOT_CLM_EMBEDDINGS_MODEL:-local-llamacpp-cuda-qwen3-8b}
       DECIDEALOT_CLM_EMBEDDINGS_API_KEY: ${DECIDEALOT_CLM_EMBEDDINGS_API_KEY:-${LITELLM_MASTER_KEY:-${AIGATE_TOKEN}}}

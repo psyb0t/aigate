@@ -29,7 +29,7 @@ Models load automatically when a request arrives. Send a chat completion to `loc
 
 A LiteLLM callback (`resource_manager.py`) allows one job at a time per hardware class:
 
-- **CUDA lock:** one CUDA job at a time across every CUDA group (Ollama, sd.cpp, talkies, vLLM, llama.cpp, and the predictalot and decidealot MCP tools).
+- **CUDA lock:** one CUDA job at a time across LiteLLM's CUDA groups, predictalot MCP tools, and Aigate's Decidealot Laya/Von provider acquisitions.
 - **CPU lock:** the same for the CPU groups.
 
 The locks live in Redis (`hardware_lock.py`), so they hold across all of LiteLLM's worker processes (`LITELLM_WORKERS`, 4 by default). Before v6.0.0 each worker had its own in-memory lock, so up to four jobs could run on the GPU at once.
@@ -75,9 +75,9 @@ Audiolla, flickies, predictalot, and decidealot expose their own HTTP APIs throu
 
 predictalot and decidealot answer `409` to an unload while they are serving a request. The resource manager logs that as a skipped unload and continues, and the busy service frees its model on its own idle timer. Each unload call carries that service's own token (`PREDICTALOT_AUTH_TOKEN`, `DECIDEALOT_AUTH_TOKEN`), which LiteLLM gets with the same `AIGATE_TOKEN` fallback the services use.
 
-predictalot and decidealot tool calls made through LiteLLM's aggregated MCP server (`/mcp`) also run under the hardware lock. An inference tool (anything except `list_*`, `get_*`, and `unload_models`) takes the lock and evicts the competing groups first, the same as a LiteLLM-routed model. The CUDA variants (`predictalot_cuda`, `decidealot_cuda`) take the CUDA lock and the CPU variants take the CPU lock.
+predictalot tool calls through LiteLLM's aggregated MCP server (`/mcp`) take the hardware lock and evict competing groups before inference. Decidealot admission belongs to Aigate's injected provider supervisor instead: Laya/Von take the CUDA or CPU lock per item, and CUDA requests evict the local llama.cpp encoder before allocating memory. CLM embeddings take their lock in LiteLLM, not in the outer MCP tool; hosted Jev does not need a local lock. This also covers mixed Decidealot batches without recursively taking a lock for CLM.
 
-Requests sent straight to audiolla, flickies, predictalot, or decidealot through their own nginx routes (`/decidealot-cuda/`, `/predictalot-cuda/`, and so on) still bypass LiteLLM. They do not evict LiteLLM-routed models or take the hardware lock. On a small GPU, a cold start on one of them can still run out of memory next to a loaded Ollama or talkies model.
+Direct Decidealot REST and MCP requests now use the same per-provider admission as aggregated MCP. Aigate evicts the configured local encoder before CUDA Laya/Von loads; it does not add lifecycle APIs to arbitrary remote embedding URLs. Other direct routes (audiolla, flickies and predictalot) still bypass LiteLLM's admission callback. Decidealot's launcher does not currently evict every other resident GPU service, so unrelated loaded models can still exhaust VRAM; this fix specifically coordinates Qwen and Decidealot. Bypassing Aigate and calling internal inference services directly also bypasses its shared lock.
 
 ### Operator-facing unload endpoints
 

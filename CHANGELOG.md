@@ -2,6 +2,30 @@
 
 All notable changes to this project are documented here.
 
+## [v7.0.0] (2026-10-03)
+
+**Enables CLM by default and coordinates Decidealot's local inference with the shared hardware lock.**
+
+### Breaking
+
+- Starting either Decidealot variant with `make run-bg` now enables its CUDA Qwen3-8B encoder and generated embeddings route. Existing CPU-only deployments must set `DECIDEALOT_CLM_ENABLED=false` before upgrading to avoid that NVIDIA GPU requirement.
+
+### Changed
+
+- Decidealot enables Laya, Von, and CLM by default. CLM uses the internal LiteLLM Qwen3-8B embeddings route. Hosted Jev still enables when its TypeSafe key is configured.
+- Aigate builds thin CPU and CUDA launcher images from Decidealot v0.6.0. The launchers require Redis admission for Laya and Von; unavailable admission fails the request rather than running unlocked. The upstream Decidealot images and embeddings API remain unchanged.
+
+### Fixed
+
+- REST, MCP and batch items take the same shared hardware lock per Laya/Von inference. CUDA admission waits for the configured local encoder to unload before allocating the model. Failed encoder eviction returns an unavailable-provider response without loading Laya or Von.
+- CLM leaves hardware-lock ownership to its nested LiteLLM embeddings request, preventing a recursive MCP lock. When CUDA Decidealot and its internal encoder share the GPU, Aigate serializes CLM against local provider swaps even when `DECIDEALOT_CLM_PARALLEL_WITH_LOCAL_MODELS=true`. Remote encoder URLs do not use that shared-encoder lane.
+
+### Added
+
+- `make test-config` checks provider activation for default, explicit, disabled, and standalone CLM encoder configurations.
+- `make build-decidealot` builds both thin launcher images without reinstalling Torch or CUDA. `make test-decidealot-coordination` checks admission, eviction ordering, cancellation and failure handling with a throwaway Redis and simulated inference.
+- `AIGATE_DECIDEALOT_ENCODER_URL` selects the internal encoder unload API. `AIGATE_DECIDEALOT_UNLOAD_TIMEOUT_SECONDS` sets its timeout, default 30 seconds and maximum 300 seconds.
+
 ## [v6.3.0] (2026-10-02)
 
 **Updates Decidealot to v0.6.0 for hosted Jev decisions and independent batch requests.**

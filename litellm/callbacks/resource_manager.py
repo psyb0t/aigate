@@ -767,8 +767,10 @@ async def _release_held_lock(kwargs: dict) -> None:
 
 # ---------------------------------------------------------------------------
 # MCP tool calls. predictalot and decidealot are reached through LiteLLM's
-# aggregated MCP server. Their inference tools take the hardware lock and
-# evict competing groups like LiteLLM-routed models do. LiteLLM's MCP pre-call
+# aggregated MCP server. Predictalot's inference tools take the hardware lock.
+# Decidealot's Aigate launcher owns admission per provider acquisition, so CLM
+# can call LiteLLM embeddings without recursively taking the same lock.
+# LiteLLM's MCP pre-call
 # hook data drops the server name, so a wrapper around MCPServerManager.call_tool
 # records it in a contextvar and releases the lock when the call ends.
 # ---------------------------------------------------------------------------
@@ -779,8 +781,6 @@ _MCP_TOOL_NAME_KEY = "mcp_tool_name"
 _MCP_SERVER_GROUPS = {
     "predictalot_cuda": "cuda-predictalot",
     "predictalot": "cpu-predictalot",
-    "decidealot_cuda": "cuda-decidealot",
-    "decidealot": "cpu-decidealot",
 }
 
 # Tools that list or free models. They never load one, so they skip the lock.
@@ -1129,7 +1129,7 @@ def _patch_mcp_call_tool() -> None:
     MCPServerManager.call_tool = _patched_call_tool
     logger.warning(
         "[resource_manager] patched MCPServerManager.call_tool: "
-        "predictalot/decidealot inference tools take the hardware lock"
+        "predictalot inference tools take the hardware lock; Decidealot owns admission"
     )
 
 

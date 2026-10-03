@@ -78,6 +78,11 @@ def is_flag(env, key):
     return env.get(key, "").strip() == "1"
 
 
+def decidealot_clm_enabled(env):
+    has_decidealot = any(is_flag(env, key) for key in ("DECIDEALOT", "DECIDEALOT_CUDA"))
+    return has_decidealot and env.get("DECIDEALOT_CLM_ENABLED", "").strip() != "false"
+
+
 def active_providers(env):
     checks = [
         ("openai",        lambda e: is_flag(e, "OPENAI")),
@@ -99,7 +104,7 @@ def active_providers(env):
         ("vllm",           lambda e: is_flag(e, "VLLM")),
         ("vllm-cuda",      lambda e: is_flag(e, "VLLM_CUDA")),
         ("llamacpp",       lambda e: is_flag(e, "LLAMACPP")),
-        ("llamacpp-cuda",  lambda e: is_flag(e, "LLAMACPP_CUDA")),
+        ("llamacpp-cuda",  lambda e: is_flag(e, "LLAMACPP_CUDA") or decidealot_clm_enabled(e)),
     ]
     return [name for name, check in checks if check(env)]
 

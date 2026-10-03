@@ -1,0 +1,2 @@
+# Same Redis client as Aigate's LiteLLM runtime. PyJWT is supplied by Decidealot.
+redis==5.3.1 --hash=sha256:dc1909bd24669cc31b5f67a039700b16ec30571096c5f1f0d9d2324bff31af97

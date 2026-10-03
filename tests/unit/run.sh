@@ -14,6 +14,9 @@ readonly REDIS_CONTAINER="aigate-unit-redis-${RUN_ID}"
 readonly RUNNER_CONTAINER="aigate-unit-runner-${RUN_ID}"
 readonly REDIS_IMAGE="redis:7.4.9-alpine"
 readonly LITELLM_IMAGE="${LITELLM_IMAGE:-aigate-litellm:latest}"
+readonly RUNNER_IMAGE="${RUNNER_IMAGE:-$LITELLM_IMAGE}"
+readonly TEST_PYTHON="${TEST_PYTHON:-/app/.venv/bin/python}"
+readonly TEST_DIRECTORY="${TEST_DIRECTORY:-${REPO_DIR}/tests/unit}"
 readonly WORK_DIR="${REPO_DIR}/.testing/unit"
 readonly ACL_FILE="${WORK_DIR}/redis-${RUN_ID}.acl"
 readonly LOG_FILE="${WORK_DIR}/run-${RUN_ID}.log"
@@ -90,12 +93,12 @@ log INFO "redis ready, running unit tests"
 
 docker run --rm --name "$RUNNER_CONTAINER" --network "$NETWORK" \
     -v "${REPO_DIR}/litellm/callbacks:/app/callbacks:ro" \
-    -v "${REPO_DIR}/tests/unit:/unit-tests:ro" \
-    -e PYTHONPATH=/app/callbacks \
+    -v "${TEST_DIRECTORY}:/unit-tests:ro" \
+    -e PYTHONPATH=/app/callbacks:/opt/aigate \
     -e PYTHONDONTWRITEBYTECODE=1 \
     -e TEST_REDIS_HOST="$REDIS_CONTAINER" \
     -e TEST_PROXQ_REDIS_PASSWORD="$TEST_PROXQ_REDIS_PASSWORD" \
     -e TEST_LITELLM_REDIS_PASSWORD="$TEST_LITELLM_REDIS_PASSWORD" \
-    --entrypoint /app/.venv/bin/python \
-    "$LITELLM_IMAGE" -m unittest discover -s /unit-tests -p 'test_*.py' -v
+    --entrypoint "$TEST_PYTHON" \
+    "$RUNNER_IMAGE" -m unittest discover -s /unit-tests -p 'test_*.py' -v
 log INFO "unit tests passed"

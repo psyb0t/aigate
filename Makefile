@@ -7,7 +7,7 @@ $(shell [ -f .env ] || cp .env.example .env)
 -include .env.limits
 export
 
-.PHONY: run run-bg down restart test test-unit test-llamacpp-pull test-llamacpp-server logs limits build-config bootstrap help
+.PHONY: run run-bg down restart test test-unit test-config build-decidealot test-decidealot-coordination test-llamacpp-pull test-llamacpp-server logs limits build-config bootstrap help
 
 # ── Profile detection ─────────────────────────────────────────────────────────
 
@@ -127,8 +127,10 @@ endif
 
 # CLM uses the local Qwen3-8B embeddings route, which lives in the llama.cpp
 # CUDA profile. Starting a Decidealot CLM deployment always starts that route.
-ifeq ($(strip $(DECIDEALOT_CLM_ENABLED)),true)
-  _PROFILES += llamacpp-cuda
+ifneq ($(filter 1,$(strip $(DECIDEALOT) $(DECIDEALOT_CUDA))),)
+ifneq ($(strip $(DECIDEALOT_CLM_ENABLED)),false)
+  override LLAMACPP_CUDA := 1
+endif
 endif
 
 # audiolla: opt-in with AUDIOLLA=1
@@ -288,6 +290,21 @@ test:
 test-unit:
 	bash tests/unit/run.sh
 
+build-decidealot:
+	docker compose build decidealot decidealot-cuda
+
+test-decidealot-coordination:
+	docker build -f decidealot/Dockerfile -t aigate-decidealot:latest .
+	RUNNER_IMAGE=aigate-decidealot:latest TEST_PYTHON=/opt/app-venv/bin/python TEST_DIRECTORY="$(CURDIR)/tests/decidealot" bash tests/unit/run.sh
+
+test-config:
+	docker run --rm \
+		-v "$(CURDIR):/workspace:ro" \
+		-w /workspace \
+		-e PYTHONDONTWRITEBYTECODE=1 \
+		python:3.12-alpine \
+		python3 -m unittest discover -s tests/config -v
+
 test-llamacpp-pull:
 	docker run --rm \
 		-v "$(CURDIR):/workspace:ro" \
@@ -325,6 +342,9 @@ help:
 	@echo "  limits        Check enabled services fit this machine, write CPU caps to .env.limits"
 	@echo "  test          Run test suite (stack must be running)"
 	@echo "  test-unit     Run LiteLLM callback unit tests against a throwaway Redis (no running stack)"
+	@echo "  build-decidealot Build Aigate's CPU/CUDA Decidealot admission wrappers"
+	@echo "  test-decidealot-coordination Test per-provider admission with a throwaway Redis"
+	@echo "  test-config   Test provider activation and default CLM encoder selection"
 	@echo "  test-llamacpp-pull Test llama.cpp model artifact selection and checksum verification"
 	@echo "  test-llamacpp-server Test llama.cpp's public HTTP wrapper contract"
 	@echo "  logs          Follow logs"
@@ -349,9 +369,9 @@ help:
 	@echo "  tailscale     set TAILSCALE=1 (tailnet-only HTTP proxy to nginx; claudebox/pibox get outbound tailnet reach)"
 	@echo "  predictalot   set PREDICTALOT=1 (CPU time-series forecasting + MCP)"
 	@echo "  predictalot-cuda set PREDICTALOT_CUDA=1 (NVIDIA GPU time-series forecasting + MCP)"
-	@echo "  decidealot    set DECIDEALOT=1 (CPU typed decisions, Laya + Von, optional CLM, MCP)"
-	@echo "  decidealot-cuda set DECIDEALOT_CUDA=1 (NVIDIA GPU typed decisions, optional CLM, MCP)"
-	@echo "  decidealot CLM set DECIDEALOT_CLM_ENABLED=true (also starts llamacpp-cuda Qwen3-8B embeddings)"
+	@echo "  decidealot    set DECIDEALOT=1 (CPU typed decisions, Laya + Von + CLM, MCP)"
+	@echo "  decidealot-cuda set DECIDEALOT_CUDA=1 (NVIDIA GPU typed decisions, Laya + Von + CLM, MCP)"
+	@echo "  decidealot CLM enabled by default (also starts llamacpp-cuda Qwen3-8B embeddings); disable with DECIDEALOT_CLM_ENABLED=false"
 	@echo "  mailbox       set MAILBOX=1 (IMAP+SMTP gateway REST API + MCP — needs MAILBOX_CONFIG)"
 
 	@echo "  mcp           (auto: any image/TTS/search provider enabled)"

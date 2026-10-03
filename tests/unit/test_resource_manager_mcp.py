@@ -37,11 +37,8 @@ async def _is_held(client: aioredis.Redis, key: str) -> bool:
 class MCPGroupTest(unittest.TestCase):
     def test_inference_tools_map_to_hardware_groups(self) -> None:
         cases = [
-            ("decidealot_cuda", "system_one", "cuda-decidealot"),
-            ("decidealot", "system_one", "cpu-decidealot"),
             ("predictalot_cuda", "forecast_univariate_chronos_2", "cuda-predictalot"),
             ("predictalot", "forecast_univariate_chronos_2", "cpu-predictalot"),
-            ("Decidealot-CUDA", "system_one", "cuda-decidealot"),
         ]
         for server, tool, want in cases:
             with self.subTest(server=server, tool=tool):
@@ -51,6 +48,8 @@ class MCPGroupTest(unittest.TestCase):
         cases = [
             ("decidealot_cuda", "list_models"),
             ("decidealot_cuda", "unload_models"),
+            ("decidealot_cuda", "system_one"),
+            ("decidealot", "system_one_batch"),
             ("predictalot_cuda", "list_univariate_models"),
             ("predictalot_cuda", "get_model_info"),
             ("audiolla_cuda", "transcribe"),
@@ -143,7 +142,7 @@ class MCPLockLifetimeTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_cuda_inference_tool_holds_cuda_lock_until_it_returns(self) -> None:
         seen = self._install_tool("ok")
-        result = await MCPServerManager.call_tool(object(), "decidealot_cuda", "system_one", {})
+        result = await MCPServerManager.call_tool(object(), "predictalot_cuda", "forecast_univariate_chronos_2", {})
         self.assertEqual(result, "ok")
         self.assertEqual(seen, [(True, False)])
         self.assertFalse(await _is_held(self.inspect, CUDA_KEY))
@@ -158,6 +157,11 @@ class MCPLockLifetimeTest(unittest.IsolatedAsyncioTestCase):
     async def test_admin_tool_takes_no_lock(self) -> None:
         seen = self._install_tool("ok")
         await MCPServerManager.call_tool(object(), "decidealot_cuda", "unload_models", {})
+        self.assertEqual(seen, [(False, False)])
+
+    async def test_decidealot_inference_has_no_recursive_outer_lock(self) -> None:
+        seen = self._install_tool("ok")
+        await MCPServerManager.call_tool(object(), "decidealot_cuda", "system_one", {})
         self.assertEqual(seen, [(False, False)])
 
 
