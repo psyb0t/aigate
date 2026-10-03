@@ -140,26 +140,33 @@ def _get_group(model: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 
-async def _unload_cuda_llm():
-    """Tell ollama-cuda to unload all currently loaded models."""
-    logger.warning("[resource_manager] unloading cuda-llm models")
+async def _unload_cuda_ollama(base_url: str, group: str):
+    """Unload every resident model from one CUDA Ollama instance."""
+    logger.warning("[resource_manager] unloading %s models", group)
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
-            r = await client.get("http://ollama-cuda:11434/api/ps")
+            r = await client.get(f"{base_url}/api/ps")
+            r.raise_for_status()
             models = r.json().get("models", [])
             if not models:
-                logger.warning("[resource_manager] cuda-llm: no models loaded")
+                logger.warning("[resource_manager] %s: no models loaded", group)
                 return
             for m in models:
                 name = m["name"]
-                logger.warning("[resource_manager] cuda-llm: unloading %s", name)
-                await client.post(
-                    "http://ollama-cuda:11434/api/generate",
+                logger.warning("[resource_manager] %s: unloading %s", group, name)
+                response = await client.post(
+                    f"{base_url}/api/generate",
                     json={"model": name, "keep_alive": 0, "stream": False},
                 )
-                logger.warning("[resource_manager] cuda-llm: unloaded %s", name)
-        except Exception as e:
-            logger.warning("[resource_manager] cuda-llm unload error: %s", e)
+                response.raise_for_status()
+                logger.warning("[resource_manager] %s: unloaded %s", group, name)
+        except (httpx.HTTPError, ValueError, KeyError) as e:
+            logger.warning("[resource_manager] %s unload error: %s", group, e)
+            raise
+
+
+async def _unload_cuda_llm():
+    await _unload_cuda_ollama("http://ollama-cuda:11434", "cuda-llm")
 
 
 async def _unload_cpu_llm():

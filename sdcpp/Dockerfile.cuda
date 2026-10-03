@@ -16,7 +16,8 @@ RUN git clone https://github.com/leejet/stable-diffusion.cpp . && \
     git checkout ${SDCPP_COMMIT} && \
     git submodule update --init --recursive
 
-RUN cmake . -B ./build -DSD_CUDA=ON && \
+ARG CUDA_ARCHITECTURES=all-major
+RUN cmake . -B ./build -DSD_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCHITECTURES}" && \
     cmake --build ./build --config Release -j$(nproc)
 
 FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04@sha256:8aef630a54bc5c5146ae5ce68e6af5caa3df0fb690bb91544175c91f307e4356

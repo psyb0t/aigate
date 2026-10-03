@@ -30,6 +30,8 @@ Local image generation via [stable-diffusion.cpp](https://github.com/leejet/stab
 
 ### Environment variables
 
+CUDA builds use `all-major` by default, generating code for all major GPU architectures supported by the pinned CUDA 12.6 toolkit, plus PTX for the highest major architecture. No GPU access is required during compilation. Set `SDCPP_CUDA_ARCHITECTURES` to a narrower target such as `86` for RTX 3060 and RTX A5000, or a semicolon-separated list such as `86;89`, then rebuild `sdcpp-cuda`. Runtime still requires a compatible NVIDIA GPU and driver, NVIDIA Container Toolkit, and the Compose GPU reservation. This does not enable CUDA on AMD or Apple GPUs; use the CPU service on hosts without compatible NVIDIA hardware.
+
 | Variable | Default | Description |
 | -------- | ------- | ----------- |
 | `SDCPP_IDLE_TIMEOUT` | `5m` | CPU idle timeout before auto-unload |
@@ -40,9 +42,9 @@ Local image generation via [stable-diffusion.cpp](https://github.com/leejet/stab
 | `SDCPP_CUDA_MEM_LIMIT` | `12g` | CUDA container memory limit |
 | `SDCPP_CUDA_MEMSWAP_LIMIT` | `24g` | CUDA container memory + swap limit |
 | `SDCPP_CUDA_CPUS` | `4.0` | CUDA container CPU limit |
+| `SDCPP_CUDA_ARCHITECTURES` | `all-major` | Build-time CUDA architecture targets, not runtime GPU selection |
 | `SDCPP_LOAD_TIMEOUT` / `SDCPP_CUDA_LOAD_TIMEOUT` | `10m` | Max time to wait for model load |
 | `SDCPP_VERBOSE` / `SDCPP_CUDA_VERBOSE` | `false` | Debug logging |
 | `SDCPP_LOG_LEVEL` / `SDCPP_CUDA_LOG_LEVEL` | `info` | Log level |
 
 ---
-

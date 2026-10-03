@@ -102,14 +102,6 @@
       options:
         num_gpu: 99
 
-- model_name: local-ollama-cuda-dolphin-phi
-  litellm_params:
-    model: ollama/dolphin-phi:latest
-    api_base: http://ollama-cuda:11434
-    extra_body:
-      options:
-        num_gpu: 99
-
 - model_name: local-ollama-cuda-llama3.2-3b
   litellm_params:
     model: ollama/llama3.2:3b

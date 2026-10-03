@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented here.
 
+## [v8.0.0] (2026-10-03)
+
+**Fixes local GPU deployment and browser startup, and removes the GPU Dolphin Phi alias.**
+
+### Breaking
+
+- Removes `local-ollama-cuda-dolphin-phi` from the model catalog, CUDA pulls, and fallback chains. Switch callers to `local-ollama-cpu-dolphin-phi`, `local-ollama-cuda-qwen3-abliterated-16b`, or `local-ollama-cuda-gemma4-abliterated-e4b`. Existing downloaded model files remain untouched.
+
+### Fixed
+
+- Pins the CPU, CUDA, and pull-sidecar Ollama images to v0.34.4 with a digest so they can download the configured Gemma 4 models. The CUDA server keeps its `q8_0` KV cache; `OLLAMA_CUDA_KV_CACHE` exposes the setting in `.env.example`.
+- CUDA Ollama eviction checks HTTP status codes and reports failed unloads instead of logging success. Tests cover the unload request, downstream failure, and shared CUDA lock.
+- sd.cpp CUDA builds target `all-major` by default instead of relying on GPU detection during compilation. `SDCPP_CUDA_ARCHITECTURES` accepts narrower build targets when needed.
+- Browser replicas default to 1 GiB RAM and 2 GiB total RAM plus swap. The previous 256 MiB limit could stall browser startup and leave the proxy returning 503. `SAB_MEM_LIMIT` and `SAB_MEMSWAP_LIMIT` are documented in `.env.example`.
+
+### Changed
+
+- Updates the model catalog, fallback configuration, smoke tests, and deployment docs for CPU-only Dolphin Phi. Generated-config tests verify that the CPU alias remains available and the GPU alias is absent.
+
 ## [v7.0.0] (2026-10-03)
 
 **Enables CLM by default and coordinates Decidealot's local inference with the shared hardware lock.**

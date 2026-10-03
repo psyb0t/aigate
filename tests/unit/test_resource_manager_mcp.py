@@ -6,13 +6,18 @@ logged, as they would be for a disabled service.
 """
 
 import os
+import json
 import unittest
+from unittest.mock import AsyncMock, patch
 
 import redis.asyncio as aioredis
+import httpx
 
 os.environ.setdefault("RESOURCE_LOCK_REDIS_HOST", os.environ["TEST_REDIS_HOST"])
 os.environ.setdefault("RESOURCE_LOCK_REDIS_USERNAME", "litellm")
-os.environ.setdefault("RESOURCE_LOCK_REDIS_PASSWORD", os.environ["TEST_LITELLM_REDIS_PASSWORD"])
+os.environ.setdefault(
+    "RESOURCE_LOCK_REDIS_PASSWORD", os.environ["TEST_LITELLM_REDIS_PASSWORD"]
+)
 
 import hardware_lock  # noqa: E402
 import resource_manager as rm  # noqa: E402
@@ -35,6 +40,16 @@ async def _is_held(client: aioredis.Redis, key: str) -> bool:
 
 
 class MCPGroupTest(unittest.TestCase):
+    def test_ollama_cache_groups_share_cuda_hardware(self) -> None:
+        cases = [
+            ("local-ollama-cuda-llama3.2-3b", "cuda-llm"),
+            ("local-ollama-cuda-qwen3-abliterated-16b", "cuda-llm"),
+        ]
+        for model, expected in cases:
+            with self.subTest(model=model):
+                self.assertEqual(rm._get_group(model), expected)
+                self.assertEqual(rm._get_hw(expected), "CUDA")
+
     def test_inference_tools_map_to_hardware_groups(self) -> None:
         cases = [
             ("predictalot_cuda", "forecast_univariate_chronos_2", "cuda-predictalot"),
@@ -68,6 +83,39 @@ class MCPGroupTest(unittest.TestCase):
 
 
 class LlamacppUnloadTest(unittest.IsolatedAsyncioTestCase):
+    async def test_ollama_unloads_models_on_the_selected_server(self) -> None:
+        for base in ("http://ollama-cuda:11434",):
+            with self.subTest(base=base):
+                calls = []
+
+                def handle(request):
+                    calls.append(request)
+                    if request.method == "GET":
+                        return httpx.Response(
+                            200, json={"models": [{"name": "example:latest"}]}
+                        )
+                    return httpx.Response(200, json={"done": True})
+
+                client = httpx.AsyncClient(transport=httpx.MockTransport(handle))
+                with patch.object(rm.httpx, "AsyncClient", return_value=client):
+                    await rm._unload_cuda_ollama(base, "cuda-llm")
+                self.assertEqual(
+                    [str(call.url) for call in calls],
+                    [f"{base}/api/ps", f"{base}/api/generate"],
+                )
+                self.assertEqual(
+                    json.loads(calls[1].content),
+                    {"model": "example:latest", "keep_alive": 0, "stream": False},
+                )
+
+    async def test_ollama_unload_http_errors_are_not_success(self) -> None:
+        client = httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda request: httpx.Response(500))
+        )
+        with patch.object(rm.httpx, "AsyncClient", return_value=client):
+            with self.assertRaises(httpx.HTTPStatusError):
+                await rm._unload_cuda_ollama("http://ollama-cuda:11434", "cuda-llm")
+
     async def test_cuda_unload_requests_qwen3_encoder_eviction(self) -> None:
         calls: list[tuple[str, str, list[str]]] = []
         saved_unload = rm._unload_via_api_ps
@@ -99,6 +147,25 @@ class LlamacppUnloadTest(unittest.IsolatedAsyncioTestCase):
 
 
 class MCPLockLifetimeTest(unittest.IsolatedAsyncioTestCase):
+    async def test_ollama_evicts_competing_cuda_services(self) -> None:
+        cases = [
+            ("local-ollama-cuda-qwen3-abliterated-16b", "cuda-llm", "cuda-img"),
+        ]
+        for model, own_group, competing_group in cases:
+            with self.subTest(model=model):
+                unloads = {group: AsyncMock() for group in rm._UNLOAD_FNS}
+                with patch.dict(rm._UNLOAD_FNS, unloads):
+                    await rm.proxy_handler_instance.async_pre_call_hook(
+                        None, None, {"model": model}, "completion"
+                    )
+                    try:
+                        self.assertTrue(await _is_held(self.inspect, CUDA_KEY))
+                        unloads[competing_group].assert_awaited_once()
+                        unloads[own_group].assert_not_awaited()
+                    finally:
+                        await rm._release_held_lock({})
+                    self.assertFalse(await _is_held(self.inspect, CUDA_KEY))
+
     async def asyncSetUp(self) -> None:
         self.inspect = aioredis.Redis(
             host=os.environ["TEST_REDIS_HOST"],
@@ -131,7 +198,9 @@ class MCPLockLifetimeTest(unittest.IsolatedAsyncioTestCase):
             await rm.proxy_handler_instance.async_pre_call_hook(
                 None, None, {rm._MCP_TOOL_NAME_KEY: name}, rm._MCP_CALL_TYPE
             )
-            seen.append((await _is_held(inspect, CUDA_KEY), await _is_held(inspect, CPU_KEY)))
+            seen.append(
+                (await _is_held(inspect, CUDA_KEY), await _is_held(inspect, CPU_KEY))
+            )
             if outcome == "error":
                 raise ToolFailed("tool failed")
             return "ok"
@@ -142,7 +211,9 @@ class MCPLockLifetimeTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_cuda_inference_tool_holds_cuda_lock_until_it_returns(self) -> None:
         seen = self._install_tool("ok")
-        result = await MCPServerManager.call_tool(object(), "predictalot_cuda", "forecast_univariate_chronos_2", {})
+        result = await MCPServerManager.call_tool(
+            object(), "predictalot_cuda", "forecast_univariate_chronos_2", {}
+        )
         self.assertEqual(result, "ok")
         self.assertEqual(seen, [(True, False)])
         self.assertFalse(await _is_held(self.inspect, CUDA_KEY))
@@ -150,13 +221,17 @@ class MCPLockLifetimeTest(unittest.IsolatedAsyncioTestCase):
     async def test_lock_is_released_when_the_tool_fails(self) -> None:
         seen = self._install_tool("error")
         with self.assertRaises(ToolFailed):
-            await MCPServerManager.call_tool(object(), "predictalot", "forecast_univariate_chronos_2", {})
+            await MCPServerManager.call_tool(
+                object(), "predictalot", "forecast_univariate_chronos_2", {}
+            )
         self.assertEqual(seen, [(False, True)])
         self.assertFalse(await _is_held(self.inspect, CPU_KEY))
 
     async def test_admin_tool_takes_no_lock(self) -> None:
         seen = self._install_tool("ok")
-        await MCPServerManager.call_tool(object(), "decidealot_cuda", "unload_models", {})
+        await MCPServerManager.call_tool(
+            object(), "decidealot_cuda", "unload_models", {}
+        )
         self.assertEqual(seen, [(False, False)])
 
     async def test_decidealot_inference_has_no_recursive_outer_lock(self) -> None:

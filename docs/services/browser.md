@@ -14,7 +14,7 @@ Set `STEALTHY_AUTO_BROWSE_AUTH_TOKEN` in `.env` to set the bearer auth token. De
 ### Cluster configuration
 
 - 5 browser replicas by default — set `STEALTHY_AUTO_BROWSE_NUM_REPLICAS` to change
-- Each replica: 256 MB RAM, up to 1 GB swap
+- Each replica defaults to 1 GiB RAM and 2 GiB total RAM plus swap, configured with `SAB_MEM_LIMIT` and `SAB_MEMSWAP_LIMIT`. A 256 MiB RAM cap can stall browser startup and leave the proxy returning 503.
 - HAProxy routes requests to replicas and enforces session stickiness:
   - MCP requests: pinned by `Mcp-Session-Id` header
   - All other requests: pinned by `INSTANCEID` cookie, max 1 concurrent request per replica
@@ -150,4 +150,3 @@ print(r.json()["choices"][0]["message"]["content"])
 ```
 
 ---
-

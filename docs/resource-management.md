@@ -5,6 +5,8 @@ Local services (Ollama, sd.cpp, talkies, vllm, llamacpp, audiolla, flickies, pre
 
 ### Idle auto-unload
 
+Ollama CUDA uses a `q8_0` KV cache by default, controlled by `OLLAMA_CUDA_KV_CACHE`. Changing this setting to `f16` increases cache memory and can push a tight GPU fit into CPU offload or a load failure. Context length and concurrent requests also affect memory usage. Dolphin Phi is available only through its CPU alias; the CUDA uncensored aliases use Qwen and Gemma abliterated models.
+
 Every local service unloads models after a period of inactivity:
 
 | Service | Default idle timeout | Configurable via |

@@ -864,8 +864,8 @@ services:
       REDIS_URL: redis://:${STEALTHY_AUTO_BROWSE_REDIS_PASSWORD}@stealthy-auto-browse-redis:6379
       AUTH_TOKEN: ${STEALTHY_AUTO_BROWSE_AUTH_TOKEN:-${AIGATE_TOKEN:-lulz-4-security}}
       NUM_REPLICAS: ${STEALTHY_AUTO_BROWSE_NUM_REPLICAS:-5}
-    mem_limit: ${SAB_MEM_LIMIT:-256m}
-    memswap_limit: ${SAB_MEMSWAP_LIMIT:-512m}
+    mem_limit: ${SAB_MEM_LIMIT:-1g}
+    memswap_limit: ${SAB_MEMSWAP_LIMIT:-2g}
     cpus: ${SAB_CPUS:-1.0}
     dns_search: ["."]
     depends_on:
@@ -1043,7 +1043,7 @@ services:
   ollama:
     logging: *docker-logging
     profiles: ["ollama"]
-    image: ollama/ollama:0.20.7
+    image: ollama/ollama:0.34.4@sha256:8262851b2846b87c649eddf3e76beb270c52f4d1bc94559f47efde16b0841551
     restart: unless-stopped
     mem_limit: ${OLLAMA_MEM_LIMIT:-6g}
     memswap_limit: ${OLLAMA_MEMSWAP_LIMIT:-12g}
@@ -1061,7 +1061,7 @@ services:
   ollama-pull:
     logging: *docker-logging
     profiles: ["ollama", "ollama-cuda"]
-    image: ollama/ollama:0.20.7
+    image: ollama/ollama:0.34.4@sha256:8262851b2846b87c649eddf3e76beb270c52f4d1bc94559f47efde16b0841551
     restart: on-failure
     mem_limit: ${OLLAMA_PULL_MEM_LIMIT:-512m}
     memswap_limit: ${OLLAMA_PULL_MEMSWAP_LIMIT:-1g}
@@ -1103,7 +1103,6 @@ services:
           pull deepseek-r1:8b &&
           pull deepseek-r1:14b &&
           pull phi4-reasoning:plus &&
-          pull dolphin-phi:latest &&
           pull bge-m3 &&
           pull qwen3-embedding:0.6b &&
           pull llama3.2:3b &&
@@ -1127,7 +1126,7 @@ services:
   ollama-cuda:
     logging: *docker-logging
     profiles: ["ollama-cuda"]
-    image: ollama/ollama:0.20.7
+    image: ollama/ollama:0.34.4@sha256:8262851b2846b87c649eddf3e76beb270c52f4d1bc94559f47efde16b0841551
     restart: unless-stopped
     mem_limit: ${OLLAMA_CUDA_MEM_LIMIT:-12g}
     memswap_limit: ${OLLAMA_CUDA_MEMSWAP_LIMIT:-24g}
@@ -1194,6 +1193,8 @@ services:
     build:
       context: ./sdcpp
       dockerfile: Dockerfile.cuda
+      args:
+        CUDA_ARCHITECTURES: ${SDCPP_CUDA_ARCHITECTURES:-all-major}
     restart: unless-stopped
     depends_on:
       sdcpp-pull:

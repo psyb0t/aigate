@@ -162,7 +162,6 @@ OLLAMA_CUDA_EXPECTED_MODELS=(
     "local-ollama-cuda-qwen3-abliterated-16b"
     "local-ollama-cuda-gemma4-abliterated-e4b"
     "local-ollama-cuda-deepseek-r1-8b"
-    "local-ollama-cuda-dolphin-phi"
     "local-ollama-cuda-llama3.2-3b"
     "local-ollama-cuda-qwen3-4b"
     "local-ollama-cuda-smollm2-1.7b"
@@ -191,7 +190,7 @@ test_ollama_cuda_chat_completion() {
     out=$(curl -s --max-time 120 -X POST "$BASE_URL/chat/completions" \
         -H "Content-Type: application/json" \
         -H "$AUTH_HEADER" \
-        -d '{"model":"local-ollama-cuda-dolphin-phi","messages":[{"role":"user","content":"respond with exactly the word CUDAPONG and nothing else"}]}')
+        -d '{"model":"local-ollama-cuda-llama3.2-3b","messages":[{"role":"user","content":"respond with exactly the word CUDAPONG and nothing else"}]}')
 
     if echo "$out" | grep -qi "\"error\""; then
         echo "  FAIL: ollama-cuda chat error: $(echo "$out" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("error",{}).get("message","?"))' 2>/dev/null)"
@@ -220,22 +219,6 @@ test_ollama_cuda_uncensored() {
     assert_contains_icase "$out" "ABLITPONG" "qwen3-abliterated response" || return 1
     assert_contains "$out" "choices" "qwen3-abliterated has choices" || return 1
     echo "OK: ollama_cuda_uncensored"
-}
-
-test_ollama_cuda_dolphin_phi() {
-    local out
-    out=$(curl -s --max-time 120 -X POST "$BASE_URL/chat/completions" \
-        -H "Content-Type: application/json" \
-        -H "$AUTH_HEADER" \
-        -d '{"model":"local-ollama-cuda-dolphin-phi","messages":[{"role":"user","content":"say hello"}]}')
-
-    if echo "$out" | grep -qi "\"error\""; then
-        echo "  FAIL: dolphin-phi error: $(echo "$out" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("error",{}).get("message","?"))' 2>/dev/null)"
-        return 1
-    fi
-
-    assert_contains "$out" "choices" "dolphin-phi responds" || return 1
-    echo "OK: ollama_cuda_dolphin_phi"
 }
 
 test_ollama_cuda_gemma4_vision() {
@@ -272,6 +255,5 @@ ALL_TESTS+=(
     test_ollama_cuda_models_registered
     test_ollama_cuda_chat_completion
     test_ollama_cuda_uncensored
-    test_ollama_cuda_dolphin_phi
     test_ollama_cuda_gemma4_vision
 )

@@ -278,7 +278,6 @@ Requires `nvidia-container-toolkit`. Flash attention + quantized KV cache enable
 | `local-ollama-cuda-deepseek-r1-8b` | deepseek-r1:8b | reasoning, thinking mode, ~5.2GB VRAM |
 | `local-ollama-cuda-qwen3-abliterated-16b` | huihui_ai/qwen3-abliterated:16b | uncensored, ~9.8GB VRAM |
 | `local-ollama-cuda-gemma4-abliterated-e4b` | huihui_ai/gemma-4-abliterated:e4b | uncensored + vision, ~9.6GB VRAM |
-| `local-ollama-cuda-dolphin-phi` | dolphin-phi:latest | uncensored, tiny, ~1.6GB VRAM |
 | `local-ollama-cuda-llama3.2-3b` | llama3.2:3b | general chat, ~2.0GB VRAM |
 | `local-ollama-cuda-qwen3-4b` | qwen3:4b | general chat, thinking mode, ~2.6GB VRAM |
 | `local-ollama-cuda-smollm2-1.7b` | smollm2:1.7b | tiny general chat, ~1.0GB VRAM |

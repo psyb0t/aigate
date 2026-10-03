@@ -542,14 +542,12 @@
   {
     "local-ollama-cuda-qwen3-abliterated-16b": [
       "local-ollama-cuda-gemma4-abliterated-e4b",
-      "local-ollama-cuda-dolphin-phi",
       "local-ollama-cpu-dolphin-phi"
     ]
   },
   {
     "local-ollama-cuda-gemma4-abliterated-e4b": [
       "local-ollama-cuda-qwen3-abliterated-16b",
-      "local-ollama-cuda-dolphin-phi",
       "local-ollama-cpu-dolphin-phi"
     ]
   },
@@ -572,12 +570,6 @@
   {
     "local-ollama-cpu-dolphin-phi": [
       "local-ollama-cpu-llama3.2-3b"
-    ]
-  },
-  {
-    "local-ollama-cuda-dolphin-phi": [
-      "local-ollama-cuda-qwen3-abliterated-16b",
-      "local-ollama-cpu-dolphin-phi"
     ]
   },
   {
