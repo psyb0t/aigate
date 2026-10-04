@@ -7,7 +7,7 @@ $(shell [ -f .env ] || cp .env.example .env)
 -include .env.limits
 export
 
-.PHONY: run run-bg down restart test test-unit test-config build-decidealot test-decidealot-coordination test-llamacpp-pull test-llamacpp-server logs limits build-config bootstrap help
+.PHONY: run run-bg down restart restart-audiolla test test-unit test-config build-decidealot test-decidealot-coordination test-llamacpp-pull test-llamacpp-server logs limits build-config bootstrap help
 
 # ── Profile detection ─────────────────────────────────────────────────────────
 
@@ -284,6 +284,10 @@ down:
 
 restart: down run-bg
 
+restart-audiolla:
+	@test -n "$(filter audiolla audiolla-cuda,$(_PROFILES))" || { echo "Enable AUDIOLLA=1 or AUDIOLLA_CUDA=1 first" >&2; exit 1; }
+	docker compose up -d --no-deps --no-build --pull never --force-recreate $(filter audiolla audiolla-cuda,$(_PROFILES))
+
 test:
 	bash test.sh
 
@@ -338,6 +342,7 @@ help:
 	@echo "  run-bg        Start the stack in background"
 	@echo "  down          Stop everything"
 	@echo "  restart       Full restart (down + build-config + run-bg)"
+	@echo "  restart-audiolla Recreate enabled Audiolla variants from locally available pinned images only"
 	@echo "  build-config  Regenerate litellm/config.yaml from fragments"
 	@echo "  limits        Check enabled services fit this machine, write CPU caps to .env.limits"
 	@echo "  test          Run test suite (stack must be running)"

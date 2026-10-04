@@ -8,6 +8,10 @@ Curated YAML workflow presets ship in-image (`master-for-spotify`, `podcast-clea
 
 CPU and CUDA variants run **side-by-side** on distinct routes and aliases — `/audiolla/` → CPU container, `/audiolla-cuda/` → GPU container. Enable independently via `AUDIOLLA=1` and/or `AUDIOLLA_CUDA=1`. CUDA needs `nvidia-container-toolkit` and is significantly faster on Demucs, UVR, pyannote, basic-pitch, DeepFilterNet, CLAP. Both share `${DATA_DIR_AUDIOLLA}` for the weight cache, so the second variant to boot reuses the first's downloads with zero re-fetch.
 
+Aigate pins Audiolla v2.0.0 for CPU and CUDA. Staged uploads and outputs under `${DATA_DIR_AUDIOLLA}/files` expire after 24 hours by file modification time. Download results before they expire. Model caches are excluded. `AUDIOLLA_FILES_TTL` sets a different duration, such as `72h`; `0` disables file cleanup. Reading a file does not renew its lifetime. The sweeper checks every `AUDIOLLA_SWEEPER_INTERVAL` seconds, default 60, and active processing or downloads can postpone cleanup across both variants.
+
+Upgrading also applies this expiry to existing staged files. Set `AUDIOLLA_FILES_TTL=0` in `.env` before upgrading to retain the old indefinite storage behavior. Once the pinned images are available locally, `make restart-audiolla` applies image and configuration changes to enabled Audiolla variants only, without rebuilding, pulling images, or recreating the rest of the stack. For a normal fresh deployment, use `make run-bg`.
+
 | Endpoint        | CPU (`AUDIOLLA=1`)                   | CUDA (`AUDIOLLA_CUDA=1`)                   |
 | --------------- | ------------------------------------ | ------------------------------------------ |
 | REST            | `http://localhost:4000/audiolla/*`   | `http://localhost:4000/audiolla-cuda/*`    |
@@ -21,7 +25,7 @@ Auth: `Authorization: Bearer $AUDIOLLA_AUTH_TOKEN` (defaults to `AIGATE_TOKEN`).
 
 Full API — every endpoint, every request/response shape, all 90+ routes, generation engines, presets, pipelines, MCP tool list, server-side URL fetch policy, the v0.23→v1.0 migration cheatsheet, and the canonical `openapi.yaml`: **[docker-audiolla README](https://github.com/psyb0t/docker-audiolla)**.
 
-Env vars: `AUDIOLLA_AUTH_TOKEN`, `AUDIOLLA_DEVICE`, `AUDIOLLA_ENABLED_ENGINES`, `AUDIOLLA_PRELOAD`, `AUDIOLLA_ENGINE_TTL`, `AUDIOLLA_SWEEPER_INTERVAL`, `AUDIOLLA_MAX_UPLOAD_BYTES`, `AUDIOLLA_FETCH_*` (server-side URL fetch policy), `AUDIOLLA_JOB_TTL`, `AUDIOLLA_JOB_MAX_CONCURRENT`, `AUDIOLLA_ENABLE_NONCOMMERCIAL` (CC-BY-NC opt-in for MusicGen), `DATA_DIR_AUDIOLLA`, `RATELIMIT_AUDIOLLA[_BURST]`, `TIMEOUT_AUDIOLLA`. Full reference in [`.env.example`](../../.env.example).
+Env vars: `AUDIOLLA_AUTH_TOKEN`, `AUDIOLLA_DEVICE`, `AUDIOLLA_ENABLED_ENGINES`, `AUDIOLLA_PRELOAD`, `AUDIOLLA_ENGINE_TTL`, `AUDIOLLA_FILES_TTL`, `AUDIOLLA_SWEEPER_INTERVAL`, `AUDIOLLA_MAX_UPLOAD_BYTES`, `AUDIOLLA_FETCH_*` (server-side URL fetch policy), `AUDIOLLA_JOB_TTL`, `AUDIOLLA_JOB_MAX_CONCURRENT`, `AUDIOLLA_ENABLE_NONCOMMERCIAL` (CC-BY-NC opt-in for MusicGen), `DATA_DIR_AUDIOLLA`, `RATELIMIT_AUDIOLLA[_BURST]`, `TIMEOUT_AUDIOLLA`. Full reference in [`.env.example`](../../.env.example).
 
 ---
 

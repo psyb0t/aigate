@@ -16,6 +16,8 @@ make run-bg      # start detached
 # or: make run   # start in foreground with logs
 ```
 
+`make restart-audiolla` recreates only enabled Audiolla CPU/CUDA variants from their locally available pinned images. It does not rebuild or pull images and leaves other services running.
+
 `make run` / `make run-bg` regenerate `litellm/config.yaml` from fragments (only enabled providers + filtered fallback chains) and pre-flight-validate any file-path env vars (e.g. `MAILBOX_CONFIG`, `CLOUDFLARED_CONFIG`) actually exist before starting containers.
 
 Other Makefile targets: `make down`, `make restart`, `make logs`, `make build-config` (regenerate litellm config only), `make test` (stack must already be running).
@@ -82,3 +84,5 @@ LiteLLM's resource manager serializes local jobs per hardware class and asks com
 ## Data / persistence
 
 All persistent state lives under `.data/` (bind mounts), overridable via `DATA_DIR` or per-service `DATA_DIR_*`. Contents are gitignored; the directory tree itself is tracked via `.gitkeep`.
+
+Audiolla v2.0.0 deletes staged uploads and outputs in `${DATA_DIR_AUDIOLLA}/files` after 24 hours by modification time, including files retained before upgrading. Download results before expiry. `AUDIOLLA_FILES_TTL` changes this duration; `0` disables cleanup. Model caches are excluded. Active processing and downloads can postpone cleanup across CPU and CUDA. See [Audiolla storage and upgrade settings](../../../../docs/services/audiolla.md).

@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here.
 
+## [v9.0.0] (2026-10-04)
+
+**Updates Audiolla CPU and CUDA to v2.0.0 with configurable staged-file cleanup.**
+
+### Breaking
+
+- Audiolla staged uploads and outputs now expire after 24 hours by file modification time, including files retained before upgrading. Set `AUDIOLLA_FILES_TTL=0` in `.env` before upgrading to preserve indefinite retention. Model caches are excluded.
+
+### Changed
+
+- Pins both Audiolla variants to v2.0.0, which uses shared Torchbase images. Exposes `AUDIOLLA_FILES_TTL` to both services and documents expiry, active-operation protection, and the upgrade path.
+- Adds `make restart-audiolla` to recreate only enabled Audiolla variants from locally available pinned images, without pulling, rebuilding, or restarting the rest of the stack.
+- Updates the agent setup reference and Codex plugin version for the new storage default.
+
 ## [v8.0.0] (2026-10-03)
 
 **Fixes local GPU deployment and browser startup, and removes the GPU Dolphin Phi alias.**
