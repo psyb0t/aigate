@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here.
 
+## [v9.0.1] (2026-10-07)
+
+**Keeps nginx pointed at LiteLLM, MCP and proxq when those containers restart.**
+
+### Fixed
+
+- nginx proxied LiteLLM, MCP and proxq with a plain `proxy_pass http://<service>:<port>`, which resolves the container name once at startup. When one of those containers restarted and came back on a new IP, nginx kept sending to the old one and answered `502` with `Host is unreachable` until nginx itself was reloaded. A LiteLLM restart took down every request on port 4000 this way, and nginx's own healthcheck with it. The three services now sit behind `upstream` blocks with `server <service>:<port> resolve`, so nginx re-resolves them through Docker DNS and follows a new IP without a reload. nginx also starts when MCP or proxq is not running yet, which the old form refused.
+
+### Upgrade
+
+- `docker compose up -d` does not recreate nginx for a change inside its `configs:` entries. Run `docker compose up -d --force-recreate nginx` once after pulling.
+
 ## [v9.0.0] (2026-10-04)
 
 **Updates Audiolla CPU and CUDA to v2.0.0 with configurable staged-file cleanup.**

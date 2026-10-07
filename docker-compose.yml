@@ -1966,7 +1966,7 @@ configs:
           location /ui {
               limit_req zone=admin burst=${RATELIMIT_ADMIN_BURST:-20} nodelay;
               include /etc/nginx/auth/auth.conf;
-              proxy_pass http://litellm:4000/ui;
+              proxy_pass http://litellm_backend/ui;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
               proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
@@ -1980,14 +1980,14 @@ configs:
           # litellm UI static assets — no rate limit, same auth as /ui
           location /litellm-asset-prefix/ {
               include /etc/nginx/auth/auth.conf;
-              proxy_pass http://litellm:4000/litellm-asset-prefix/;
+              proxy_pass http://litellm_backend/litellm-asset-prefix/;
               proxy_set_header Host $$http_host;
           }
 
           location /login {
               limit_req zone=admin burst=${RATELIMIT_ADMIN_BURST:-20} nodelay;
               include /etc/nginx/auth/auth.conf;
-              proxy_pass http://litellm:4000/login;
+              proxy_pass http://litellm_backend/login;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
               proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
@@ -2304,7 +2304,7 @@ configs:
           # proxq — async job queue (returns job ID, poll for result)
           location /q/ {
               limit_req zone=proxq burst=${RATELIMIT_PROXQ_BURST:-30} nodelay;
-              proxy_pass http://proxq:8080/;
+              proxy_pass http://proxq_backend/;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
               proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
@@ -2402,7 +2402,7 @@ configs:
           # 300s timeout covers cold-load of the qwen3-tts weights.
           location = /v1/audio/speech {
               limit_req zone=api burst=${RATELIMIT_API_BURST:-30} nodelay;
-              proxy_pass http://mcp:8000;
+              proxy_pass http://mcp_backend;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
               proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
@@ -2421,7 +2421,7 @@ configs:
           # via MCP_TOOLS_AUTH_TOKEN). Uses the api rate-limit zone.
           location = /v1/audio/voices {
               limit_req zone=api burst=${RATELIMIT_API_BURST:-30} nodelay;
-              proxy_pass http://mcp:8000;
+              proxy_pass http://mcp_backend;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
               proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
@@ -2442,7 +2442,7 @@ configs:
           # few seconds to fully release VRAM.
           location ~ ^/v1/unload(/(cuda|cpu))?$ {
               limit_req zone=api burst=${RATELIMIT_API_BURST:-30} nodelay;
-              proxy_pass http://mcp:8000;
+              proxy_pass http://mcp_backend;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
               proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
@@ -2456,7 +2456,7 @@ configs:
           # everything else — LiteLLM API
           location / {
               limit_req zone=api burst=${RATELIMIT_API_BURST:-30} nodelay;
-              proxy_pass http://litellm:4000;
+              proxy_pass http://litellm_backend;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
               proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
@@ -2534,6 +2534,23 @@ configs:
       real_ip_recursive on;
 
       resolver 127.0.0.11 valid=10s ipv6=off;
+
+      # A plain `proxy_pass http://name:port` resolves the name once at
+      # startup, so a recreated container's new IP 502s until nginx reloads.
+      # `resolve` keeps these re-resolved through the resolver above. The
+      # other services use a `set $$upstream_x` variable for the same reason.
+      upstream litellm_backend {
+          zone litellm_backend 64k;
+          server litellm:4000 resolve;
+      }
+      upstream proxq_backend {
+          zone proxq_backend 64k;
+          server proxq:8080 resolve;
+      }
+      upstream mcp_backend {
+          zone mcp_backend 64k;
+          server mcp:8000 resolve;
+      }
 
       map $$http_upgrade $$talkies_connection {
           default upgrade;
