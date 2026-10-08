@@ -31,8 +31,6 @@ Telegram client at `/telethon/`. Backed by [docker-telethon-plus](https://github
 | `TELETHON_PROXY`                | —              | SOCKS5 proxy (`socks5://user:pass@host:port`) |
 | `TELETHON_REQUEST_TIMEOUT`      | `60`           | Telegram API request timeout (seconds)   |
 | `TELETHON_FLOOD_SLEEP_THRESHOLD`| `60`           | Auto-sleep on flood wait up to this many seconds |
-| `RATELIMIT_TELETHON`            | `30r/m`        | Nginx rate limit                         |
-| `RATELIMIT_TELETHON_BURST`      | `10`           | Burst allowance                          |
 | `TIMEOUT_TELETHON`              | `60s`          | Nginx proxy timeout                      |
 | `TELETHON_MEM_LIMIT`            | `256m`         | Container memory limit                   |
 | `TELETHON_MEMSWAP_LIMIT`        | `512m`         | Container memory + swap limit            |

@@ -12,7 +12,7 @@
 | MCP server (all tools) | `POST /mcp/`                                  | `Bearer $LITELLM_MASTER_KEY` |
 | Admin UI               | `GET /ui/`                                    | optional basic auth     |
 
-The admin UI at `/ui/` is rate-limited to 30 requests/minute by default (configurable via `RATELIMIT_ADMIN` in `.env`). Set `LITELLM_UI_BASIC_AUTH=user:password` in `.env` to enable HTTP basic auth on top of that.
+Set `LITELLM_UI_BASIC_AUTH=user:password` in `.env` to put HTTP basic auth on the admin UI at `/ui/`.
 
 ---
 

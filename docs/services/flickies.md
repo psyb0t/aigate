@@ -29,7 +29,7 @@ Weights are fetched lazily on first call per engine into `${DATA_DIR_FLICKIES}/m
 
 Full API — every endpoint, every engine, the JSON body shape for each tool, the `openapi.yaml` contract, the generated Go + Python clients: **[docker-flickies README](https://github.com/psyb0t/docker-flickies)**.
 
-Env vars: `FLICKIES_AUTH_TOKEN`, `FLICKIES_DEVICE`, `FLICKIES_ENABLED_ENGINES`, `FLICKIES_PREFETCH_ALL` (boot-time weight prefetch — drops cold-call latency), `FLICKIES_IDLE_UNLOAD_SECS`, `FLICKIES_MAX_UPLOAD_BYTES`, `FLICKIES_RATE_LIMIT_PER_MIN`, `FLICKIES_FETCH_TIMEOUT_SECS`, `FLICKIES_ALLOW_PRIVATE_FETCH`, `FLICKIES_OFFLINE`, `FLICKIES_WEBHOOK_SECRET`, `FLICKIES_LOG_LEVEL`, `FLICKIES_LOG_FILE` (rotating JSON log), `FLICKIES_ENABLE_NONCOMMERCIAL` (LRS2 opt-in for Wav2Lip / Wav2Lip-GAN), `DATA_DIR_FLICKIES`, `RATELIMIT_FLICKIES[_BURST]`, `RATELIMIT_FLICKIES_CUDA[_BURST]`, `TIMEOUT_FLICKIES`. Full reference in [`.env.example`](../../.env.example).
+Env vars: `FLICKIES_AUTH_TOKEN`, `FLICKIES_DEVICE`, `FLICKIES_ENABLED_ENGINES`, `FLICKIES_PREFETCH_ALL` (boot-time weight prefetch, cuts cold-call latency), `FLICKIES_IDLE_UNLOAD_SECS`, `FLICKIES_MAX_UPLOAD_BYTES`, `FLICKIES_RATE_LIMIT_PER_MIN`, `FLICKIES_FETCH_TIMEOUT_SECS`, `FLICKIES_ALLOW_PRIVATE_FETCH`, `FLICKIES_OFFLINE`, `FLICKIES_WEBHOOK_SECRET`, `FLICKIES_LOG_LEVEL`, `FLICKIES_LOG_FILE` (rotating JSON log), `FLICKIES_ENABLE_NONCOMMERCIAL` (LRS2 opt-in for Wav2Lip / Wav2Lip-GAN), `DATA_DIR_FLICKIES`, `TIMEOUT_FLICKIES`. Full reference in [`.env.example`](../../.env.example).
 
 ---
 

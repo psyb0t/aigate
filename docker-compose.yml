@@ -1962,9 +1962,8 @@ configs:
 
           client_max_body_size ${NGINX_MAX_BODY_SIZE:-50m};
 
-          # litellm admin UI + login — rate limited, optional basic auth
+          # litellm admin UI + login, optional basic auth
           location /ui {
-              limit_req zone=admin burst=${RATELIMIT_ADMIN_BURST:-20} nodelay;
               include /etc/nginx/auth/auth.conf;
               proxy_pass http://litellm_backend/ui;
               proxy_set_header Host $$http_host;
@@ -1977,7 +1976,7 @@ configs:
               proxy_cache off;
           }
 
-          # litellm UI static assets — no rate limit, same auth as /ui
+          # litellm UI static assets, same auth as /ui
           location /litellm-asset-prefix/ {
               include /etc/nginx/auth/auth.conf;
               proxy_pass http://litellm_backend/litellm-asset-prefix/;
@@ -1985,7 +1984,6 @@ configs:
           }
 
           location /login {
-              limit_req zone=admin burst=${RATELIMIT_ADMIN_BURST:-20} nodelay;
               include /etc/nginx/auth/auth.conf;
               proxy_pass http://litellm_backend/login;
               proxy_set_header Host $$http_host;
@@ -1996,7 +1994,6 @@ configs:
 
           # claudebox (OAuth) — full API access
           location /claudebox/ {
-              limit_req zone=claudebox burst=${RATELIMIT_CLAUDEBOX_BURST:-10} nodelay;
               set $$upstream_claudebox http://claudebox:8080;
               rewrite ^/claudebox/(.*) /$$1 break;
               proxy_pass $$upstream_claudebox;
@@ -2012,7 +2009,6 @@ configs:
 
           # pibox-zai (GLM models via z.ai) — full API access
           location /pibox-zai/ {
-              limit_req zone=claudebox burst=${RATELIMIT_CLAUDEBOX_BURST:-10} nodelay;
               set $$upstream_pibox_zai http://pibox-zai:8080;
               rewrite ^/pibox-zai/(.*) /$$1 break;
               proxy_pass $$upstream_pibox_zai;
@@ -2027,7 +2023,6 @@ configs:
           }
 
           location /pibox/ {
-              limit_req zone=claudebox burst=${RATELIMIT_CLAUDEBOX_BURST:-10} nodelay;
               set $$upstream_pibox http://pibox:8080;
               rewrite ^/pibox/(.*) /$$1 break;
               proxy_pass $$upstream_pibox;
@@ -2050,7 +2045,6 @@ configs:
           # config lives in docker config-store memory, not on disk outside
           # the docker daemon.
           location /piston/ {
-              limit_req zone=piston burst=${RATELIMIT_PISTON_BURST:-10} nodelay;
               if ($$http_authorization != "Bearer ${AIGATE_TOKEN:-lulz-4-security}") {
                   return 401 '{"error":"missing or invalid Authorization: Bearer <token>"}';
               }
@@ -2075,7 +2069,6 @@ configs:
 
           # predictalot — time-series forecasting (direct route, not via LiteLLM)
           location /predictalot/ {
-              limit_req zone=predictalot burst=${RATELIMIT_PREDICTALOT_BURST:-20} nodelay;
               set $$upstream_predictalot http://predictalot:8080;
               rewrite ^/predictalot/(.*) /$$1 break;
               proxy_pass $$upstream_predictalot;
@@ -2091,7 +2084,6 @@ configs:
 
           # predictalot-cuda — GPU sibling on its own route + alias
           location /predictalot-cuda/ {
-              limit_req zone=predictalot_cuda burst=${RATELIMIT_PREDICTALOT_CUDA_BURST:-20} nodelay;
               set $$upstream_predictalot_cuda http://predictalot-cuda:8080;
               rewrite ^/predictalot-cuda/(.*) /$$1 break;
               proxy_pass $$upstream_predictalot_cuda;
@@ -2117,7 +2109,6 @@ configs:
               if ($$decidealot_enabled != "1") {
                   return 404;
               }
-              limit_req zone=decidealot burst=${RATELIMIT_DECIDEALOT_BURST:-20} nodelay;
               set $$upstream_decidealot http://decidealot:8080;
               rewrite ^/decidealot/(.*) /$$1 break;
               proxy_pass $$upstream_decidealot;
@@ -2138,7 +2129,6 @@ configs:
               if ($$decidealot_cuda_enabled != "1") {
                   return 404;
               }
-              limit_req zone=decidealot_cuda burst=${RATELIMIT_DECIDEALOT_CUDA_BURST:-20} nodelay;
               set $$upstream_decidealot_cuda http://decidealot-cuda:8080;
               rewrite ^/decidealot-cuda/(.*) /$$1 break;
               proxy_pass $$upstream_decidealot_cuda;
@@ -2161,7 +2151,6 @@ configs:
               if ($$talkies_enabled != "1") {
                   return 404;
               }
-              limit_req zone=talkies burst=${RATELIMIT_TALKIES_BURST:-20} nodelay;
               client_max_body_size ${TALKIES_MAX_UPLOAD_BYTES:-104857600};
               set $$upstream_talkies http://talkies:8000;
               rewrite ^/talkies/(.*) /$$1 break;
@@ -2186,7 +2175,6 @@ configs:
               if ($$talkies_cuda_enabled != "1") {
                   return 404;
               }
-              limit_req zone=talkies_cuda burst=${RATELIMIT_TALKIES_CUDA_BURST:-20} nodelay;
               client_max_body_size ${TALKIES_CUDA_MAX_UPLOAD_BYTES:-104857600};
               set $$upstream_talkies_cuda http://talkies-cuda:8000;
               rewrite ^/talkies-cuda/(.*) /$$1 break;
@@ -2206,7 +2194,6 @@ configs:
 
           # audiolla — self-hosted audio-production API (direct route, not via LiteLLM)
           location /audiolla/ {
-              limit_req zone=audiolla burst=${RATELIMIT_AUDIOLLA_BURST:-20} nodelay;
               client_max_body_size ${AUDIOLLA_MAX_UPLOAD_BYTES:-209715200};
               set $$upstream_audiolla http://audiolla:8000;
               rewrite ^/audiolla/(.*) /$$1 break;
@@ -2223,7 +2210,6 @@ configs:
 
           # audiolla-cuda — GPU sibling on its own route + alias
           location /audiolla-cuda/ {
-              limit_req zone=audiolla_cuda burst=${RATELIMIT_AUDIOLLA_CUDA_BURST:-20} nodelay;
               client_max_body_size ${AUDIOLLA_MAX_UPLOAD_BYTES:-209715200};
               set $$upstream_audiolla_cuda http://audiolla-cuda:8000;
               rewrite ^/audiolla-cuda/(.*) /$$1 break;
@@ -2240,7 +2226,6 @@ configs:
 
           # flickies — self-hosted video toolkit (direct route, not via LiteLLM)
           location /flickies/ {
-              limit_req zone=flickies burst=${RATELIMIT_FLICKIES_BURST:-20} nodelay;
               client_max_body_size ${FLICKIES_MAX_UPLOAD_BYTES:-524288000};
               set $$upstream_flickies http://flickies:8000;
               rewrite ^/flickies/(.*) /$$1 break;
@@ -2257,7 +2242,6 @@ configs:
 
           # flickies-cuda — GPU sibling on its own route + alias
           location /flickies-cuda/ {
-              limit_req zone=flickies_cuda burst=${RATELIMIT_FLICKIES_CUDA_BURST:-20} nodelay;
               client_max_body_size ${FLICKIES_MAX_UPLOAD_BYTES:-524288000};
               set $$upstream_flickies_cuda http://flickies-cuda:8000;
               rewrite ^/flickies-cuda/(.*) /$$1 break;
@@ -2274,7 +2258,6 @@ configs:
 
           # stealthy-auto-browse cluster — HAProxy → browser replicas
           location /stealthy-auto-browse/ {
-              limit_req zone=browser burst=${RATELIMIT_BROWSER_BURST:-10} nodelay;
               set $$upstream_browser http://stealthy-auto-browse-proxy:8080;
               rewrite ^/stealthy-auto-browse/(.*) /$$1 break;
               proxy_pass $$upstream_browser;
@@ -2290,7 +2273,6 @@ configs:
 
           # hybrids3 — S3-compatible + plain HTTP + MCP
           location /storage {
-              limit_req zone=storage burst=${RATELIMIT_STORAGE_BURST:-20} nodelay;
               set $$upstream_hybrids3 http://hybrids3:8080;
               proxy_pass $$upstream_hybrids3;
               proxy_set_header Host $$http_host;
@@ -2303,7 +2285,6 @@ configs:
 
           # proxq — async job queue (returns job ID, poll for result)
           location /q/ {
-              limit_req zone=proxq burst=${RATELIMIT_PROXQ_BURST:-30} nodelay;
               proxy_pass http://proxq_backend/;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
@@ -2317,7 +2298,6 @@ configs:
 
           # LibreChat web UI (has its own email/password auth)
           location /librechat/ {
-              limit_req zone=librechat burst=${RATELIMIT_LIBRECHAT_BURST:-100} nodelay;
               set $$upstream_librechat http://librechat:3080;
               rewrite ^/librechat/(.*) /$$1 break;
               proxy_pass $$upstream_librechat;
@@ -2337,7 +2317,6 @@ configs:
 
           # SearXNG — meta search engine (admin auth)
           location /searxng/ {
-              limit_req zone=searxng burst=${RATELIMIT_SEARXNG_BURST:-20} nodelay;
               include /etc/nginx/auth/auth.conf;
               set $$upstream_searxng http://searxng:8080;
               rewrite ^/searxng/(.*) /$$1 break;
@@ -2355,7 +2334,6 @@ configs:
 
           # mailbox — IMAP+SMTP gateway REST API + MCP
           location /mailbox/ {
-              limit_req zone=mailbox burst=${RATELIMIT_MAILBOX_BURST:-20} nodelay;
               set $$upstream_mailbox http://mailbox:8000;
               rewrite ^/mailbox/(.*) /$$1 break;
               proxy_pass $$upstream_mailbox;
@@ -2371,7 +2349,6 @@ configs:
 
           # Telethon — Telegram client REST API + MCP
           location /telethon/ {
-              limit_req zone=telethon burst=${RATELIMIT_TELETHON_BURST:-10} nodelay;
               set $$upstream_telethon http://telethon:8080;
               rewrite ^/telethon/(.*) /$$1 break;
               proxy_pass $$upstream_telethon;
@@ -2401,7 +2378,6 @@ configs:
           # LiteLLM (for cloud TTS routes) so no field is dropped.
           # 300s timeout covers cold-load of the qwen3-tts weights.
           location = /v1/audio/speech {
-              limit_req zone=api burst=${RATELIMIT_API_BURST:-30} nodelay;
               proxy_pass http://mcp_backend;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
@@ -2418,9 +2394,8 @@ configs:
           # CPU + CUDA upstreams and annotates each voice with the
           # matching LiteLLM model alias(es). Same Bearer auth as the
           # LiteLLM catch-all below (mcp container does its own check
-          # via MCP_TOOLS_AUTH_TOKEN). Uses the api rate-limit zone.
+          # via MCP_TOOLS_AUTH_TOKEN).
           location = /v1/audio/voices {
-              limit_req zone=api burst=${RATELIMIT_API_BURST:-30} nodelay;
               proxy_pass http://mcp_backend;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
@@ -2441,7 +2416,6 @@ configs:
           # since some upstream unload calls (ollama, sdcpp) can take a
           # few seconds to fully release VRAM.
           location ~ ^/v1/unload(/(cuda|cpu))?$ {
-              limit_req zone=api burst=${RATELIMIT_API_BURST:-30} nodelay;
               proxy_pass http://mcp_backend;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
@@ -2455,7 +2429,6 @@ configs:
 
           # everything else — LiteLLM API
           location / {
-              limit_req zone=api burst=${RATELIMIT_API_BURST:-30} nodelay;
               proxy_pass http://litellm_backend;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
@@ -2557,28 +2530,6 @@ configs:
           '' close;
       }
 
-      limit_req_zone $$binary_remote_addr zone=admin:10m rate=${RATELIMIT_ADMIN:-30r/m};
-      limit_req_zone $$binary_remote_addr zone=api:10m rate=${RATELIMIT_API:-500r/m};
-      limit_req_zone $$binary_remote_addr zone=storage:10m rate=${RATELIMIT_STORAGE:-60r/m};
-      limit_req_zone $$binary_remote_addr zone=claudebox:10m rate=${RATELIMIT_CLAUDEBOX:-30r/m};
-      limit_req_zone $$binary_remote_addr zone=browser:10m rate=${RATELIMIT_BROWSER:-30r/m};
-      limit_req_zone $$binary_remote_addr zone=proxq:10m rate=${RATELIMIT_PROXQ:-600r/m};
-      limit_req_zone $$binary_remote_addr zone=librechat:10m rate=${RATELIMIT_LIBRECHAT:-500r/m};
-      limit_req_zone $$binary_remote_addr zone=searxng:10m rate=${RATELIMIT_SEARXNG:-60r/m};
-      limit_req_zone $$binary_remote_addr zone=telethon:10m rate=${RATELIMIT_TELETHON:-30r/m};
-      limit_req_zone $$binary_remote_addr zone=predictalot:10m rate=${RATELIMIT_PREDICTALOT:-60r/m};
-      limit_req_zone $$binary_remote_addr zone=predictalot_cuda:10m rate=${RATELIMIT_PREDICTALOT_CUDA:-60r/m};
-      limit_req_zone $$binary_remote_addr zone=decidealot:10m rate=${RATELIMIT_DECIDEALOT:-120r/m};
-      limit_req_zone $$binary_remote_addr zone=decidealot_cuda:10m rate=${RATELIMIT_DECIDEALOT_CUDA:-120r/m};
-      limit_req_zone $$binary_remote_addr zone=talkies:10m rate=${RATELIMIT_TALKIES:-30r/m};
-      limit_req_zone $$binary_remote_addr zone=talkies_cuda:10m rate=${RATELIMIT_TALKIES_CUDA:-30r/m};
-      limit_req_zone $$binary_remote_addr zone=audiolla:10m rate=${RATELIMIT_AUDIOLLA:-30r/m};
-      limit_req_zone $$binary_remote_addr zone=audiolla_cuda:10m rate=${RATELIMIT_AUDIOLLA_CUDA:-30r/m};
-      limit_req_zone $$binary_remote_addr zone=flickies:10m rate=${RATELIMIT_FLICKIES:-30r/m};
-      limit_req_zone $$binary_remote_addr zone=flickies_cuda:10m rate=${RATELIMIT_FLICKIES_CUDA:-30r/m};
-      limit_req_zone $$binary_remote_addr zone=mailbox:10m rate=${RATELIMIT_MAILBOX:-60r/m};
-      limit_req_zone $$binary_remote_addr zone=piston:10m rate=${RATELIMIT_PISTON:-30r/m};
-
   # Rendered here rather than bind-mounted from searxng/settings.yml so the
   # signing key comes from .env instead of living in a tracked file. SearXNG
   # refuses to start on the upstream "ultrasecretkey" placeholder, so
@@ -2589,7 +2540,7 @@ configs:
 
       server:
         secret_key: "${SEARXNG_SECRET_KEY:-ultrasecretkey}"
-        # Per-IP rate limiting is handled by nginx upstream
+        # Every request arrives from nginx, so a per-IP limiter would treat all clients as one
         limiter: false
         image_proxy: false
 

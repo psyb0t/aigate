@@ -577,7 +577,7 @@ test_sec_header_injection() {
     code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/models" \
         -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
         -H "X-Forwarded-For: 1.2.3.4")
-    echo "  OK: X-Forwarded-For spoofing returns $code (no rate limit bypass)"
+    echo "  OK: X-Forwarded-For spoofing returns $code"
 
     # try newline injection in auth header
     local out

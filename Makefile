@@ -251,7 +251,7 @@ bootstrap:
 	@for f in $(_COMPOSE_FILES); do echo "  $$f"; done
 	@echo ""
 	@echo "docker-compose.yml is tracked and moves with the repository; it carries the"
-	@echo "service definitions, nginx routes, and rate-limit zones that the rest of the"
+	@echo "service definitions and nginx routes that the rest of the"
 	@echo "repo expects, so an edit there is overwritten on update. Put your own changes"
 	@echo "in docker-compose.override.yml, which is gitignored and merges last:"
 	@echo ""

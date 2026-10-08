@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here.
 
+## [v10.0.0] (2026-10-08)
+
+**Removes every nginx rate limit.**
+
+### Removed
+
+- All `limit_req` rules and `limit_req_zone` zones in nginx. They keyed on `$binary_remote_addr`, but traffic that arrives over Tailscale reaches nginx from the Tailscale container's address, so every client on the tailnet shared one bucket. Ordinary concurrent use, such as several model calls plus proxq job polling, used it up and nginx answered `503`. Bearer auth and the per-service concurrency caps still guard the backends.
+- The `RATELIMIT_*` and `RATELIMIT_*_BURST` variables. Nothing reads them anymore.
+
+### Changed
+
+- `tests/test_nginx.sh`: `test_nginx_admin_rate_limit` is now `test_nginx_no_rate_limit`, which sends 40 rapid requests to `/ui/` and fails if any comes back `503` or `429`.
+
+### Upgrade
+
+- Run `docker compose up -d --force-recreate nginx` after pulling. Compose does not recreate nginx when only its `configs:` entries change.
+- Delete any `RATELIMIT_*` lines from `.env`.
+
 ## [v9.0.1] (2026-10-07)
 
 **Keeps nginx pointed at LiteLLM, MCP and proxq when those containers restart.**

@@ -37,8 +37,6 @@ All MCP tools from the LiteLLM aggregated endpoint are available in LibreChat co
 | `LIBRECHAT_MONGO_MEM_LIMIT`           | `512m`                                   | MongoDB container memory limit               |
 | `LIBRECHAT_MONGO_MEMSWAP_LIMIT`       | `1g`                                     | MongoDB container memory + swap limit        |
 | `LIBRECHAT_MONGO_CPUS`                | `0.5`                                    | MongoDB CPU limit                            |
-| `RATELIMIT_LIBRECHAT`                 | `500r/m`                                 | Nginx rate limit                             |
-| `RATELIMIT_LIBRECHAT_BURST`           | `100`                                    | Burst allowance                              |
 | `TIMEOUT_LIBRECHAT`                   | `600s`                                   | Nginx proxy timeout                          |
 | `LIBRECHAT_MAX_BODY_SIZE`             | `25m`                                    | Max upload size                              |
 | `DATA_DIR_LIBRECHAT`                  | `${DATA_DIR}/librechat`                  | Data directory (MongoDB + uploads)           |

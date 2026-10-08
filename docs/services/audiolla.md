@@ -25,7 +25,7 @@ Auth: `Authorization: Bearer $AUDIOLLA_AUTH_TOKEN` (defaults to `AIGATE_TOKEN`).
 
 Full API — every endpoint, every request/response shape, all 90+ routes, generation engines, presets, pipelines, MCP tool list, server-side URL fetch policy, the v0.23→v1.0 migration cheatsheet, and the canonical `openapi.yaml`: **[docker-audiolla README](https://github.com/psyb0t/docker-audiolla)**.
 
-Env vars: `AUDIOLLA_AUTH_TOKEN`, `AUDIOLLA_DEVICE`, `AUDIOLLA_ENABLED_ENGINES`, `AUDIOLLA_PRELOAD`, `AUDIOLLA_ENGINE_TTL`, `AUDIOLLA_FILES_TTL`, `AUDIOLLA_SWEEPER_INTERVAL`, `AUDIOLLA_MAX_UPLOAD_BYTES`, `AUDIOLLA_FETCH_*` (server-side URL fetch policy), `AUDIOLLA_JOB_TTL`, `AUDIOLLA_JOB_MAX_CONCURRENT`, `AUDIOLLA_ENABLE_NONCOMMERCIAL` (CC-BY-NC opt-in for MusicGen), `DATA_DIR_AUDIOLLA`, `RATELIMIT_AUDIOLLA[_BURST]`, `TIMEOUT_AUDIOLLA`. Full reference in [`.env.example`](../../.env.example).
+Env vars: `AUDIOLLA_AUTH_TOKEN`, `AUDIOLLA_DEVICE`, `AUDIOLLA_ENABLED_ENGINES`, `AUDIOLLA_PRELOAD`, `AUDIOLLA_ENGINE_TTL`, `AUDIOLLA_FILES_TTL`, `AUDIOLLA_SWEEPER_INTERVAL`, `AUDIOLLA_MAX_UPLOAD_BYTES`, `AUDIOLLA_FETCH_*` (server-side URL fetch policy), `AUDIOLLA_JOB_TTL`, `AUDIOLLA_JOB_MAX_CONCURRENT`, `AUDIOLLA_ENABLE_NONCOMMERCIAL` (CC-BY-NC opt-in for MusicGen), `DATA_DIR_AUDIOLLA`, `TIMEOUT_AUDIOLLA`. Full reference in [`.env.example`](../../.env.example).
 
 ---
 

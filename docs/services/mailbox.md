@@ -35,8 +35,6 @@ The config file holds **plaintext IMAP/SMTP passwords + bearer tokens** — trea
 | ---------------------- | ------------------------ | -------------------------------------------------------------------- |
 | `MAILBOX_CONFIG`       | — (required)             | Host path to the mailbox YAML config                                 |
 | `MAILBOX_AUTH_TOKEN`   | `change-me-mailbox-auth` | Bearer token; MUST also appear in the YAML's `auth.tokens:`          |
-| `RATELIMIT_MAILBOX`    | `60r/m`                  | Nginx rate limit                                                     |
-| `RATELIMIT_MAILBOX_BURST` | `20`                  | Burst allowance                                                      |
 | `TIMEOUT_MAILBOX`      | `120s`                   | Nginx proxy timeout (IMAP fetches can be slow on large folders)      |
 | `MAILBOX_MEM_LIMIT`    | `256m`                   | Container memory limit                                               |
 | `MAILBOX_CPUS`         | `0.5`                    | CPU limit                                                            |

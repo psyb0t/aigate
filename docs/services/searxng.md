@@ -1,6 +1,6 @@
 # SearXNG (optional, `SEARXNG=1`)
 
-Self-hosted meta-search engine at `/searxng/`. Aggregates results from Google, Bing, DuckDuckGo, and Wikipedia. Protected by nginx admin auth (`LITELLM_UI_BASIC_AUTH`). Rate-limited to 60 req/min by default.
+Self-hosted meta-search engine at `/searxng/`. Aggregates results from Google, Bing, DuckDuckGo, and Wikipedia. Protected by nginx admin auth (`LITELLM_UI_BASIC_AUTH`).
 
 Also exposed to the MCP `search_web` tool — when `SEARXNG=1`, the MCP tools server gains a `search_web` tool that any function-calling model can invoke.
 
@@ -13,14 +13,12 @@ Also exposed to the MCP `search_web` tool — when `SEARXNG=1`, the MCP tools se
 
 | Variable                  | Default     | Description                          |
 | ------------------------- | ----------- | ------------------------------------ |
-| `RATELIMIT_SEARXNG`       | `60r/m`     | Nginx rate limit                     |
-| `RATELIMIT_SEARXNG_BURST` | `20`        | Burst allowance                      |
 | `TIMEOUT_SEARXNG`         | `60s`       | Nginx proxy timeout                  |
 | `SEARXNG_MEM_LIMIT`       | `256m`      | Container memory limit               |
 | `SEARXNG_MEMSWAP_LIMIT`   | `512m`      | Container memory + swap limit        |
 | `SEARXNG_CPUS`            | `0.5`       | CPU limit                            |
 
-Settings render from the `searxng_config` entry in the `configs:` block of `docker-compose.yml` and mount at `/etc/searxng/settings.yml`. HTML and JSON output formats are both enabled — the MCP `search_web` tool consumes the JSON one — with Google, Bing, DuckDuckGo, and Wikipedia active and SearXNG's own limiter off, since nginx rate-limits upstream.
+Settings render from the `searxng_config` entry in the `configs:` block of `docker-compose.yml` and mount at `/etc/searxng/settings.yml`. HTML and JSON output formats are both enabled (the MCP `search_web` tool consumes the JSON one), with Google, Bing, DuckDuckGo, and Wikipedia active and SearXNG's own limiter off, because every request reaches it from nginx and a per-IP limiter would treat all clients as one.
 
 `SEARXNG_SECRET_KEY` signs SearXNG's session and preference state. It is read from `.env` rather than a tracked file; generate one with `openssl rand -hex 32`. Without it the service falls back to the upstream placeholder and refuses to start.
 

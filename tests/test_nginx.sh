@@ -94,27 +94,27 @@ test_nginx_admin_auth() {
     echo "OK: nginx_admin_auth (basic auth enforced)"
 }
 
-# ── admin rate limiting (30r/m, burst 20) ──────────────────────────────────
+# ── no nginx rate limiting ─────────────────────────────────────────────────
 
-test_nginx_admin_rate_limit() {
+test_nginx_no_rate_limit() {
     local creds=()
     if [ -n "${LITELLM_UI_BASIC_AUTH:-}" ]; then
         creds=(-u "$LITELLM_UI_BASIC_AUTH")
     fi
 
-    # fire 40 rapid requests — rate=30r/m burst=20 means first ~21 pass, rest rejected
-    local i code rejected=0
-    for i in $(seq 1 40); do
+    # Every tailnet client reaches nginx from the same address, so a burst
+    # from one IP is normal traffic and must not be rejected.
+    local code rejected=0
+    for _ in $(seq 1 40); do
         code=$(curl -s -o /dev/null -w "%{http_code}" "${creds[@]}" "$BASE_URL/ui/")
         [ "$code" = "503" ] || [ "$code" = "429" ] && rejected=$((rejected + 1))
     done
 
-    if [ "$rejected" -eq 0 ]; then
-        echo "  FAIL: admin rate limit: 40 rapid requests, none rejected"
+    if [ "$rejected" -ne 0 ]; then
+        echo "  FAIL: $rejected/40 rapid requests rejected with 503/429"
         return 1
     fi
-    echo "  OK: $rejected/40 requests rate limited"
-    echo "OK: nginx_admin_rate_limit"
+    echo "OK: nginx_no_rate_limit"
 }
 
 ALL_TESTS+=(
@@ -123,5 +123,5 @@ ALL_TESTS+=(
     test_nginx_pibox_zai_status
     test_nginx_sab_queue_status
     test_nginx_admin_auth
-    test_nginx_admin_rate_limit
+    test_nginx_no_rate_limit
 )

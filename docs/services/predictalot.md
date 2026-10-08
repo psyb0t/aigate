@@ -29,7 +29,7 @@ Full API reference (upstream — v1.0.1 splits the deep API content out of the R
 - **MCP:** [`docs/mcp.md`](https://github.com/psyb0t/docker-predictalot/blob/main/docs/mcp.md) — the forecast, listing, and `unload_models` tools, arg shapes, namespacing.
 - Configuration, architecture, accuracy benchmarks, error taxonomy: [`docs/configuration.md`](https://github.com/psyb0t/docker-predictalot/blob/main/docs/configuration.md), [`docs/architecture.md`](https://github.com/psyb0t/docker-predictalot/blob/main/docs/architecture.md), [`docs/accuracy.md`](https://github.com/psyb0t/docker-predictalot/blob/main/docs/accuracy.md), [`docs/errors.md`](https://github.com/psyb0t/docker-predictalot/blob/main/docs/errors.md).
 
-Env vars: `PREDICTALOT_AUTH_TOKEN`, `PREDICTALOT_DEVICE` (CPU), `PREDICTALOT_CUDA_DEVICE` (CUDA), `PREDICTALOT_PREFETCH`, `PREDICTALOT_PRELOAD`, `PREDICTALOT_MODEL_IDLE_TIMEOUT`, `PREDICTALOT_MAX_BODY_SIZE`, `PREDICTALOT_LOG_LEVEL`, `DATA_DIR_PREDICTALOT`, per-route `RATELIMIT_PREDICTALOT[_BURST]` and `RATELIMIT_PREDICTALOT_CUDA[_BURST]`, shared `TIMEOUT_PREDICTALOT`. Full reference in [`.env.example`](../../.env.example).
+Env vars: `PREDICTALOT_AUTH_TOKEN`, `PREDICTALOT_DEVICE` (CPU), `PREDICTALOT_CUDA_DEVICE` (CUDA), `PREDICTALOT_PREFETCH`, `PREDICTALOT_PRELOAD`, `PREDICTALOT_MODEL_IDLE_TIMEOUT`, `PREDICTALOT_MAX_BODY_SIZE`, `PREDICTALOT_LOG_LEVEL`, `DATA_DIR_PREDICTALOT`, shared `TIMEOUT_PREDICTALOT`. Full reference in [`.env.example`](../../.env.example).
 
 ---
 

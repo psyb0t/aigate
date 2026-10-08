@@ -142,8 +142,6 @@ If you want stronger isolation than this — run piston in a dedicated VM (not j
 
 | Variable | Default | Description |
 |---|---|---|
-| `RATELIMIT_PISTON` | `30r/m` | Per-IP request-rate to the `/piston/` route. |
-| `RATELIMIT_PISTON_BURST` | `10` | Per-IP burst allowance. |
 | `TIMEOUT_PISTON` | `2m` | nginx proxy read / send timeout. |
 
 ## API endpoints (proxied at `/piston/api/v2/*`)
