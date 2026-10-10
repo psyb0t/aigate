@@ -642,7 +642,7 @@ All endpoints, auth requirements, request/response formats, and config options.
 
 ## Agent integrations
 
-The [skill](.agents/skills/aigate) works in any agent that reads `.agents/skills/`, and
+The [skill](.agents/skills/aigate) works in any agent that reads `.agents/skills/` (such as [peen](https://github.com/psyb0t/peen)), and
 installs natively in the clients below.
 
 ### Claude Code

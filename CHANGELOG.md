@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## [v10.0.1] (2026-10-10)
+
+### Changed
+
+- Documentation only. The README's agent integrations section names [peen](https://github.com/psyb0t/peen) as an example of an agent that reads `.agents/skills/`.
+
 ## [v10.0.0] (2026-10-08)
 
 **Removes every nginx rate limit.**
