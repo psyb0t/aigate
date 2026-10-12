@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## [v11.0.1] (2026-10-12)
+
+### Fixed
+
+- `make restart-gateway` rebuilds Cloudflared when enabled before recreating it. Quick tunnels then use the trusted `nginx-edge:4000` target instead of retaining an older embedded entrypoint. No model or CUDA image is rebuilt.
+
 ## [v11.0.0] (2026-10-12)
 
 ### Breaking

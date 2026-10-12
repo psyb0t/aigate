@@ -34,7 +34,7 @@ Named Cloudflare tunnels target `http://nginx-edge:4000`. Tailscale uses an HTTP
 
 ## Upgrade
 
-After pulling, set `TS_SERVE_FQDN` when required and update any named tunnel target to `nginx-edge:4000`. Run `make restart-gateway` to regenerate the config and recreate Redis, LiteLLM, nginx, enabled edges and active Tailscale egress helpers. Redis retains its bind-mounted data. No CUDA rebuild or model download is needed. Back up persistent state before upgrading.
+After pulling, set `TS_SERVE_FQDN` when required and update any named tunnel target to `nginx-edge:4000`. Run `make restart-gateway` to regenerate the config and recreate Redis, LiteLLM, nginx, enabled edges and active Tailscale egress helpers. It rebuilds Cloudflared when enabled so quick tunnels use the current trusted proxy target. Redis retains its bind-mounted data. No CUDA rebuild or model download is needed. Back up persistent state before upgrading.
 
 The Redis ACL allows publish/subscribe only on `aigate:cache:litellm_proxy.auth_cache_invalidation` and `aigate:cache:litellm_proxy.config_change`, so management updates that LiteLLM broadcasts reach other workers. Unrelated channels, queue keys, admin commands and flushes remain denied.
 

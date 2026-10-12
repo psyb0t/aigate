@@ -287,6 +287,9 @@ down:
 restart: down run-bg
 
 restart-gateway: build-config
+ifneq ($(filter cloudflared,$(_PROFILES)),)
+	docker compose build cloudflared
+endif
 	docker compose up -d --no-deps --no-build --pull never --force-recreate --wait --wait-timeout 120 redis
 	docker compose up -d --no-deps --no-build --pull never --force-recreate --wait --wait-timeout 300 litellm
 	docker compose up -d --no-deps --no-build --pull never --force-recreate --wait --wait-timeout 120 nginx $(filter tailscale cloudflared,$(_PROFILES))
