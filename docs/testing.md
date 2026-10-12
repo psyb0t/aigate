@@ -2,9 +2,9 @@
 
 The test suite validates every service end-to-end against the running stack. The stack must be up before running tests.
 
-`make test-unit` is separate and needs no running stack. It starts a throwaway Redis with the ACL from `docker-compose.yml` and runs the LiteLLM callback tests in `tests/unit/` inside the `aigate-litellm` image: the Redis hardware lock across processes, lock expiry after a crash, the ACL users' key limits, and the predictalot and decidealot MCP lock path.
+`make test-unit` needs no running stack, but requires the built `aigate-litellm` image. It regenerates the gateway config, starts a throwaway Redis with the production ACL, and checks hardware locks, lock expiry, ACL isolation, coordination-channel delivery, MCP admission, real client-IP resolution and the zero-TTL auth-cache workaround.
 
-`make test-config` needs no running stack. It checks that Decidealot's default CLM selection also registers its internal CUDA Qwen encoder route, including explicit enable, disable, and standalone encoder configurations.
+`make test-config` needs no running stack. It checks Decidealot's encoder activation and validates the dedicated proxy network defaults, private subnet overrides, malformed CIDRs and overlapping networks.
 
 `make test-decidealot-coordination` builds the thin CPU launcher and uses a throwaway Redis to verify provider admission, encoder eviction ordering, mixed batches, authentication, cancellation, and failure handling. Encoder responses and inference are simulated. This does not claim real GPU execution.
 
@@ -15,6 +15,7 @@ make test
 bash test.sh
 
 # Run specific tests
+make test TESTS="test_proxy_discovery_rejects_forged_headers test_litellm_cross_worker_key_revocation"
 bash test.sh test_health_endpoints test_mcp_tools_loaded
 
 # List all available tests
@@ -22,6 +23,8 @@ bash test.sh --help
 ```
 
 ## What's Tested
+
+The proxy discovery test rejects forged forwarding headers. The live key-revocation test requires the master key, creates one short-lived scoped virtual key, warms authorization through repeated requests, deletes only that test key and verifies every subsequent request returns 401. It uses no inference tokens and does not revoke existing keys. Run it with multiple LiteLLM workers to exercise cross-worker behavior. Third-party browser OAuth authorization is a separate operator test after configuring the provider and HTTPS origin.
 
 - **Health** — all service health endpoints, docker compose service status, browser replica count, cloudflared tunnel reachability (skipped if not running)
 - **LiteLLM** — API endpoints, model registration (base models always, plus optional Ollama/CUDA/talkies models when enabled), authentication (valid/invalid/missing keys), chat completions, SSE streaming

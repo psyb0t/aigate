@@ -2,6 +2,31 @@
 
 All notable changes to this project are documented here.
 
+## [v11.0.0] (2026-10-12)
+
+### Breaking
+
+- Tailscale now proxies HTTP instead of raw TCP so MCP receives the real caller IP. Headscale deployments, and hosted tailnets without a certificate domain, must set `TS_SERVE_FQDN` to the actual node DNS name. Use that hostname rather than the numeric tailnet IP.
+- Named Cloudflare tunnel configurations must target `http://nginx-edge:4000` to use trusted forwarded headers.
+
+### Fixed
+
+- Restricts forwarded-header trust to dedicated ingress and nginx-to-LiteLLM networks. nginx replaces client-supplied forwarding headers, and LiteLLM reads one sanitized address. Tailnet callers remain internal; public callers cannot spoof an internal IP.
+- Allows LiteLLM Redis Pub/Sub only on its namespaced auth-invalidation and configuration-change channels. Queue keys, unrelated channels, admin commands and flushes remain denied.
+- Disables per-worker authorization-object caching because LiteLLM 1.104.0 does not broadcast token eviction on `/key/delete`. Virtual-key auth now checks PostgreSQL on each request, preventing deleted keys from remaining valid on another worker. Model-response caching is unchanged.
+
+### Changed
+
+- Includes the merged LiteLLM update to digest-pinned v1.104.0.
+- Adds `make restart-gateway` for a targeted restart without CUDA rebuilds or model downloads.
+- Documents optional MCP OAuth setup, browser-facing HTTPS origins, callbacks and proxy migration. Bearer-key clients need no OAuth registration.
+- Adds real Redis ACL tests, generated-config and client-IP tests, zero-TTL cache tests, forged-header discovery checks and live cross-worker key-revocation tests. Select live checks with `make test TESTS="test_name ..."`.
+
+### Upgrade
+
+- Back up persistent state. Set `TS_SERVE_FQDN` when required, update named tunnel targets, and change `AIGATE_PROXY_SUBNET` / `AIGATE_INGRESS_SUBNET` if their defaults overlap host routes.
+- Rebuild LiteLLM for the upstream update, then run `make restart-gateway`. It preserves bind-mounted data and refreshes active Tailscale egress helpers. Read [MCP OAuth and proxy setup](docs/mcp-oauth.md) before upgrading a remote deployment.
+
 ## [v10.0.1] (2026-10-10)
 
 ### Changed

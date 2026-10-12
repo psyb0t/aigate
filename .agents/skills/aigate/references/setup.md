@@ -43,7 +43,7 @@ Core, always needed regardless of which optional services you enable:
 | `LITELLM_MASTER_KEY` | Optional override; defaults to `AIGATE_TOKEN` when unset. |
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` / `DATABASE_URL` | LiteLLM's key/usage/budget store. |
 | `REDIS_PASSWORD` | Password of the `proxq` Redis ACL user (job queue in DB 1). The `default` user is disabled. No whitespace. |
-| `LITELLM_REDIS_PASSWORD` | Password of the `litellm` Redis ACL user, which only holds the resource manager's hardware locks. Falls back to `REDIS_PASSWORD`. |
+| `LITELLM_REDIS_PASSWORD` | Password of the `litellm` Redis ACL user for hardware locks, response caching and two coordination channels. Falls back to `REDIS_PASSWORD`. |
 | `LITELLM_UI_BASIC_AUTH` | `user:pass` for nginx basic auth in front of `/ui/`. Leave empty to disable (LiteLLM's own login still applies). |
 | `LITELLM_USERNAME` / `LITELLM_PASSWORD` | LiteLLM's own admin UI login. |
 
@@ -67,6 +67,12 @@ Per-service keys/tokens only matter once you flip that service's flag to `1`. Ev
 - `TELETHON=1` needs `TELETHON_API_ID`, `TELETHON_API_HASH`, `TELETHON_SESSION` (generate the string session once via the telethon-plus `login` command — see `docs/services/telethon.md` upstream).
 - `CLOUDFLARED=1` / `TAILSCALE=1` are the two supported ways to expose the gateway beyond localhost without opening host ports — prefer these over publishing `4000` directly.
 - CUDA variants of any service (`*_CUDA=1`) require `nvidia-container-toolkit` on the host.
+
+## MCP OAuth and proxy trust
+
+Bearer-key clients need no OAuth setup. When OAuth is required, read [MCP OAuth setup](../../../../docs/mcp-oauth.md), set `PROXY_BASE_URL` to the actual browser-facing HTTPS origin, and register the exact callback shown by LiteLLM. Private HTTPS hosts work if the browser can reach them. Never use an internal Docker hostname as the browser callback.
+
+Headscale deployments set `TS_SERVE_FQDN` to their node's full MagicDNS name. Named Cloudflare tunnels target `nginx-edge:4000`. Keep untrusted containers off `aigate-ingress` and `aigate-proxy`. Their small private CIDRs can be changed in `.env` if they overlap host routes. See the linked upgrade instructions before recreating a running stack.
 
 ## Model routing
 

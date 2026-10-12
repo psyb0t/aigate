@@ -7,7 +7,7 @@ $(shell [ -f .env ] || cp .env.example .env)
 -include .env.limits
 export
 
-.PHONY: run run-bg down restart restart-audiolla test test-unit test-config build-decidealot test-decidealot-coordination test-llamacpp-pull test-llamacpp-server logs limits build-config bootstrap help
+.PHONY: run run-bg down restart restart-gateway restart-audiolla test test-unit test-config build-decidealot test-decidealot-coordination test-llamacpp-pull test-llamacpp-server logs limits build-config bootstrap help
 
 # ── Profile detection ─────────────────────────────────────────────────────────
 
@@ -263,6 +263,8 @@ build-config:
 	@docker run --rm \
 		-v "$(CURDIR):/workspace" \
 		-w /workspace \
+		-e AIGATE_PROXY_SUBNET="$(or $(AIGATE_PROXY_SUBNET),172.30.255.240/29)" \
+		-e AIGATE_INGRESS_SUBNET="$(or $(AIGATE_INGRESS_SUBNET),172.30.255.232/29)" \
 		python:3.12-alpine \
 		python3 litellm/build-config.py
 
@@ -284,14 +286,22 @@ down:
 
 restart: down run-bg
 
+restart-gateway: build-config
+	docker compose up -d --no-deps --no-build --pull never --force-recreate --wait --wait-timeout 120 redis
+	docker compose up -d --no-deps --no-build --pull never --force-recreate --wait --wait-timeout 300 litellm
+	docker compose up -d --no-deps --no-build --pull never --force-recreate --wait --wait-timeout 120 nginx $(filter tailscale cloudflared,$(_PROFILES))
+ifneq ($(filter tailscale,$(_PROFILES)),)
+	docker compose up -d --no-deps --no-build --pull never --force-recreate tailscale-tsnet-gw $(addsuffix -tsnet,$(filter claudebox pibox-zai pibox,$(_PROFILES)))
+endif
+
 restart-audiolla:
 	@test -n "$(filter audiolla audiolla-cuda,$(_PROFILES))" || { echo "Enable AUDIOLLA=1 or AUDIOLLA_CUDA=1 first" >&2; exit 1; }
 	docker compose up -d --no-deps --no-build --pull never --force-recreate $(filter audiolla audiolla-cuda,$(_PROFILES))
 
 test:
-	bash test.sh
+	bash test.sh $(TESTS)
 
-test-unit:
+test-unit: build-config
 	bash tests/unit/run.sh
 
 build-decidealot:
@@ -342,6 +352,7 @@ help:
 	@echo "  run-bg        Start the stack in background"
 	@echo "  down          Stop everything"
 	@echo "  restart       Full restart (down + build-config + run-bg)"
+	@echo "  restart-gateway Recreate Redis, LiteLLM, nginx and enabled edges without model rebuilds"
 	@echo "  restart-audiolla Recreate enabled Audiolla variants from locally available pinned images only"
 	@echo "  build-config  Regenerate litellm/config.yaml from fragments"
 	@echo "  limits        Check enabled services fit this machine, write CPU caps to .env.limits"

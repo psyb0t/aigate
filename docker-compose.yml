@@ -62,8 +62,11 @@ services:
     security_opt:
       - no-new-privileges:true
     networks:
-      - aigate-internal
-      - aigate-public
+      aigate-internal:
+      aigate-public:
+      aigate-proxy:
+      aigate-ingress:
+        aliases: [nginx-edge]
 
   litellm:
     logging: *docker-logging
@@ -147,8 +150,10 @@ services:
     security_opt:
       - no-new-privileges:true
     networks:
-      - aigate-internal
-      - aigate-public
+      aigate-internal:
+      aigate-public:
+      aigate-proxy:
+        aliases: [litellm-gateway]
 
   claudebox:
     logging: *docker-logging
@@ -1829,6 +1834,7 @@ services:
       - no-new-privileges:true
     networks:
       - aigate-public
+      - aigate-ingress
 
   # ── SearXNG (self-hosted meta search engine) ─────────────────────────────────
 
@@ -1952,6 +1958,7 @@ services:
         target: /config/serve.json
     networks:
       - aigate-public
+      - aigate-ingress
 
 configs:
   nginx_conf:
@@ -1968,8 +1975,11 @@ configs:
               proxy_pass http://litellm_backend/ui;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_ADMIN:-60s};
               proxy_send_timeout ${TIMEOUT_ADMIN:-60s};
               proxy_buffering off;
@@ -1988,8 +1998,11 @@ configs:
               proxy_pass http://litellm_backend/login;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
           }
 
           # claudebox (OAuth) — full API access
@@ -1999,8 +2012,11 @@ configs:
               proxy_pass $$upstream_claudebox;
               proxy_set_header Host localhost:8080;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_CLAUDEBOX:-24h};
               proxy_send_timeout ${TIMEOUT_CLAUDEBOX:-24h};
               proxy_buffering off;
@@ -2014,8 +2030,11 @@ configs:
               proxy_pass $$upstream_pibox_zai;
               proxy_set_header Host localhost:8080;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_CLAUDEBOX:-24h};
               proxy_send_timeout ${TIMEOUT_CLAUDEBOX:-24h};
               proxy_buffering off;
@@ -2028,8 +2047,11 @@ configs:
               proxy_pass $$upstream_pibox;
               proxy_set_header Host localhost:8080;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_CLAUDEBOX:-24h};
               proxy_send_timeout ${TIMEOUT_CLAUDEBOX:-24h};
               proxy_buffering off;
@@ -2053,8 +2075,11 @@ configs:
               proxy_pass $$upstream_piston;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               # Strip the client Authorization header before proxying to
               # piston. The nginx-level check above already gated entry; the
               # upstream piston process has no auth of its own and never
@@ -2074,8 +2099,11 @@ configs:
               proxy_pass $$upstream_predictalot;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_PREDICTALOT:-24h};
               proxy_send_timeout ${TIMEOUT_PREDICTALOT:-24h};
               proxy_buffering off;
@@ -2089,8 +2117,11 @@ configs:
               proxy_pass $$upstream_predictalot_cuda;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_PREDICTALOT:-24h};
               proxy_send_timeout ${TIMEOUT_PREDICTALOT:-24h};
               proxy_buffering off;
@@ -2114,8 +2145,11 @@ configs:
               proxy_pass $$upstream_decidealot;
               proxy_set_header Host 127.0.0.1:8080;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_DECIDEALOT:-10m};
               proxy_send_timeout ${TIMEOUT_DECIDEALOT:-10m};
               proxy_buffering off;
@@ -2134,8 +2168,11 @@ configs:
               proxy_pass $$upstream_decidealot_cuda;
               proxy_set_header Host 127.0.0.1:8080;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_DECIDEALOT:-10m};
               proxy_send_timeout ${TIMEOUT_DECIDEALOT:-10m};
               proxy_buffering off;
@@ -2160,8 +2197,11 @@ configs:
               proxy_set_header Connection $$talkies_connection;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_TALKIES:-4h};
               proxy_send_timeout ${TIMEOUT_TALKIES:-4h};
               proxy_buffering off;
@@ -2184,8 +2224,11 @@ configs:
               proxy_set_header Connection $$talkies_connection;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_TALKIES_CUDA:-4h};
               proxy_send_timeout ${TIMEOUT_TALKIES_CUDA:-4h};
               proxy_buffering off;
@@ -2200,8 +2243,11 @@ configs:
               proxy_pass $$upstream_audiolla;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_AUDIOLLA:-24h};
               proxy_send_timeout ${TIMEOUT_AUDIOLLA:-24h};
               proxy_buffering off;
@@ -2216,8 +2262,11 @@ configs:
               proxy_pass $$upstream_audiolla_cuda;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_AUDIOLLA:-24h};
               proxy_send_timeout ${TIMEOUT_AUDIOLLA:-24h};
               proxy_buffering off;
@@ -2232,8 +2281,11 @@ configs:
               proxy_pass $$upstream_flickies;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_FLICKIES:-24h};
               proxy_send_timeout ${TIMEOUT_FLICKIES:-24h};
               proxy_buffering off;
@@ -2248,8 +2300,11 @@ configs:
               proxy_pass $$upstream_flickies_cuda;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_FLICKIES:-24h};
               proxy_send_timeout ${TIMEOUT_FLICKIES:-24h};
               proxy_buffering off;
@@ -2263,8 +2318,11 @@ configs:
               proxy_pass $$upstream_browser;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_BROWSER:-600s};
               proxy_send_timeout ${TIMEOUT_BROWSER:-600s};
               proxy_buffering off;
@@ -2277,8 +2335,11 @@ configs:
               proxy_pass $$upstream_hybrids3;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_buffering off;
               proxy_request_buffering off;
           }
@@ -2288,8 +2349,11 @@ configs:
               proxy_pass http://proxq_backend/;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_PROXQ:-30s};
               proxy_send_timeout ${TIMEOUT_PROXQ:-30s};
               proxy_buffering off;
@@ -2303,8 +2367,11 @@ configs:
               proxy_pass $$upstream_librechat;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_http_version 1.1;
               proxy_set_header Upgrade $$http_upgrade;
               proxy_set_header Connection "upgrade";
@@ -2323,8 +2390,11 @@ configs:
               proxy_pass $$upstream_searxng;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_SEARXNG:-30s};
               proxy_send_timeout ${TIMEOUT_SEARXNG:-30s};
               proxy_buffering off;
@@ -2339,8 +2409,11 @@ configs:
               proxy_pass $$upstream_mailbox;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_MAILBOX:-120s};
               proxy_send_timeout ${TIMEOUT_MAILBOX:-120s};
               proxy_buffering off;
@@ -2354,8 +2427,11 @@ configs:
               proxy_pass $$upstream_telethon;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_TELETHON:-60s};
               proxy_send_timeout ${TIMEOUT_TELETHON:-60s};
               proxy_buffering off;
@@ -2381,8 +2457,11 @@ configs:
               proxy_pass http://mcp_backend;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout 300s;
               proxy_send_timeout 300s;
               proxy_buffering off;
@@ -2399,8 +2478,11 @@ configs:
               proxy_pass http://mcp_backend;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout 30s;
               proxy_send_timeout 30s;
               proxy_buffering off;
@@ -2419,8 +2501,11 @@ configs:
               proxy_pass http://mcp_backend;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout 120s;
               proxy_send_timeout 120s;
               proxy_buffering off;
@@ -2432,8 +2517,11 @@ configs:
               proxy_pass http://litellm_backend;
               proxy_set_header Host $$http_host;
               proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_set_header X-Forwarded-For $$remote_addr;
+              proxy_set_header X-Forwarded-Proto $$aigate_forwarded_proto;
+              proxy_set_header X-Forwarded-Host $$http_host;
+              proxy_set_header X-Forwarded-Port "";
+              proxy_set_header Forwarded "";
               proxy_read_timeout ${TIMEOUT_API:-24h};
               proxy_send_timeout ${TIMEOUT_API:-24h};
               proxy_buffering off;
@@ -2496,15 +2584,19 @@ configs:
 
   nginx_limits_conf:
     content: |
-      # Cloudflare real IP restoration — when behind CF tunnel, $$binary_remote_addr
-      # is cloudflared's IP (one bucket for everyone). This restores the real client IP.
-      # Ranges from https://www.cloudflare.com/ips/
-      set_real_ip_from 172.16.0.0/12;
-      set_real_ip_from 10.0.0.0/8;
-      set_real_ip_from 192.168.0.0/16;
-      set_real_ip_from 127.0.0.0/8;
-      real_ip_header CF-Connecting-IP;
+      # Only the edge network may supply the original client address.
+      set_real_ip_from ${AIGATE_INGRESS_SUBNET:-172.30.255.232/29};
+      real_ip_header X-Forwarded-For;
       real_ip_recursive on;
+
+      geo $$realip_remote_addr $$aigate_trusted_edge {
+          default 0;
+          ${AIGATE_INGRESS_SUBNET:-172.30.255.232/29} 1;
+      }
+      map "$$aigate_trusted_edge:$$http_x_forwarded_proto" $$aigate_forwarded_proto {
+          default $$scheme;
+          "1:https" https;
+      }
 
       resolver 127.0.0.11 valid=10s ipv6=off;
 
@@ -2514,7 +2606,7 @@ configs:
       # other services use a `set $$upstream_x` variable for the same reason.
       upstream litellm_backend {
           zone litellm_backend 64k;
-          server litellm:4000 resolve;
+          server litellm-gateway:4000 resolve;
       }
       upstream proxq_backend {
           zone proxq_backend 64k;
@@ -2566,13 +2658,13 @@ configs:
 
   # Redis ACL. proxq gets asynq's keys and channels plus its cache prefix.
   # LiteLLM gets the hardware lock keys and its response cache keys, and only
-  # the commands the lock and the cache use. Admin and flush commands are
+  # two namespaced coordination channels. Admin and flush commands are
   # denied to both. Passwords must not contain whitespace.
   redis_acl:
     content: |
       user default off
       user proxq on >${REDIS_PASSWORD} ~asynq:* ~proxq:* &asynq:* +@all -@admin -flushall -flushdb -swapdb
-      user litellm on >${LITELLM_REDIS_PASSWORD:-${REDIS_PASSWORD}} ~aigate:hwlock:* ~aigate:cache:* resetchannels -@all +ping +hello +select +client|setinfo +client|setname +get +set +del +mget +pexpire +expire +ttl +incr +incrbyfloat +multi +exec +discard +evalsha +script|load
+      user litellm on >${LITELLM_REDIS_PASSWORD:-${REDIS_PASSWORD}} ~aigate:hwlock:* ~aigate:cache:* resetchannels &aigate:cache:litellm_proxy.auth_cache_invalidation &aigate:cache:litellm_proxy.config_change -@all +ping +hello +select +client|setinfo +client|setname +get +set +del +mget +pexpire +expire +ttl +incr +incrbyfloat +multi +exec +discard +evalsha +script|load +publish +subscribe +unsubscribe
 
   proxq_config:
     content: |
@@ -2640,11 +2732,26 @@ configs:
     content: |
       {
         "TCP": {
-          "${TS_SERVE_PORT:-80}": { "TCPForward": "nginx:4000" }
+          "${TS_SERVE_PORT:-80}": { "HTTP": true }
+        },
+        "Web": {
+          "${TS_SERVE_FQDN:-$${TS_CERT_DOMAIN}}:${TS_SERVE_PORT:-80}": {
+            "Handlers": { "/": { "Proxy": "http://nginx-edge:4000" } }
+          }
         }
       }
 
 networks:
+  aigate-proxy:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${AIGATE_PROXY_SUBNET:-172.30.255.240/29}
+  aigate-ingress:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${AIGATE_INGRESS_SUBNET:-172.30.255.232/29}
   aigate-internal:
     internal: true
   aigate-public:

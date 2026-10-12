@@ -94,6 +94,7 @@ log INFO "redis ready, running unit tests"
 docker run --rm --name "$RUNNER_CONTAINER" --network "$NETWORK" \
     -v "${REPO_DIR}/litellm/callbacks:/app/callbacks:ro" \
     -v "${TEST_DIRECTORY}:/unit-tests:ro" \
+    -v "${REPO_DIR}/litellm/config.yaml:/gateway-config.yaml:ro" \
     -e PYTHONPATH=/app/callbacks:/opt/aigate \
     -e PYTHONDONTWRITEBYTECODE=1 \
     -e TEST_REDIS_HOST="$REDIS_CONTAINER" \

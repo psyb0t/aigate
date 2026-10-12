@@ -8,9 +8,11 @@ Usage: python3 litellm/build-config.py
        (run from the workspace root, or via Docker — see Makefile)
 """
 
+import ipaddress
 import json
 import os
 import sys
+from typing import NoReturn
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
@@ -26,6 +28,44 @@ BASE_PATH = os.path.join(CONFIG_DIR, "base.yaml")
 FALLBACKS_PATH = os.path.join(CONFIG_DIR, "fallbacks.json")
 
 PREFIX = "[build-config]"
+PROXY_SUBNET_DEFAULTS = {
+    "AIGATE_PROXY_SUBNET": "172.30.255.240/29",
+    "AIGATE_INGRESS_SUBNET": "172.30.255.232/29",
+}
+
+
+def proxy_settings(env: dict[str, str]) -> dict[str, object]:
+    networks: dict[str, ipaddress.IPv4Network] = {}
+    for key, default in PROXY_SUBNET_DEFAULTS.items():
+        value = os.environ.get(key, env.get(key, default))
+        network = ipaddress.IPv4Network(value)
+        private_ranges = ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+        if (
+            not 24 <= network.prefixlen <= 29
+            or not any(
+                network.subnet_of(ipaddress.IPv4Network(cidr)) for cidr in private_ranges
+            )
+        ):
+            raise ValueError(f"{key} must be a private IPv4 subnet between /24 and /29")
+        networks[key] = network
+    if networks["AIGATE_PROXY_SUBNET"].overlaps(networks["AIGATE_INGRESS_SUBNET"]):
+        raise ValueError(
+            "AIGATE_PROXY_SUBNET and AIGATE_INGRESS_SUBNET must not overlap"
+        )
+    return {
+        "use_x_forwarded_for": True,
+        "mcp_trusted_proxy_ranges": [str(networks["AIGATE_PROXY_SUBNET"])],
+        "mcp_xff_num_trusted_hops": 1,
+        "mcp_internal_ip_ranges": [
+            "127.0.0.0/8",
+            "::1/128",
+            "10.0.0.0/8",
+            "172.16.0.0/12",
+            "192.168.0.0/16",
+            "fc00::/7",
+            "100.64.0.0/10",
+        ],
+    }
 
 
 def log(msg):
@@ -36,7 +76,7 @@ def warn(msg):
     print(f"{PREFIX} WARNING: {msg}", file=sys.stderr)
 
 
-def die(msg):
+def die(msg: str) -> NoReturn:
     print(f"{PREFIX} ERROR: {msg}", file=sys.stderr)
     sys.exit(1)
 
@@ -215,6 +255,10 @@ def extract_model_names(provider_text):
 
 def main():
     env = load_env(ENV_PATH)
+    try:
+        proxy_config = proxy_settings(env)
+    except ValueError as error:
+        die(str(error))
 
     providers = active_providers(env)
     mcp_names = active_mcp_servers(env)
@@ -253,6 +297,12 @@ def main():
 
     # ── base settings (general_settings, litellm_settings, router_settings) ──
     base_block = "\n" + read_file(BASE_PATH).rstrip("\n") + "\n"
+    proxy_lines = "".join(
+        f"  {key}: {json.dumps(value)}\n" for key, value in proxy_config.items()
+    )
+    base_block = base_block.replace(
+        "general_settings:\n", "general_settings:\n" + proxy_lines, 1
+    )
 
     # ── litellm_settings callbacks (injected from callbacks/*.yaml) ──────────
     for cb_name in callback_names:

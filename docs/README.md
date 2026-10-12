@@ -23,6 +23,8 @@ The big ones at a glance:
 
 ## By topic
 
+- [MCP OAuth and proxy setup](mcp-oauth.md): browser-facing origin, callbacks, dedicated trusted networks and upgrade steps.
+
 - [Configuration](../README.md#2-configure). `make bootstrap` creates `.env` from `.env.example`. Change what you can through `.env`; for compose changes write `docker-compose.override.yml`, which is gitignored and merges last. `docker-compose.yml` itself is tracked and an update overwrites edits to it.
 - [Providers + model aliases](providers.md) — every LLM / embedding / ASR / TTS model registered through LiteLLM, with its slug and provider.
 - [Testing](testing.md) — what the test suite covers per service + how to run it.

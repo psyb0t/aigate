@@ -6,6 +6,8 @@ This means you can ask a Groq model to browse a website, take a screenshot, uplo
 
 ## Connecting
 
+Bearer-key connections need no OAuth registration. For an OAuth-based MCP server or client, configure the browser-facing HTTPS origin and complete authorization in the admin UI. See [MCP OAuth and trusted proxy setup](mcp-oauth.md).
+
 The gateway exposes a single aggregated MCP endpoint that proxies every active MCP-capable server (which servers are active depends on which `.env` flags are set — see `active_mcp_servers()` in `litellm/build-config.py`):
 
 ```

@@ -1,8 +1,8 @@
 # Tailscale (optional, `TAILSCALE=1`)
 
-Disabled by default. Runs the official `tailscale/tailscale` image with [`tailscale serve`](https://tailscale.com/kb/1242/tailscale-serve) configured for **L4 TCP forwarding** to nginx on port 4000. Access is **tailnet-only** — no public exposure, no port forwarding, no Cloudflare in the middle.
+Disabled by default. Runs the official `tailscale/tailscale` image with [`tailscale serve`](https://tailscale.com/kb/1242/tailscale-serve) as an HTTP reverse proxy to nginx on port 4000. Access is tailnet-only, with no public exposure or port forwarding.
 
-L4 mode means tailscale forwards the raw TCP stream straight to nginx without inspecting the Host header. nginx sees the original request — including Host, paths, everything — exactly as the client sent it. No FQDN config needed on the tailscale side.
+HTTP proxying supplies the real caller IP. nginx accepts it only from the dedicated ingress network and passes one sanitized address to LiteLLM. MCP can then distinguish tailnet callers from public callers without trusting client-supplied headers.
 
 State is bind-mounted at `${DATA_DIR_TAILSCALE:-${DATA_DIR:-.data}/tailscale}` so the node identity survives container recreates. After the first auth, the node stays logged in even if `TS_AUTHKEY` is rotated.
 
@@ -31,20 +31,21 @@ TAILSCALE=1
 TS_AUTHKEY=hskey-auth-...
 TS_HOSTNAME=aigate
 TS_EXTRA_ARGS=--login-server=https://your-headscale.example.com
+TS_SERVE_FQDN=aigate.your-tailnet.example.com
 ```
 
-The FQDN your tailnet exposes (`aigate.<base_domain>`) is determined by your Headscale's `base_domain` setting — nothing to configure on the aigate side.
+Set `TS_SERVE_FQDN` to the actual node DNS name from `docker compose exec tailscale tailscale status --json`. Headscale determines its suffix through `base_domain`. Hosted Tailscale can substitute its certificate domain when the variable is unset; tailnets without a certificate domain must also set it explicitly. Use that hostname or its short MagicDNS name in requests, not the numeric IP.
 
 ### Custom port
 
-Default forward port is 80 (`http://<host>.<tailnet>/`). Change with `TS_SERVE_PORT=8080` etc.
+Default HTTP port is 80 (`http://<host>.<tailnet>/`). Change with `TS_SERVE_PORT=8080` etc.
 
 ### Notes
 
-- L4 forwarding means HTTPS auto-cert (Tailscale's hosted ACME proxy) is **not** in play here — TLS termination, if you want it, lives in nginx. Easier to keep it as plain HTTP over the tailnet, which is already encrypted by WireGuard.
+- Serve uses HTTP over the WireGuard-encrypted tailnet. Browser OAuth outside localhost requires HTTPS; configure a TLS reverse proxy and set `PROXY_BASE_URL` to its browser-facing origin. See [MCP OAuth setup](../mcp-oauth.md).
 - The container needs `NET_ADMIN`, `NET_RAW`, and `/dev/net/tun` for kernel networking.
 - Forwarding sysctls (`net.ipv4.ip_forward=1`, `net.ipv6.conf.all.forwarding=1`) are set so subnet-routing and exit-node modes work if you add `--advertise-routes=...` or `--advertise-exit-node` via `TS_EXTRA_ARGS`.
-- Stays on the `aigate-public` network so the `nginx:4000` upstream resolves via Docker DNS.
+- Joins `aigate-public` for outbound connectivity and `aigate-ingress` to reach `nginx-edge:4000`. Persistent node identity and agent egress remain unchanged.
 
 ### Tailnet egress for the agent containers
 
