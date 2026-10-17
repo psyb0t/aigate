@@ -123,3 +123,6 @@ COUNTER_REVIEW.md
 .telemetry/
 .tmuxsesh
 .shpoolsesh
+
+# Review receipt for the local release script.
+git-update.sh.debot
