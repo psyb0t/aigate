@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here.
 
+## [v12.0.0] (2026-10-20)
+
+### Breaking
+
+- Upgrades the browser from v1.0.0 to the current v3.1.5 image. Browser authentication requires a bearer header, OS input validates coordinate pairs and integer wheel amounts, and default input timing follows human behavior. Saved browser identities migrate in place. See [browser upgrade notes](docs/services/browser.md#upgrading-from-browser-v1).
+- Upgrades Mailbox from v0.3.0 to v0.6.1. Reads no longer mark messages seen, deletes move messages to Trash, SMTP sender identities are validated, and TLS verification is enabled. Empty auth token lists deny protected requests. See [Mailbox upgrade notes](docs/services/mailbox.md#upgrade-notes).
+
+### Changed
+
+- Refreshes Claudebox, Pibox, Predictalot, Decidealot, Audiolla, Flickies, Hybrids3, the browser, Proxq, Telethon Plus and Mailbox. Their first-party images follow `latest`, with `latest-cuda` for CUDA variants. Decidealot's thin launcher follows the same upstream tags.
+- Persists Mailbox's SQLite audit log, send limits, checkpoints and webhook delivery state in the `mailbox-state` named volume. The example config uses scoped tokens.
+- Adds CLM request configuration and candidate embedding caching through Decidealot v0.7.1. Documents the browser and Mailbox migration requirements.
+- Spreads mirrored-issue polling across repository-specific hours and updates agent plugin descriptions.
+
+### Upgrade
+
+- Pull the updated images and rebuild the Decidealot launchers with fresh bases before recreating enabled services. Preserve existing bind mounts and the `mailbox-state` volume. Back up any separately mounted browser `/userdata` before its identity migration.
+
 ## [v11.0.1] (2026-10-12)
 
 ### Fixed

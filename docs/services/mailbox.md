@@ -1,6 +1,12 @@
 # mailbox (optional, `MAILBOX=1`)
 
-Stateless IMAP+SMTP gateway at `/mailbox/`. Backed by [docker-mailbox](https://github.com/psyb0t/docker-mailbox) — point it at N email accounts via a single YAML config and out the other end you get one HTTP API + one MCP server (streamable-HTTP at `/mailbox/mcp`), both on the same bearer token. Unified inbox across all accounts, per-account CRUD, and SMTP send. No database; every read hits the upstream IMAP server live.
+IMAP+SMTP gateway at `/mailbox/`, backed by [docker-mailbox](https://github.com/psyb0t/docker-mailbox). One YAML config selects the accounts exposed through REST and MCP at `/mailbox/mcp`. Reads reach the upstream IMAP server; a SQLite database in the `mailbox-state` named volume persists audit records, send limits, checkpoints and webhook delivery state.
+
+### Upgrade notes
+
+The current service supports scoped tokens, replies, drafts, attachments, threads, identities and sanitized HTML. New token entries declare `name`, `token`, `scopes` and `mailboxes`. Existing string tokens remain valid with full access. Empty token lists deny protected routes. Use the example config for scoped credentials and mirror the aggregator token as `MAILBOX_AUTH_TOKEN`.
+
+Reading a message no longer marks it seen. Deleting moves it to Trash; permanent deletion requires an explicit request from Trash and server support. SMTP sender addresses must match a configured identity. TLS certificates are verified, so private mail servers need a trusted CA bundle. MCP errors now carry a structured `error` object. Back up the `mailbox-state` volume with the account config; removing the volume loses local audit and delivery state.
 
 Not registered with LiteLLM (no chat/completion surface). MCP is enabled by default via LiteLLM's `/mcp/` aggregator with a flat tool set (`mailbox-mailboxes`, `mailbox-inbox`, `mailbox-list_messages`, `mailbox-get_message`, `mailbox-search`, `mailbox-send`, `mailbox-mark_seen`, `mailbox-move`, `mailbox-delete`, …) — every per-account op takes `mailbox` as a parameter, so 100 inboxes ship the same handful of tools.
 
@@ -48,7 +54,7 @@ See [docker-mailbox README](https://github.com/psyb0t/docker-mailbox) for the fu
 
 ### Email gateway (mailbox)
 
-With `MAILBOX=1`, the `/mailbox/` route fronts N email accounts driven by a single YAML config (`MAILBOX_CONFIG`). Stateless — every read hits the upstream IMAP server live. Bearer auth via `MAILBOX_AUTH_TOKEN` (also mirrored into the config's `auth.tokens:` list).
+With `MAILBOX=1`, the `/mailbox/` route fronts the accounts in `MAILBOX_CONFIG`. Reads reach IMAP live; local state persists in the `mailbox-state` volume. Bearer auth uses tokens from the config, with `MAILBOX_AUTH_TOKEN` selecting the aggregator credential.
 
 ```bash
 # list configured accounts

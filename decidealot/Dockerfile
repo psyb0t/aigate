@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-ARG DECIDEALOT_IMAGE=psyb0t/decidealot:v0.6.0
+ARG DECIDEALOT_IMAGE=psyb0t/decidealot:latest
 FROM ${DECIDEALOT_IMAGE}
 USER root
 COPY --from=ghcr.io/astral-sh/uv:0.12.17@sha256:10787c682e4184e4f290de1171fd4703dc63de99221f10fe1c99002ce7fa9acc /uv /tmp/uv

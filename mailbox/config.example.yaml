@@ -17,8 +17,10 @@ log_level: INFO
 # MAILBOX_AUTH_TOKEN in .env so the LiteLLM MCP aggregator can reach /mcp.
 auth:
   tokens:
-    - "replace-with-a-long-random-token"
-    # - "second-token-for-rotation"
+    - name: aigate
+      token: "REPLACE_ME"
+      scopes: [read, draft, organize, send, delete, admin]
+      mailboxes: [personal, work]
 
 mailboxes:
   - name: personal

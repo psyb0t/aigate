@@ -3,4 +3,4 @@ mailbox:
   transport: "http"
   auth_type: "bearer_token"
   auth_value: os.environ/MAILBOX_AUTH_TOKEN
-  description: "Email gateway over IMAP+SMTP across N configured mailboxes. Flat tool set with `mailbox` parameter (name or address): mailboxes, inbox (unified across all accounts), list_messages, get_message, search, mark_seen, mark_unseen, move, delete, send. One MCP for every account — no per-account namespacing."
+  description: "Email gateway over IMAP+SMTP across configured mailboxes. Tools use a mailbox name or address and are filtered by token scopes. Supports inbox, message search and headers, replies, drafts, attachments, threads, identities, labels, moves, send guards and an audit log. Reads do not mark mail seen; delete moves mail to Trash. SQLite state persists across restarts."

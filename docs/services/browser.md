@@ -9,7 +9,13 @@
 | Queue health         | `GET /stealthy-auto-browse/__queue/health`                          | none                         |
 | Cluster status       | `GET /stealthy-auto-browse/__queue/status`                          | none                         |
 
-Set `STEALTHY_AUTO_BROWSE_AUTH_TOKEN` in `.env` to set the bearer auth token. Defaults to `lulz-4-security` if unset — always change this in production.
+Set `STEALTHY_AUTO_BROWSE_AUTH_TOKEN` in `.env` to override the bearer token, which otherwise inherits `AIGATE_TOKEN`. Send it in the `Authorization` header. Query-string `auth_token` authentication is rejected.
+
+### Upgrading from browser v1
+
+The current image uses Camoufox 156 and humanized OS input. Send both `x` and `y` or neither for `mouse_click` and `scroll`; wheel `amount` must be a nonzero integer. Typing, clicks and scrolling take longer by default. Explicit `interval`, `key_hold`, `click_hold`, `notch_gap`, or `send_key`'s `instant: true` control timing. `scroll_to_bottom_humanized` stops after 500 gestures by default. Recalculate coordinates from `get_interactive_elements` instead of assuming the old viewport height.
+
+The API also supports `set_color_scheme`, browser recording and `eval` with `world: "isolated"` for DOM access outside the page's JavaScript world. Back up any separately mounted `/userdata` before upgrading, because the browser migrates saved identities in place. See the upstream repository for action parameters.
 
 ### Cluster configuration
 

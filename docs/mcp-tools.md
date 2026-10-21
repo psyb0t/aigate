@@ -323,7 +323,9 @@ See [the mailbox service page](services/mailbox.md) for the full setup (config s
 | `mark_seen`      | Flag messages as read |
 | `mark_unseen`    | Flag messages as unread |
 | `move`           | Move messages between folders |
-| `delete`         | Delete messages |
+| `delete`         | Move messages to Trash; permanent deletion requires explicit authorization and server support |
+
+The current Mailbox catalog also includes replies, draft management, raw messages, attachments, identities, threads, labels and audit queries. Token scopes and mailbox restrictions filter the exposed tools. Reads do not mark mail seen. Query `tools/list` for the exact catalog available to the configured credential. See the [Mailbox service page](services/mailbox.md#upgrade-notes) for migration requirements.
 
 ### Common args
 

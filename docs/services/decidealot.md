@@ -4,6 +4,8 @@ Typed decisions with local Laya, Von, and CLM, or hosted TypeSafe Jev, served by
 
 Direct nginx route, not via LiteLLM. The MCP tools join the aggregated `/mcp/`.
 
+Requests, batch items and MCP calls accept an optional flat `config` object. CLM supports a validated `temperature` override; other providers reject unsupported settings. CLM normalizes encoder vectors before projection and caches candidate embeddings with bounded TTL and LRU eviction. Raw decision state is not cached.
+
 Aigate builds a thin launcher on the upstream CPU/CUDA images. Decidealot's provider supervisor is injected, not patched. Each Laya/Von inference takes the existing Redis hardware lock, including direct REST, MCP and individual batch items. Before CUDA allocation, Aigate unloads its local llama.cpp encoder when the internal CLM route or standalone CUDA llama.cpp profile is enabled. It waits for a successful unload response; an unreachable, busy or malformed encoder response fails admission without loading Laya/Von. CPU Laya/Von uses the CPU lock and does not unload Qwen. CLM takes no outer lock because its nested embeddings request acquires LiteLLM's hardware lock. Hosted Jev takes no local hardware lock. Remote embedding endpoints remain outside Aigate's lifecycle control.
 
 `AIGATE_DECIDEALOT_ENCODER_URL` controls Aigate's internal unload API, default `http://llamacpp-cuda:8000`, and `AIGATE_DECIDEALOT_UNLOAD_TIMEOUT_SECONDS` defaults to `30` (greater than zero, at most `300`). These are separate from `DECIDEALOT_CLM_EMBEDDINGS_URL`. `make build-decidealot` rebuilds the thin wrappers without recompiling the upstream CUDA stack. `make test-decidealot-coordination` runs admission tests with a throwaway Redis.

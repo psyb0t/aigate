@@ -158,7 +158,7 @@ services:
   claudebox:
     logging: *docker-logging
     profiles: ["claudebox"]
-    image: psyb0t/claudebox:v2.4.5
+    image: psyb0t/claudebox:latest
     restart: unless-stopped
     mem_limit: ${CLAUDEBOX_MEM_LIMIT:-1g}
     memswap_limit: ${CLAUDEBOX_MEMSWAP_LIMIT:-2g}
@@ -189,7 +189,7 @@ services:
   pibox-zai:
     logging: *docker-logging
     profiles: ["pibox-zai"]
-    image: psyb0t/pibox:v0.18.4
+    image: psyb0t/pibox:latest
     restart: unless-stopped
     mem_limit: ${PIBOX_ZAI_MEM_LIMIT:-1g}
     memswap_limit: ${PIBOX_ZAI_MEMSWAP_LIMIT:-2g}
@@ -244,7 +244,7 @@ services:
   pibox:
     logging: *docker-logging
     profiles: ["pibox"]
-    image: psyb0t/pibox:v0.18.4
+    image: psyb0t/pibox:latest
     restart: unless-stopped
     mem_limit: ${PIBOX_MEM_LIMIT:-1g}
     memswap_limit: ${PIBOX_MEMSWAP_LIMIT:-2g}
@@ -293,7 +293,7 @@ services:
   predictalot:
     logging: *docker-logging
     profiles: ["predictalot"]
-    image: psyb0t/predictalot:v1.2.1
+    image: psyb0t/predictalot:latest
     restart: unless-stopped
     mem_limit: ${PREDICTALOT_MEM_LIMIT:-6g}
     memswap_limit: ${PREDICTALOT_MEMSWAP_LIMIT:-12g}
@@ -326,7 +326,7 @@ services:
   predictalot-cuda:
     logging: *docker-logging
     profiles: ["predictalot-cuda"]
-    image: psyb0t/predictalot:v1.2.1-cuda
+    image: psyb0t/predictalot:latest-cuda
     restart: unless-stopped
     mem_limit: ${PREDICTALOT_CUDA_MEM_LIMIT:-12g}
     memswap_limit: ${PREDICTALOT_CUDA_MEMSWAP_LIMIT:-24g}
@@ -386,7 +386,7 @@ services:
       context: .
       dockerfile: decidealot/Dockerfile
       args:
-        DECIDEALOT_IMAGE: psyb0t/decidealot:v0.6.0
+        DECIDEALOT_IMAGE: psyb0t/decidealot:latest
     restart: unless-stopped
     user: "${DECIDEALOT_UID:-1000}:${DECIDEALOT_GID:-1000}"
     init: true
@@ -460,7 +460,7 @@ services:
       context: .
       dockerfile: decidealot/Dockerfile
       args:
-        DECIDEALOT_IMAGE: psyb0t/decidealot:v0.6.0-cuda
+        DECIDEALOT_IMAGE: psyb0t/decidealot:latest-cuda
     restart: unless-stopped
     user: "${DECIDEALOT_UID:-1000}:${DECIDEALOT_GID:-1000}"
     init: true
@@ -547,7 +547,7 @@ services:
   audiolla:
     logging: *docker-logging
     profiles: ["audiolla"]
-    image: psyb0t/audiolla:v2.0.0
+    image: psyb0t/audiolla:latest
     restart: unless-stopped
     mem_limit: ${AUDIOLLA_MEM_LIMIT:-8g}
     memswap_limit: ${AUDIOLLA_MEMSWAP_LIMIT:-16g}
@@ -591,7 +591,7 @@ services:
   audiolla-cuda:
     logging: *docker-logging
     profiles: ["audiolla-cuda"]
-    image: psyb0t/audiolla:v2.0.0-cuda
+    image: psyb0t/audiolla:latest-cuda
     restart: unless-stopped
     mem_limit: ${AUDIOLLA_CUDA_MEM_LIMIT:-12g}
     memswap_limit: ${AUDIOLLA_CUDA_MEMSWAP_LIMIT:-24g}
@@ -651,7 +651,7 @@ services:
   flickies:
     logging: *docker-logging
     profiles: ["flickies"]
-    image: psyb0t/flickies:v0.3.1
+    image: psyb0t/flickies:latest
     restart: unless-stopped
     mem_limit: ${FLICKIES_MEM_LIMIT:-8g}
     memswap_limit: ${FLICKIES_MEMSWAP_LIMIT:-16g}
@@ -703,7 +703,7 @@ services:
   flickies-cuda:
     logging: *docker-logging
     profiles: ["flickies-cuda"]
-    image: psyb0t/flickies:v0.3.1-cuda
+    image: psyb0t/flickies:latest-cuda
     restart: unless-stopped
     mem_limit: ${FLICKIES_CUDA_MEM_LIMIT:-16g}
     memswap_limit: ${FLICKIES_CUDA_MEMSWAP_LIMIT:-32g}
@@ -750,7 +750,7 @@ services:
   hybrids3:
     logging: *docker-logging
     profiles: ["hybrids3"]
-    image: psyb0t/hybrids3:v0.2.0
+    image: psyb0t/hybrids3:latest
     restart: unless-stopped
     mem_limit: ${HYBRIDS3_MEM_LIMIT:-256m}
     memswap_limit: ${HYBRIDS3_MEMSWAP_LIMIT:-512m}
@@ -864,7 +864,7 @@ services:
   stealthy-auto-browse:
     logging: *docker-logging
     profiles: ["browser"]
-    image: psyb0t/stealthy-auto-browse:v1.0.0
+    image: psyb0t/stealthy-auto-browse:latest
     scale: ${STEALTHY_AUTO_BROWSE_NUM_REPLICAS:-5}
     restart: unless-stopped
     environment:
@@ -1794,7 +1794,7 @@ services:
 
   proxq:
     logging: *docker-logging
-    image: psyb0t/proxq:v0.11.1
+    image: psyb0t/proxq:latest
     restart: unless-stopped
     mem_limit: ${PROXQ_MEM_LIMIT:-256m}
     memswap_limit: ${PROXQ_MEMSWAP_LIMIT:-512m}
@@ -1841,7 +1841,7 @@ services:
   telethon:
     logging: *docker-logging
     profiles: ["telethon"]
-    image: psyb0t/telethon-plus:v0.2.0
+    image: psyb0t/telethon-plus:latest
     restart: unless-stopped
     mem_limit: ${TELETHON_MEM_LIMIT:-256m}
     memswap_limit: ${TELETHON_MEMSWAP_LIMIT:-512m}
@@ -1867,20 +1867,22 @@ services:
       - aigate-internal
       - aigate-public
 
-  # mailbox — stateless IMAP+SMTP gateway. Config file holds plaintext creds +
+  # mailbox IMAP+SMTP gateway. Config file holds plaintext creds +
   # bearer tokens, so MAILBOX_CONFIG must point at a gitignored YAML on the host.
   mailbox:
     logging: *docker-logging
     profiles: ["mailbox"]
-    image: psyb0t/mailbox:v0.3.0
+    image: psyb0t/mailbox:latest
     restart: unless-stopped
     mem_limit: ${MAILBOX_MEM_LIMIT:-256m}
     memswap_limit: ${MAILBOX_MEMSWAP_LIMIT:-512m}
     cpus: ${MAILBOX_CPUS:-0.5}
     environment:
       MAILBOXD_CONFIG: /etc/mailboxd/config.yaml
+      MAILBOXD_STATE_PATH: /var/lib/mailboxd/state.db
     volumes:
       - ${MAILBOX_CONFIG:-/dev/null}:/etc/mailboxd/config.yaml:ro
+      - mailbox-state:/var/lib/mailboxd
     healthcheck:
       test:
         [
@@ -2740,6 +2742,9 @@ configs:
           }
         }
       }
+
+volumes:
+  mailbox-state:
 
 networks:
   aigate-proxy:
