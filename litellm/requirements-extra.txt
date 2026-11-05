@@ -4,5 +4,5 @@
 #
 # pillow: LiteLLM's Ollama provider converts image inputs with PIL, and the
 # upstream image does not ship it, so every Ollama vision request failed.
-pillow==12.3.0 \
-    --hash=sha256:0847a763afefb695bc912d7c131e7e0632d4edc1d8698f58ddabec8e46b8b6d3
+pillow==13.0.0 \
+    --hash=sha256:5f56499c1a74d2b862beb0c33b8016f99d095858455df9d21583bbbc1c15b582
