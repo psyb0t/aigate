@@ -1,4 +1,10 @@
 # Build stage: pull official litellm image
+# v1.104.8: bumped from v1.104.0.
+#  * Security: carries the GHSA-w4c7-34wj-hqm8 fix (1.104.8). Signed with the
+#    cosign key from upstream commit e82a3c6, which replaced the key likely
+#    exposed in the v1.107.0 release compromise.
+#  * Newest v1.104.x release, and it clears the seven-day age gate (2026-11-05).
+#
 # v1.104.0 — bumped from v1.83.14-stable.patch.2.
 #  * MCP OAuth: the v1.83 line only allowed a loopback redirect_uri, so LiteLLM's
 #    own /ui/mcp/oauth/callback was rejected (400 invalid_request) and any MCP
@@ -10,7 +16,7 @@
 #    GHSA-7hp6-4w63-5g45 (v1.101.0-1.103.0).
 #  * Newest release that clears the seven-day age gate (2026-10-03).
 # CVE-2026-42208 (pre-auth SQLi, fixed in v1.83.7+) stays fixed.
-FROM ghcr.io/berriai/litellm:v1.104.0@sha256:625981c83410a3ea68eb0697590a57ec1d764d634514d54fa5db0591077ee839 AS base
+FROM ghcr.io/berriai/litellm:v1.104.8@sha256:6cc08e60be3e4ebf0cfb41ef23aed97e9ba4f61702d1e95e533f47ee6d67865f AS base
 
 # ── Extra Python packages ────────────────────────────────────────────────────
 # The upstream image has no pip or uv. uv is copied in for this one install

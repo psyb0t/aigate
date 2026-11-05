@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here.
 
+## [v12.0.1] (2026-11-05)
+
+### Security
+
+- Updates LiteLLM from v1.104.0 to digest-pinned v1.104.8. This includes the GHSA-w4c7-34wj-hqm8 fix for proxies with an Enterprise license. LiteLLM signs the new image with its replacement cosign key. Aigate did not ship the compromised v1.107.0 release.
+
+### Changed
+
+- LiteLLM token count endpoints return provider errors in the source API shape instead of silent local counts. Vertex partner models without a count API return 400.
+
+### Upgrade
+
+- Run `docker compose build litellm`, then `make restart-gateway`. No database migration or configuration change is required.
+
 ## [v12.0.0] (2026-10-20)
 
 ### Breaking
